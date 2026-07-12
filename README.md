@@ -11,6 +11,20 @@
     </a>
 </div>
 
+> [!IMPORTANT]
+> ### 🚧 A ground-up **v2 rewrite** is under active development
+>
+> Most current work is happening on **[`rework/v2-skeleton`](https://github.com/ferrumc-rs/ferrumc/tree/rework/v2-skeleton)**, and we expect to **merge it into `master` soon**. Here's what v2 brings:
+>
+> - 🧱 **Clean, hard-separated architecture** — a deterministic, actor-sharded simulation layered as `net → session → sim → storage`, with bounded queues everywhere.
+> - 🎨 **Flat creative core** for vanilla **1.21.8** clients: correct block-state placement (logs, slabs, stairs, fences, doors, walls…), signs & chests, and region build commands (`/fill`, `/replace`, `/undo`).
+> - 🌗 **Day–night cycle** and richer multiplayer visibility (body/head rotation, held items, worn armor).
+> - 💾 **Persistence** across rejoin & restart, plus vanilla **Anvil** world import.
+> - 🔌 **In-process Rust plugin API** (allow / deny / replace edits) with C-ABI dynamic-loader groundwork.
+> - 📊 **Loopback observability dashboard** + Prometheus metrics.
+>
+> It's an **offline, local, alpha-quality** creative/minigame core — not vanilla parity, survival, or a Paper/Spigot replacement. Want to follow along or help out? Check out the branch above. 👀
+
 ## 📖 About
 
 FerrumC is a **1.21.8** Minecraft server implementation written from the ground up in Rust. Leveraging the power of the
