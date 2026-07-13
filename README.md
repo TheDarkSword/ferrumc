@@ -12,18 +12,19 @@
 </div>
 
 > [!IMPORTANT]
-> ### 🚧 A ground-up **v2 rewrite** is under active development
+> ### 🚧 A fresh rewrite of FerrumC is in the works
 >
-> Most current work is happening on **[`rework/v2-skeleton`](https://github.com/ferrumc-rs/ferrumc/tree/rework/v2-skeleton)**, and we expect to **merge it into `master` soon**. Here's what v2 brings:
+> We're rebuilding FerrumC from scratch on the [`rework/v2-skeleton`](https://github.com/ferrumc-rs/ferrumc/tree/rework/v2-skeleton) branch, and we plan to merge it into `master` soon. What works so far:
 >
-> - 🧱 **Clean, hard-separated architecture** — a deterministic, actor-sharded simulation layered as `net → session → sim → storage`, with bounded queues everywhere.
-> - 🎨 **Flat creative core** for vanilla **1.21.8** clients: correct block-state placement (logs, slabs, stairs, fences, doors, walls…), signs & chests, and region build commands (`/fill`, `/replace`, `/undo`).
-> - 🌗 **Day–night cycle** and richer multiplayer visibility (body/head rotation, held items, worn armor).
-> - 💾 **Persistence** across rejoin & restart, plus vanilla **Anvil** world import.
-> - 🔌 **In-process Rust plugin API** (allow / deny / replace edits) with C-ABI dynamic-loader groundwork.
-> - 📊 **Loopback observability dashboard** + Prometheus metrics.
+> - A cleaner, faster core that's much easier to build on.
+> - A flat creative world you can join with a normal Minecraft 1.21.8 client. Blocks like logs, slabs, stairs, fences, and doors place facing the right way, and signs and chests work.
+> - Area edit commands such as `/fill`, `/replace`, and `/undo`.
+> - A day and night cycle, and you can watch other players turn, look around, and hold items and armor.
+> - Your builds are saved when you leave, rejoin, or restart the server, and you can import an existing vanilla world.
+> - Plugins, written in Rust, that can allow, block, or change what players build.
+> - A local-only web dashboard for keeping an eye on the server.
 >
-> It's an **offline, local, alpha-quality** creative/minigame core — not vanilla parity, survival, or a Paper/Spigot replacement. Want to follow along or help out? Check out the branch above. 👀
+> It's early, offline-mode alpha: a creative and minigame server, not survival, not vanilla-accurate, and not a drop-in replacement for Paper or Spigot. Want to follow along or lend a hand? Come poke at the branch above.
 
 ## 📖 About
 
