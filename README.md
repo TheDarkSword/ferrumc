@@ -339,11 +339,11 @@ This project is licensed under the MIT License - see the [LICENSE.md](LICENSE) f
 
 ## 🌟 Star History
 
-<a href="https://star-history.com/#ferrumc-rs/ferrumc&Date">
+<a href="https://star-history.dera.page/#ferrumc-rs/ferrumc&Date">
  <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=ferrumc-rs/ferrumc&type=Date&theme=dark" />
-   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=ferrumc-rs/ferrumc&type=Date" />
-   <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=ferrumc-rs/ferrumc&type=Date" />
+   <source media="(prefers-color-scheme: dark)" srcset="https://star-history.dera.page/svg?repos=ferrumc-rs/ferrumc&type=Date&theme=dark" />
+   <source media="(prefers-color-scheme: light)" srcset="https://star-history.dera.page/svg?repos=ferrumc-rs/ferrumc&type=Date" />
+   <img alt="Star History Chart" src="https://star-history.dera.page/svg?repos=ferrumc-rs/ferrumc&type=Date" />
  </picture>
 </a>
 
