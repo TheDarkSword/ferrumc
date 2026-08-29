@@ -1,5 +1,6 @@
 use criterion::measurement::WallTime;
 use ferrumc_net_codec::encode::{NetEncode, NetEncodeOpts};
+use ferrumc_net_codec::version::ProtocolVersion;
 use ferrumc_world::pos::ChunkPos;
 use std::hint::black_box;
 
@@ -15,6 +16,7 @@ fn bench_chunk_packet(c: &mut criterion::BenchmarkGroup<WallTime>) {
         ferrumc_net::packets::outgoing::chunk_and_light_data::ChunkAndLightData::from_chunk(
             ChunkPos::new(0, 0),
             &chunk,
+            ProtocolVersion::CURRENT,
         )
         .unwrap(),
     );
@@ -22,7 +24,10 @@ fn bench_chunk_packet(c: &mut criterion::BenchmarkGroup<WallTime>) {
         b.iter(|| {
             let mut buffer = Vec::new();
             chunk_packet
-                .encode(&mut buffer, &NetEncodeOpts::WithLength)
+                .encode(
+                    &mut buffer,
+                    &NetEncodeOpts::packet(ProtocolVersion::CURRENT),
+                )
                 .unwrap();
         });
     });

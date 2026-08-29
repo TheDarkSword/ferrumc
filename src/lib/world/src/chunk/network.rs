@@ -3,9 +3,10 @@ use crate::chunk::section::network::NetworkSection;
 use crate::chunk::Chunk;
 use ferrumc_macros::NetEncode;
 use ferrumc_net_codec::encode::errors::NetEncodeError;
-use ferrumc_net_codec::encode::{NetEncode, NetEncodeOpts};
+use ferrumc_net_codec::encode::{Framing, NetEncode, NetEncodeOpts};
 use ferrumc_net_codec::net_types::byte_array::ByteArray;
 use ferrumc_net_codec::net_types::length_prefixed_vec::LengthPrefixedVec;
+use ferrumc_net_codec::version::ProtocolVersion;
 use std::io::Cursor;
 
 #[derive(NetEncode)]
@@ -14,16 +15,17 @@ pub struct NetworkChunk {
     data: ByteArray,
 }
 
-impl TryFrom<&Chunk> for NetworkChunk {
-    type Error = NetEncodeError;
-
-    fn try_from(chunk: &Chunk) -> Result<Self, Self::Error> {
+impl NetworkChunk {
+    /// Serializes a chunk's sections for a client speaking `version`. Section layout is
+    /// version-dependent, and the sections are packed into an opaque byte run here rather than
+    /// during the packet's own encode, so the version has to be handed in.
+    pub fn new(chunk: &Chunk, version: ProtocolVersion) -> Result<Self, NetEncodeError> {
         let heightmaps = Heightmaps::get_network_repr(&chunk.heightmaps);
         let mut data = Cursor::new(vec![]);
+        let opts = NetEncodeOpts::new(Framing::None, version);
 
         for section in chunk.sections.iter() {
-            let section = NetworkSection::from(section);
-            section.encode(&mut data, &NetEncodeOpts::None)?;
+            NetworkSection::from(section).encode(&mut data, &opts)?;
         }
 
         Ok(Self {

@@ -13,6 +13,7 @@ use ferrumc_core::identity::player_identity::PlayerIdentity;
 use ferrumc_macros::lookup_packet;
 use ferrumc_net_codec::decode::{NetDecode, NetDecodeOpts};
 use ferrumc_net_codec::net_types::var_int::VarInt;
+use ferrumc_net_codec::version::ProtocolVersion;
 use ferrumc_net_encryption::read::EncryptedReader;
 use ferrumc_state::GlobalState;
 use ferrumc_text::{ComponentBuilder, NamedColor, TextComponent};
@@ -87,15 +88,18 @@ pub async fn handle_handshake(
     // Decode the handshake packet (protocol version, server address, next state, etc.).
     let hs_packet = Handshake::decode_async(&mut skel.data, &NetDecodeOpts::None).await?;
 
-    // If protocol version is mismatched, handle gracefully or disconnect client.
-    if hs_packet.protocol_version.0 != PROTOCOL_VERSION {
+    // Anything inside the supported range is served in its own protocol; everything else is turned
+    // away with a message naming what this server speaks.
+    let Some(version) = ProtocolVersion::from_number(hs_packet.protocol_version.0) else {
         trace!(
-            "Protocol version mismatch: {} != {}",
+            "Unsupported protocol version {}; this server speaks {} through {}",
             hs_packet.protocol_version.0,
-            PROTOCOL_VERSION
+            ProtocolVersion::OLDEST.number(),
+            ProtocolVersion::CURRENT.number()
         );
         return handle_version_mismatch(hs_packet, conn_read, conn_write, state).await;
-    }
+    };
+    conn_write.set_protocol_version(version);
 
     // Branch based on the next connection state requested by the client.
     match hs_packet.next_state.0 {

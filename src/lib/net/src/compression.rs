@@ -2,7 +2,7 @@
 use std::io::{Cursor, Read};
 
 // Imports the NetEncode trait and options enum for encoding network packets
-use ferrumc_net_codec::encode::{NetEncode, NetEncodeOpts};
+use ferrumc_net_codec::encode::{Framing, NetEncode, NetEncodeOpts};
 // Imports Minecraft-style VarInt support (used for frame sizes and IDs)
 use ferrumc_net_codec::net_types::var_int::VarInt;
 
@@ -40,10 +40,13 @@ pub fn compress_packet(
     ///
     /// This is used to prepare the payload for compression (ID + body),
     /// by first encoding it with a length prefix, then stripping that prefix.
-    fn encode_id_and_body(pkt: &(impl NetEncode + Send)) -> Result<(VarInt, Vec<u8>), NetError> {
+    fn encode_id_and_body(
+        pkt: &(impl NetEncode + Send),
+        opts: &NetEncodeOpts,
+    ) -> Result<(VarInt, Vec<u8>), NetError> {
         // Full encode with outer length prefix
         let mut full = Vec::new();
-        pkt.encode(&mut full, &NetEncodeOpts::WithLength)?;
+        pkt.encode(&mut full, &opts.framed(Framing::WithLength))?;
 
         // Use a Cursor to step through the byte buffer
         let mut cur = Cursor::new(full);
@@ -64,11 +67,11 @@ pub fn compress_packet(
     // Main compression logic
     let raw_bytes = if compress_packet {
         // Construct the canonical uncompressed frame: VarInt ID + body
-        let (id_vi, body) = encode_id_and_body(packet)?;
+        let (id_vi, body) = encode_id_and_body(packet, net_encode_opts)?;
 
         // Preallocate buffer for performance
         let mut uncompressed_frame = Vec::with_capacity(id_vi.len() + body.len());
-        id_vi.encode(&mut uncompressed_frame, &NetEncodeOpts::None)?;
+        id_vi.encode(&mut uncompressed_frame, &net_encode_opts.nested())?;
         uncompressed_frame.extend_from_slice(&body);
 
         let mut inner = Vec::new();
@@ -90,17 +93,17 @@ pub fn compress_packet(
 
             // Prepend the uncompressed size as a VarInt
             VarInt::new(uncompressed_frame.len() as i32)
-                .encode(&mut inner, &NetEncodeOpts::None)?;
+                .encode(&mut inner, &net_encode_opts.nested())?;
             inner.extend_from_slice(&compressed);
         } else {
             // Below threshold: use uncompressed frame with 0 prefix
-            VarInt::new(0).encode(&mut inner, &NetEncodeOpts::None)?;
+            VarInt::new(0).encode(&mut inner, &net_encode_opts.nested())?;
             inner.extend_from_slice(&uncompressed_frame);
         }
 
         // Final output = VarInt(total inner len) + inner
         let mut final_data = Vec::with_capacity(inner.len() + 5); // Extra space for prefix
-        VarInt::new(inner.len() as i32).encode(&mut final_data, &NetEncodeOpts::None)?;
+        VarInt::new(inner.len() as i32).encode(&mut final_data, &net_encode_opts.nested())?;
         final_data.extend_from_slice(&inner);
         final_data
     } else {
@@ -123,6 +126,7 @@ mod tests {
     use ferrumc_net_codec::encode::errors::NetEncodeError;
     use ferrumc_net_codec::encode::{NetEncode, NetEncodeOpts};
     use ferrumc_net_codec::net_types::var_int::VarInt;
+    use ferrumc_net_codec::version::ProtocolVersion;
     use std::io::Cursor;
 
     struct TestPacket {
@@ -134,18 +138,18 @@ mod tests {
         fn encode<W: std::io::Write>(
             &self,
             writer: &mut W,
-            _opts: &NetEncodeOpts,
+            opts: &NetEncodeOpts,
         ) -> Result<(), NetEncodeError> {
             use std::io::Write;
             let mut buffer = Cursor::new(Vec::new());
             // Normally packet id is provided by the macro, but here we manually encode it
-            VarInt(99).encode(&mut buffer, &NetEncodeOpts::None)?;
-            self.test_vi.encode(&mut buffer, &NetEncodeOpts::None)?;
+            VarInt(99).encode(&mut buffer, &opts.nested())?;
+            self.test_vi.encode(&mut buffer, &opts.nested())?;
             buffer.write_all(&self.body)?;
 
             let inner = buffer.into_inner();
             // Write the length prefix
-            VarInt::new(inner.len() as i32).encode(writer, &NetEncodeOpts::None)?;
+            VarInt::new(inner.len() as i32).encode(writer, &opts.nested())?;
             // Write the actual data
             writer.write_all(&inner)?;
             Ok(())
@@ -154,18 +158,18 @@ mod tests {
         async fn encode_async<W: tokio::io::AsyncWrite + Unpin>(
             &self,
             writer: &mut W,
-            _opts: &NetEncodeOpts,
+            opts: &NetEncodeOpts,
         ) -> Result<(), NetEncodeError> {
             use tokio::io::AsyncWriteExt;
             // Normally packet id is provided by the macro, but here we manually encode it
             let mut buffer = Cursor::new(Vec::new());
-            VarInt(99).encode(&mut buffer, &NetEncodeOpts::None)?;
-            self.test_vi.encode(&mut buffer, &NetEncodeOpts::None)?;
+            VarInt(99).encode(&mut buffer, &opts.nested())?;
+            self.test_vi.encode(&mut buffer, &opts.nested())?;
             buffer.write_all(&self.body).await?;
             let inner = buffer.into_inner();
             // Write the length prefix
             VarInt::new(inner.len() as i32)
-                .encode_async(writer, &NetEncodeOpts::None)
+                .encode_async(writer, &opts.nested())
                 .await?;
             // Write the actual data
             writer.write_all(&inner).await?;
@@ -179,7 +183,12 @@ mod tests {
             test_vi: VarInt::new(42),
             body: vec![255; 1000], // Large enough to trigger compression
         };
-        let compressed = compress_packet(&packet, true, &NetEncodeOpts::WithLength, 512);
+        let compressed = compress_packet(
+            &packet,
+            true,
+            &NetEncodeOpts::packet(ProtocolVersion::CURRENT),
+            512,
+        );
         assert!(
             compressed.is_ok(),
             "Compression failed: {:?}",
@@ -200,7 +209,7 @@ mod tests {
                 body: vec![255; 1000], // Large enough to trigger compression
             },
             true,
-            &NetEncodeOpts::WithLength,
+            &NetEncodeOpts::packet(ProtocolVersion::CURRENT),
             64,
         )
         .unwrap();
@@ -225,9 +234,14 @@ mod tests {
         };
         let mut uncompressed_buf = Vec::new();
         packet
-            .encode(&mut uncompressed_buf, &NetEncodeOpts::None)
+            .encode(&mut uncompressed_buf, &NetEncodeOpts::default())
             .unwrap();
-        let compressed = compress_packet(&packet, true, &NetEncodeOpts::WithLength, 512);
+        let compressed = compress_packet(
+            &packet,
+            true,
+            &NetEncodeOpts::packet(ProtocolVersion::CURRENT),
+            512,
+        );
         assert!(
             compressed.is_ok(),
             "Compression failed: {:?}",
@@ -251,7 +265,13 @@ mod tests {
             test_vi: VarInt::new(42),
             body: vec![255; 100], // Small enough to not trigger compression
         };
-        let compressed = compress_packet(&packet, true, &NetEncodeOpts::WithLength, 512).unwrap();
+        let compressed = compress_packet(
+            &packet,
+            true,
+            &NetEncodeOpts::packet(ProtocolVersion::CURRENT),
+            512,
+        )
+        .unwrap();
 
         let mut async_reader = Cursor::new(compressed);
 
@@ -271,7 +291,12 @@ mod tests {
             test_vi: VarInt::new(42),
             body: vec![255; 1000], // Large enough to trigger compression
         };
-        let compressed = compress_packet(&packet, false, &NetEncodeOpts::WithLength, 64);
+        let compressed = compress_packet(
+            &packet,
+            false,
+            &NetEncodeOpts::packet(ProtocolVersion::CURRENT),
+            64,
+        );
         assert!(
             compressed.is_ok(),
             "Compression failed: {:?}",
@@ -285,7 +310,10 @@ mod tests {
         // Check that the output matches the uncompressed data
         let mut expected_buf = Vec::new();
         packet
-            .encode(&mut expected_buf, &NetEncodeOpts::WithLength)
+            .encode(
+                &mut expected_buf,
+                &NetEncodeOpts::packet(ProtocolVersion::CURRENT),
+            )
             .unwrap();
         assert_eq!(compressed_data, expected_buf);
     }
@@ -296,7 +324,13 @@ mod tests {
             test_vi: VarInt::new(42),
             body: vec![255; 1000], // Large enough to trigger compression
         };
-        let compressed = compress_packet(&packet, false, &NetEncodeOpts::WithLength, 512).unwrap();
+        let compressed = compress_packet(
+            &packet,
+            false,
+            &NetEncodeOpts::packet(ProtocolVersion::CURRENT),
+            512,
+        )
+        .unwrap();
 
         let mut async_reader = Cursor::new(compressed);
 

@@ -106,6 +106,16 @@ impl ProtocolVersion {
     pub const fn index(self) -> usize {
         self as usize
     }
+
+    /// Inverse of [`Self::index`], for the compact form connections store.
+    #[must_use]
+    pub const fn from_index(index: usize) -> Option<Self> {
+        if index < Self::ALL.len() {
+            Some(Self::ALL[index])
+        } else {
+            None
+        }
+    }
 }
 
 impl TryFrom<i32> for ProtocolVersion {
@@ -143,7 +153,10 @@ mod tests {
     #[test]
     fn numbers_round_trip() {
         for version in ProtocolVersion::ALL {
-            assert_eq!(ProtocolVersion::from_number(version.number()), Some(version));
+            assert_eq!(
+                ProtocolVersion::from_number(version.number()),
+                Some(version)
+            );
         }
     }
 
@@ -158,7 +171,12 @@ mod tests {
     fn indices_match_position_in_all() {
         for (position, version) in ProtocolVersion::ALL.iter().enumerate() {
             assert_eq!(version.index(), position);
+            assert_eq!(ProtocolVersion::from_index(position), Some(*version));
         }
+        assert_eq!(
+            ProtocolVersion::from_index(ProtocolVersion::ALL.len()),
+            None
+        );
     }
 
     #[test]

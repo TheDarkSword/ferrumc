@@ -13,10 +13,11 @@ use ferrumc_components::player::client_information::ClientInformationComponent;
 use ferrumc_core::identity::player_identity::PlayerIdentity;
 use ferrumc_net_codec::encode::NetEncode;
 use ferrumc_net_codec::encode::NetEncodeOpts;
+use ferrumc_net_codec::version::ProtocolVersion;
 use ferrumc_net_encryption::read::EncryptedReader;
 use ferrumc_net_encryption::write::EncryptedWriter;
 use ferrumc_state::ServerState;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use tokio::io::AsyncWriteExt;
@@ -46,6 +47,10 @@ pub struct StreamWriter {
     pub compress: Arc<AtomicBool>,
     pub state: Arc<ServerState>,
     pub entity: Arc<Mutex<Option<Entity>>>,
+    /// Protocol version this client speaks, as a [`ProtocolVersion`] index. The writer exists
+    /// before the handshake names it, so it starts at the server's own version and is set once
+    /// the handshake arrives.
+    version: Arc<AtomicUsize>,
 }
 
 impl Drop for StreamWriter {
@@ -67,6 +72,7 @@ impl StreamWriter {
         entity: Arc<Mutex<Option<Entity>>>,
     ) -> Self {
         let compress = Arc::new(AtomicBool::new(false)); // Default: no compression
+        let version = Arc::new(AtomicUsize::new(ProtocolVersion::CURRENT.index()));
         let (sender, mut receiver): (
             UnboundedSender<WriterCommand>,
             UnboundedReceiver<WriterCommand>,
@@ -117,7 +123,20 @@ impl StreamWriter {
             compress,
             state,
             entity,
+            version,
         }
+    }
+
+    /// The protocol version this client speaks.
+    pub fn protocol_version(&self) -> ProtocolVersion {
+        ProtocolVersion::from_index(self.version.load(Ordering::Relaxed))
+            .unwrap_or(ProtocolVersion::CURRENT)
+    }
+
+    /// Records the version named in the handshake, so everything written afterwards is shaped for
+    /// this client rather than for the server's own version.
+    pub fn set_protocol_version(&self, version: ProtocolVersion) {
+        self.version.store(version.index(), Ordering::Relaxed);
     }
 
     /// Sets the entity ID for this stream writer.
@@ -134,12 +153,12 @@ impl StreamWriter {
 
     /// Sends a packet to the client using the default `WithLength` encoding.
     pub fn send_packet(&self, packet: impl NetEncode + Send) -> Result<(), NetError> {
-        self.send_packet_with_opts(&packet, &NetEncodeOpts::WithLength)
+        self.send_packet_with_opts(&packet, &NetEncodeOpts::packet(self.protocol_version()))
     }
 
     /// Sends a packet reference using the default `WithLength` encoding.
     pub fn send_packet_ref(&self, packet: &(impl NetEncode + Send)) -> Result<(), NetError> {
-        self.send_packet_with_opts(packet, &NetEncodeOpts::WithLength)
+        self.send_packet_with_opts(packet, &NetEncodeOpts::packet(self.protocol_version()))
     }
 
     /// Sends a packet with custom encoding options (e.g., with or without length prefix).
@@ -185,7 +204,7 @@ impl StreamWriter {
         let raw_bytes = compress_packet(
             packet,
             self.compress.load(Ordering::Relaxed),
-            &NetEncodeOpts::WithLength,
+            &NetEncodeOpts::packet(self.protocol_version()),
             512,
         )
         .map_err(|err| {

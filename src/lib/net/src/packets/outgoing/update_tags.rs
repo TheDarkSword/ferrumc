@@ -222,6 +222,7 @@ mod tests {
     #[test]
     fn packet_encodes_without_error() {
         use ferrumc_net_codec::encode::{NetEncode, NetEncodeOpts};
+        use ferrumc_net_codec::version::ProtocolVersion;
         use std::io::Cursor;
 
         // The packet is sent during configuration; if it fails to encode (or encodes to nonsense)
@@ -230,7 +231,7 @@ mod tests {
         let packet = build_packet();
         let mut buf = Cursor::new(Vec::new());
         packet
-            .encode(&mut buf, &NetEncodeOpts::WithLength)
+            .encode(&mut buf, &NetEncodeOpts::packet(ProtocolVersion::CURRENT))
             .expect("update_tags must encode");
         let bytes = buf.into_inner();
         assert!(

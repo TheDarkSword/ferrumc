@@ -2,6 +2,7 @@ use crate::errors::NetError;
 use ferrumc_macros::{packet, NetEncode};
 use ferrumc_net_codec::net_types::length_prefixed_vec::LengthPrefixedVec;
 use ferrumc_net_codec::net_types::var_int::VarInt;
+use ferrumc_net_codec::version::ProtocolVersion;
 use ferrumc_world::chunk::light::network::NetworkLightData;
 use ferrumc_world::chunk::network::NetworkChunk;
 use ferrumc_world::chunk::Chunk;
@@ -34,11 +35,15 @@ pub struct ChunkAndLightData<'chunk> {
 }
 
 impl<'chunk> ChunkAndLightData<'chunk> {
-    pub fn from_chunk(pos: ChunkPos, chunk: &'chunk Chunk) -> Result<Self, NetError> {
+    pub fn from_chunk(
+        pos: ChunkPos,
+        chunk: &'chunk Chunk,
+        version: ProtocolVersion,
+    ) -> Result<Self, NetError> {
         Ok(ChunkAndLightData::<'chunk> {
             chunk_x: pos.x(),
             chunk_z: pos.z(),
-            chunk_data: NetworkChunk::try_from(chunk)?,
+            chunk_data: NetworkChunk::new(chunk, version)?,
             block_entities: LengthPrefixedVec::new(Vec::new()),
             light_data: NetworkLightData::from(chunk),
         })

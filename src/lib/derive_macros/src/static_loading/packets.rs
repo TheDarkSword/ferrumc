@@ -37,6 +37,85 @@ pub(crate) static PACKETS_JSON: LazyLock<Packets> = LazyLock::new(|| {
     serde_json::from_str(json_str).unwrap()
 });
 
+/// Packet reports for every supported protocol version, oldest first. The order has to match
+/// `ferrumc_net_codec::version::ProtocolVersion::ALL`, because the arrays generated from these
+/// are indexed by `ProtocolVersion::index()`.
+pub(crate) const SUPPORTED_VERSIONS: [&str; 10] = [
+    include_str!("../../../../../assets/extracted/1.21/reports/packets.json"),
+    include_str!("../../../../../assets/extracted/1.21.2/reports/packets.json"),
+    include_str!("../../../../../assets/extracted/1.21.4/reports/packets.json"),
+    include_str!("../../../../../assets/extracted/1.21.5/reports/packets.json"),
+    include_str!("../../../../../assets/extracted/1.21.6/reports/packets.json"),
+    include_str!("../../../../../assets/extracted/1.21.8/reports/packets.json"),
+    include_str!("../../../../../assets/extracted/1.21.9/reports/packets.json"),
+    include_str!("../../../../../assets/extracted/1.21.11/reports/packets.json"),
+    include_str!("../../../../../assets/extracted/26.1/reports/packets.json"),
+    include_str!("../../../../../assets/extracted/26.2/reports/packets.json"),
+];
+
+pub(crate) static PACKETS_PER_VERSION: LazyLock<Vec<Packets>> = LazyLock::new(|| {
+    SUPPORTED_VERSIONS
+        .iter()
+        .map(|json| serde_json::from_str(json).expect("packet report parses"))
+        .collect()
+});
+
+/// Names that refer to the same packet across the supported range. Mojang renames packets without
+/// changing what they carry, so a lookup that misses the current name retries the older ones.
+const RENAMES: &[&[&str]] = &[
+    &["login_finished", "game_profile"],
+    &["set_held_slot", "set_carried_item"],
+];
+
+fn names_for(packet_name: &str) -> Vec<&str> {
+    for group in RENAMES {
+        if group.contains(&packet_name) {
+            return group.to_vec();
+        }
+    }
+    vec![packet_name]
+}
+
+/// The id this packet carries in each supported version, `None` where the version has no such
+/// packet. Callers must not send a packet a client's version does not define.
+pub(crate) fn get_packet_ids(
+    state: impl Into<PacketState> + Copy,
+    bound: &PacketBoundiness,
+    packet_name: &str,
+) -> Vec<Option<i32>> {
+    let packet_name = packet_name.trim_matches('"');
+    let candidates = names_for(packet_name);
+
+    let ids: Vec<Option<i32>> = PACKETS_PER_VERSION
+        .iter()
+        .map(|packets| {
+            let direction = match state.into() {
+                PacketState::Play => &packets.play,
+                PacketState::Login => &packets.login,
+                PacketState::Status => &packets.status,
+                PacketState::Handshake => &packets.handshake,
+                PacketState::Configuration => &packets.configuration,
+            };
+            let table = match bound {
+                PacketBoundiness::Clientbound => &direction.clientbound,
+                PacketBoundiness::Serverbound => &direction.serverbound,
+            };
+            candidates
+                .iter()
+                .find_map(|name| table.get(&format!("minecraft:{name}")))
+                .map(|id| i32::from(id.protocol_id))
+        })
+        .collect();
+
+    assert!(
+        ids.iter().any(Option::is_some),
+        "packet `minecraft:{packet_name}` exists in no supported version; check the name against \
+         assets/extracted/*/reports/packets.json"
+    );
+
+    ids
+}
+
 pub(crate) fn get_packet_id(
     state: impl Into<PacketState>,
     bound: PacketBoundiness,

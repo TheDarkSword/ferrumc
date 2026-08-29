@@ -469,6 +469,9 @@ fn send_initial_chunks(
     // Send center chunk
     conn_write.send_packet(SetCenterChunk::new(pos.x as i32 >> 4, pos.z as i32 >> 4))?;
 
+    // Chunks are packed on the thread pool, so the client's version is captured up front.
+    let version = conn_write.protocol_version();
+
     // Calculate render distance. Use the shared helper so the initial send matches what the
     // chunk calculator/sender will use afterwards (and so a not-yet-known client view distance
     // does not collapse the initial area to a single chunk).
@@ -491,10 +494,11 @@ fn send_initial_chunks(
                     let chunk = ferrumc_utils::world::load_or_generate_chunk(&state, ChunkPos::new(x,z), "overworld").expect("Failed to load or generate chunk");
                     let chunk_data =
                         crate::packets::outgoing::chunk_and_light_data::ChunkAndLightData::from_chunk(
-                        ChunkPos::new(x,z),
+                            ChunkPos::new(x, z),
                             &chunk,
+                            version,
                         )?;
-                    compress_packet(&chunk_data, compressed, &NetEncodeOpts::WithLength, 64)
+                    compress_packet(&chunk_data, compressed, &NetEncodeOpts::packet(version), 64)
                 }
             });
         }

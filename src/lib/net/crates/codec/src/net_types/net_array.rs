@@ -1,5 +1,5 @@
 use crate::encode::errors::NetEncodeError;
-use crate::encode::{NetEncode, NetEncodeOpts};
+use crate::encode::{Framing, NetEncode, NetEncodeOpts};
 use crate::net_types::var_int::VarInt;
 use std::borrow::Cow;
 use std::io::Write;
@@ -23,7 +23,7 @@ impl<'data, T: NetEncode + ToOwned + Clone> NetworkArray<'data, T> {
 
 impl<'data, T: NetEncode + ToOwned + Clone> NetEncode for NetworkArray<'data, T> {
     fn encode<W: Write>(&self, writer: &mut W, opts: &NetEncodeOpts) -> Result<(), NetEncodeError> {
-        if matches!(opts, NetEncodeOpts::SizePrefixed) {
+        if opts.framing == Framing::SizePrefixed {
             let len: VarInt = VarInt::new(self.0.len() as i32);
             len.encode(writer, opts)?;
         }
@@ -40,7 +40,7 @@ impl<'data, T: NetEncode + ToOwned + Clone> NetEncode for NetworkArray<'data, T>
         writer: &mut W,
         opts: &NetEncodeOpts,
     ) -> Result<(), NetEncodeError> {
-        if matches!(opts, NetEncodeOpts::SizePrefixed) {
+        if opts.framing == Framing::SizePrefixed {
             let len: VarInt = VarInt::new(self.0.len() as i32);
             len.encode_async(writer, opts).await?;
         }

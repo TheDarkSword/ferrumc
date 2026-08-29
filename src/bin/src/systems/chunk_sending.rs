@@ -72,6 +72,7 @@ pub fn handle(
         };
 
         let is_compressed = conn.compress.load(Ordering::Relaxed);
+        let version = conn.protocol_version();
         let mut submitted = 0;
         while submitted < chunk_per_tick {
             // Dirty chunks (already sent once, needing a resend) take priority over first-time
@@ -128,7 +129,7 @@ pub fn handle(
                     results.push((coords, None));
                     return;
                 };
-                let packet = match ChunkAndLightData::from_chunk(pos, &chunk) {
+                let packet = match ChunkAndLightData::from_chunk(pos, &chunk, version) {
                     Ok(packet) => packet,
                     Err(e) => {
                         error!("Failed to build chunk packet for {:?}: {}", coords, e);
@@ -139,7 +140,7 @@ pub fn handle(
                 match compress_packet(
                     &packet,
                     is_compressed,
-                    &NetEncodeOpts::WithLength,
+                    &NetEncodeOpts::packet(version),
                     get_global_config().network_compression_threshold as usize,
                 ) {
                     Ok(bytes) => results.push((coords, Some(bytes))),

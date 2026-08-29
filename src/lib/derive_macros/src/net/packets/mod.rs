@@ -1,4 +1,4 @@
-use crate::static_loading::packets::{get_packet_id, PacketBoundiness};
+use crate::static_loading::packets::{get_packet_id, get_packet_ids, PacketBoundiness};
 use colored::Colorize;
 use proc_macro::TokenStream;
 use quote::{format_ident, quote, ToTokens};
@@ -22,6 +22,22 @@ fn parse_packet_attribute(attr: &Attribute) -> Option<(String, String)> {
     } else {
         None
     }
+}
+
+/// The packet's logical name and the id it carries in each supported version, or `None` when the
+/// type is not a packet.
+pub(crate) fn get_packet_ids_from_attributes(
+    attrs: &[Attribute],
+    bound_to: &PacketBoundiness,
+) -> Option<(String, Vec<Option<i32>>)> {
+    let (state, packet_name) = attrs
+        .iter()
+        .filter(|attr| attr.path().is_ident("packet"))
+        .find_map(parse_packet_attribute)?;
+
+    let packet_name = packet_name.trim_matches('"').to_string();
+    let ids = get_packet_ids(state.as_str(), bound_to, &packet_name);
+    Some((packet_name, ids))
 }
 
 /// Returns: (state, packet_id)

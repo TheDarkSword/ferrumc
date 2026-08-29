@@ -90,6 +90,7 @@ use ferrumc_net_codec::{
     decode::{NetDecode, NetDecodeOpts},
     encode::{NetEncode, NetEncodeOpts},
     net_types::var_int::VarInt,
+    version::ProtocolVersion,
 };
 use std::fs::File;
 use std::io::{Cursor, Write};
@@ -154,7 +155,7 @@ fn test_serialize_to_nbt() {
             overlay: false,
         },
         &mut cursor,
-        &NetEncodeOpts::WithLength,
+        &NetEncodeOpts::packet(ProtocolVersion::CURRENT),
     )
     .unwrap();
 
