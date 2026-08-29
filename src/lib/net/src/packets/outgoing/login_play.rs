@@ -5,6 +5,7 @@ use ferrumc_net_codec::net_types::var_int::VarInt;
 
 #[derive(NetEncode)]
 #[packet(packet_id = "login", state = "play")]
+#[downgrade_with(crate::translate::to_26_1::login)]
 pub struct LoginPlayPacket<'a> {
     pub entity_id: i32,
     pub is_hardcore: bool,
@@ -28,8 +29,6 @@ pub struct LoginPlayPacket<'a> {
     pub death_location: Option<u8>, // change this to actual Position. this won't work!!
     pub portal_cooldown: VarInt,
     pub sea_level: VarInt,
-    /// Added in 26.2; earlier clients read `enforces_secure_chat` straight after the sea level.
-    #[since(V26_2)]
     pub online_mode: bool,
     pub enforces_secure_chat: bool,
 }

@@ -11,13 +11,11 @@ static SESSION_ID: LazyLock<u128> = LazyLock::new(|| Uuid::new_v4().as_u128());
 
 #[derive(NetEncode)]
 #[packet(packet_id = "login_finished", state = "login")]
+#[downgrade_with(crate::translate::to_26_1::login_finished)]
 pub struct LoginSuccessPacket<'a> {
     pub uuid: u128,
     pub username: &'a str,
     pub properties: LengthPrefixedVec<LoginSuccessProperties<'a>>,
-    /// Added in 26.2. Sending it to an older client leaves sixteen bytes it never reads, which
-    /// stalls the rest of the login exchange.
-    #[since(V26_2)]
     pub session_id: u128,
 }
 

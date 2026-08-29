@@ -45,41 +45,13 @@ fn generate_packet_id_snippets(
 }
 
 // Generate field encoding expressions for structs
-/// The version a field was added in, from `#[since(V26_2)]`. A field without one is written for
-/// every version.
-fn field_since(field: &syn::Field) -> Option<syn::Ident> {
-    field
-        .attrs
-        .iter()
-        .find(|attr| attr.path().is_ident("since"))
-        .map(|attr| {
-            attr.parse_args::<syn::Ident>()
-                .expect("#[since(..)] takes one ProtocolVersion variant, e.g. #[since(V26_2)]")
-        })
-}
-
-/// Wraps a field's encoding in a version check when the field only exists from some release on.
-fn gate_on_version(
-    since: Option<syn::Ident>,
-    body: proc_macro2::TokenStream,
-) -> proc_macro2::TokenStream {
-    match since {
-        Some(version) => quote! {
-            if opts.version >= ferrumc_net_codec::version::ProtocolVersion::#version {
-                #body
-            }
-        },
-        None => body,
-    }
-}
-
 fn generate_field_encoders(fields: &syn::Fields) -> proc_macro2::TokenStream {
     let encode_fields = fields.iter().map(|field| {
         let field_name = field.ident.as_ref().unwrap();
         let field_ty = &field.ty;
-        gate_on_version(field_since(field), quote! {
+        quote! {
             <#field_ty as ferrumc_net_codec::encode::NetEncode>::encode(&self.#field_name, writer, &opts.nested())?;
-        })
+        }
     });
     quote! { #(#encode_fields)* }
 }
@@ -88,9 +60,9 @@ fn generate_async_field_encoders(fields: &syn::Fields) -> proc_macro2::TokenStre
     let encode_fields = fields.iter().map(|field| {
         let field_name = field.ident.as_ref().unwrap();
         let field_ty = &field.ty;
-        gate_on_version(field_since(field), quote! {
+        quote! {
             <#field_ty as ferrumc_net_codec::encode::NetEncode>::encode_async(&self.#field_name, writer, &opts.nested()).await?;
-        })
+        }
     });
     quote! { #(#encode_fields)* }
 }
@@ -176,6 +148,19 @@ fn generate_enum_encoders(
     )
 }
 
+/// The hop function named by `#[downgrade_with(path)]`, if the packet's body differs for older
+/// clients. It receives the packet and returns `None` when the client reads the native form.
+fn downgrade_path(input: &DeriveInput) -> Option<syn::Path> {
+    input
+        .attrs
+        .iter()
+        .find(|attr| attr.path().is_ident("downgrade_with"))
+        .map(|attr| {
+            attr.parse_args::<syn::Path>()
+                .expect("#[downgrade_with(..)] takes a path to a translator function")
+        })
+}
+
 pub(crate) fn derive(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
 
@@ -186,8 +171,36 @@ pub(crate) fn derive(input: TokenStream) -> TokenStream {
 
     let (sync_impl, async_impl) = match &input.data {
         syn::Data::Struct(data) => {
-            let field_encoders = generate_field_encoders(&data.fields);
-            let async_field_encoders = generate_async_field_encoders(&data.fields);
+            let native_fields = generate_field_encoders(&data.fields);
+            let native_async_fields = generate_async_field_encoders(&data.fields);
+
+            // A packet whose body changed between versions hands the body to a translator; the id
+            // above it is already written for the right version from the generated tables.
+            let (field_encoders, async_field_encoders) = match downgrade_path(&input) {
+                Some(path) => (
+                    quote! {
+                        match #path(self, writer, opts) {
+                            Some(result) => result?,
+                            None => { #native_fields }
+                        }
+                    },
+                    // Nothing drives packet encoding asynchronously, and translators are written
+                    // against `std::io::Write`, so the async path buffers through them.
+                    quote! {
+                        match #path(self, &mut Vec::new(), opts) {
+                            Some(_) => {
+                                let mut buffer = Vec::new();
+                                if let Some(result) = #path(self, &mut buffer, opts) {
+                                    result?;
+                                }
+                                <W as tokio::io::AsyncWriteExt>::write_all(writer, &buffer).await?;
+                            }
+                            None => { #native_async_fields }
+                        }
+                    },
+                ),
+                None => (native_fields, native_async_fields),
+            };
 
             (
                 quote! {
