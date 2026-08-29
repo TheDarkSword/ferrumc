@@ -5,6 +5,7 @@ use ferrumc_net_codec::decode::{NetDecode, NetDecodeOpts};
 use ferrumc_net_codec::encode::errors::NetEncodeError;
 use ferrumc_net_codec::encode::{NetEncode, NetEncodeOpts};
 use ferrumc_net_codec::net_types::var_int::VarInt;
+use ferrumc_net_codec::registry_remap::NetworkItemId;
 use std::fmt::Display;
 use std::io::{Read, Write};
 use tokio::io::{AsyncRead, AsyncWrite};
@@ -105,9 +106,9 @@ impl NetEncode for InventorySlot {
 
         let zero_varint = VarInt::new(0);
 
-        // 2. Encode ItemID
+        // 2. Encode ItemID, as the id the reading client's own version gives it
         match &self.item_id {
-            Some(item_id) => item_id.0.encode(writer, opts)?,
+            Some(item_id) => NetworkItemId(item_id.0.0 as u32).encode(writer, opts)?,
             None => zero_varint.encode(writer, opts)?,
         }
 

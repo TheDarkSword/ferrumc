@@ -3,12 +3,13 @@ use ferrumc_net_codec::encode::errors::NetEncodeError;
 use ferrumc_net_codec::encode::{NetEncode, NetEncodeOpts};
 use ferrumc_net_codec::net_types::network_position::NetworkPosition;
 use ferrumc_net_codec::net_types::var_int::VarInt;
+use ferrumc_net_codec::registry_remap::NetworkParticle;
 use std::io::Write;
 use ParticleType::*;
 
 impl NetEncode for ParticleType {
     fn encode<W: Write>(&self, writer: &mut W, opts: &NetEncodeOpts) -> Result<(), NetEncodeError> {
-        VarInt::new(self.discriminant()).encode(writer, opts)?;
+        NetworkParticle(self.discriminant() as u32).encode(writer, opts)?;
         match self {
             Block { blockstate } | BlockMarker { blockstate } | FallingDust { blockstate } => {
                 blockstate.to_varint().encode(writer, opts)

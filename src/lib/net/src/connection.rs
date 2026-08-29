@@ -11,6 +11,7 @@ use bevy_ecs::prelude::{Component, Entity};
 use crossbeam_channel::Sender;
 use ferrumc_components::player::client_information::ClientInformationComponent;
 use ferrumc_core::identity::player_identity::PlayerIdentity;
+use ferrumc_net_codec::encode::errors::NetEncodeError;
 use ferrumc_net_codec::encode::NetEncode;
 use ferrumc_net_codec::encode::NetEncodeOpts;
 use ferrumc_net_codec::version::ProtocolVersion;
@@ -174,19 +175,31 @@ impl StreamWriter {
             return Ok(());
         }
 
-        let raw_bytes = compress_packet(
+        let raw_bytes = match compress_packet(
             packet,
             self.compress.load(Ordering::Relaxed),
             net_encode_opts,
             512,
-        )
-        .map_err(|err| {
-            error!("Failed to compress packet: {:?}", err);
-            NetError::CompressionError(GenericCompressionError(format!(
-                "Failed to compress packet: {:?}",
-                err
-            )))
-        })?;
+        ) {
+            Ok(bytes) => bytes,
+            // The packet carries something this client's version has no id for. There is nothing to
+            // send it instead, and it is not a fault of this connection, so it is dropped for this
+            // recipient alone.
+            Err(NetError::EncoderError(NetEncodeError::NoSuchId {
+                registry,
+                id,
+                version,
+            })) => {
+                trace!("Dropped a packet carrying {registry} {id}, which {version} has no id for");
+                return Ok(());
+            }
+            Err(err) => {
+                error!("Failed to compress packet: {:?}", err);
+                return Err(NetError::CompressionError(GenericCompressionError(
+                    format!("Failed to compress packet: {:?}", err),
+                )));
+            }
+        };
 
         self.sender
             .send(WriterCommand::SendPacket(raw_bytes))

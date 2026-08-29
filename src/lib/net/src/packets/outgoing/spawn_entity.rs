@@ -8,6 +8,7 @@ use ferrumc_core::transform::rotation::Rotation;
 use ferrumc_macros::{get_registry_entry, packet, NetEncode};
 use ferrumc_net_codec::net_types::angle::NetAngle;
 use ferrumc_net_codec::net_types::var_int::VarInt;
+use ferrumc_net_codec::registry_remap::NetworkEntityType;
 
 /// Spawn-time movement, in the compressed vector encoding the packet now uses. A leading zero byte
 /// is the whole encoding for "not moving", which is what every entity spawned here reports.
@@ -22,7 +23,7 @@ const NOT_MOVING: u8 = 0;
 pub struct SpawnEntityPacket {
     pub entity_id: VarInt,
     pub entity_uuid: u128,
-    pub entity_type: VarInt,
+    pub entity_type: NetworkEntityType,
     pub x: f64,
     pub y: f64,
     pub z: f64,
@@ -53,7 +54,7 @@ impl SpawnEntityPacket {
         Self {
             entity_id: VarInt::new(entity_id),
             entity_uuid,
-            entity_type: VarInt::new(entity_type_id),
+            entity_type: NetworkEntityType(entity_type_id as u32),
             x,
             y,
             z,
@@ -79,7 +80,7 @@ impl SpawnEntityPacket {
         Ok(Self {
             entity_id: VarInt::new(player_identity.short_uuid),
             entity_uuid: player_identity.uuid.as_u128(),
-            entity_type: VarInt::new(PLAYER_ID as i32),
+            entity_type: NetworkEntityType(PLAYER_ID as u32),
             x,
             y,
             z,
@@ -113,7 +114,7 @@ impl SpawnEntityPacket {
         Ok(Self {
             entity_id: VarInt::new(identity.entity_id),
             entity_uuid: identity.uuid.as_u128(),
-            entity_type: VarInt::new(entity_type_id as i32),
+            entity_type: NetworkEntityType(u32::from(entity_type_id)),
             x,
             y,
             z,
