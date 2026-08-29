@@ -7,6 +7,7 @@ use crate::packets::outgoing::set_container_slot::SetContainerSlot;
 use crate::packets::outgoing::set_player_inventory_slot::SetPlayerInventorySlot;
 use crate::packets::outgoing::synchronise_vehicle_position::SynchroniseVehiclePosition;
 use crate::packets::outgoing::synchronize_player_position::SynchronizePlayerPositionPacket;
+use ferrumc_net_codec::decode::errors::NetDecodeError;
 use ferrumc_net_codec::encode::{NetEncode, NetEncodeOpts};
 use ferrumc_net_codec::net_types::angle::NetAngle;
 use ferrumc_net_codec::net_types::var_int::VarInt;
@@ -232,6 +233,117 @@ pub fn container_set_content<W: Write>(
     })())
 }
 
+/// The world border was not what stopped the placement. 1.21 has no such field, and a client that
+/// old cannot tell the server it hit one.
+const WORLD_BORDER_NOT_HIT: u8 = 0;
+
+/// 1.21.2 added a world border flag to the block placement, between the "inside block" flag and the
+/// sequence number. Finding where it goes means walking the two varints ahead of it.
+pub fn use_item_on<R: Read>(reader: &mut R, version: ProtocolVersion) -> Upgraded {
+    if version >= NATIVE {
+        return None;
+    }
+    Some((|| {
+        let mut body = Vec::new();
+        reader.read_to_end(&mut body)?;
+        // Hand, then the block position, then the face, then three cursor floats and the flag.
+        let mut at = super::varint_len(&body, 0)?;
+        at += size_of::<u64>();
+        at += super::varint_len(&body, at)?;
+        at += 3 * size_of::<f32>() + 1;
+        if at > body.len() {
+            return Err(NetDecodeError::ExternalError(
+                "a block placement ended before its cursor position".into(),
+            ));
+        }
+        body.insert(at, WORLD_BORDER_NOT_HIT);
+        Ok(body)
+    })())
+}
+
+/// 1.21.2 widened the container id to a varint. A 1.21 client sends one signed byte, and a
+/// negative id - the player's own inventory - is not the same varint as the byte it came in.
+pub fn container_close<R: Read>(reader: &mut R, version: ProtocolVersion) -> Upgraded {
+    if version >= NATIVE {
+        return None;
+    }
+    Some((|| {
+        let mut body = Vec::new();
+        reader.read_to_end(&mut body)?;
+        let Some(&id) = body.first() else {
+            return Err(NetDecodeError::ExternalError(
+                "a container close carried no container id".into(),
+            ));
+        };
+        let mut out = Vec::new();
+        VarInt::new(i32::from(id as i8))
+            .encode(
+                &mut out,
+                &NetEncodeOpts::new(ferrumc_net_codec::encode::Framing::None, version),
+            )
+            .map_err(|err| NetDecodeError::ExternalError(Box::new(err)))?;
+        Ok(out)
+    })())
+}
+
+/// Bit positions of the movement flags 1.21.2 replaced the two axes with.
+const FORWARD: u8 = 1;
+const BACKWARD: u8 = 1 << 1;
+const LEFT: u8 = 1 << 2;
+const RIGHT: u8 = 1 << 3;
+const JUMP: u8 = 1 << 4;
+const SNEAK: u8 = 1 << 5;
+
+/// What 1.21 sent instead: two signed axes and a flag byte holding jump and sneak.
+const OLD_JUMP: u8 = 1;
+const OLD_SNEAK: u8 = 1 << 1;
+const OLD_INPUT_LENGTH: usize = 2 * size_of::<f32>() + 1;
+
+/// 1.21.2 replaced the two movement axes with a bit per direction, and started sending the packet
+/// outside vehicles as well.
+///
+/// The axes carried how hard a direction was held, which the flags cannot express; only the sign
+/// survives. Sprinting has no bit in the older packet at all, and a 1.21 client reports it through
+/// a player command instead.
+pub fn player_input<R: Read>(reader: &mut R, version: ProtocolVersion) -> Upgraded {
+    if version >= NATIVE {
+        return None;
+    }
+    Some((|| {
+        let mut body = Vec::new();
+        reader.read_to_end(&mut body)?;
+        if body.len() < OLD_INPUT_LENGTH {
+            return Err(NetDecodeError::ExternalError(
+                "a player input was shorter than its two axes and a flag".into(),
+            ));
+        }
+        let axis =
+            |at: usize| f32::from_be_bytes([body[at], body[at + 1], body[at + 2], body[at + 3]]);
+        let sideways = axis(0);
+        let forward = axis(size_of::<f32>());
+        let old = body[2 * size_of::<f32>()];
+
+        let mut flags = 0;
+        if forward > 0.0 {
+            flags |= FORWARD;
+        } else if forward < 0.0 {
+            flags |= BACKWARD;
+        }
+        if sideways > 0.0 {
+            flags |= LEFT;
+        } else if sideways < 0.0 {
+            flags |= RIGHT;
+        }
+        if old & OLD_JUMP != 0 {
+            flags |= JUMP;
+        }
+        if old & OLD_SNEAK != 0 {
+            flags |= SNEAK;
+        }
+        Ok(vec![flags])
+    })())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -248,6 +360,70 @@ mod tests {
 
     fn length_for(version: ProtocolVersion) -> usize {
         encoded_for(version).len()
+    }
+
+    /// The two axes only survive as a direction each, and jump and sneak move to new bits.
+    #[test]
+    fn the_movement_axes_become_flags() {
+        let input = |sideways: f32, forward: f32, old: u8| {
+            let mut body = sideways.to_be_bytes().to_vec();
+            body.extend(forward.to_be_bytes());
+            body.push(old);
+            player_input(&mut body.as_slice(), ProtocolVersion::V1_21)
+                .expect("1.21 is translated")
+                .expect("translates")[0]
+        };
+
+        assert_eq!(input(0.0, 1.0, 0), FORWARD);
+        assert_eq!(input(0.0, -1.0, 0), BACKWARD);
+        assert_eq!(input(1.0, 0.0, 0), LEFT);
+        assert_eq!(input(-1.0, 0.0, 0), RIGHT);
+        assert_eq!(input(0.0, 0.0, OLD_JUMP), JUMP);
+        assert_eq!(input(0.0, 0.0, OLD_SNEAK), SNEAK);
+        // Half-pressed on a controller still only means forward.
+        assert_eq!(input(0.0, 0.4, 0), FORWARD);
+        assert_eq!(input(1.0, 1.0, OLD_JUMP), FORWARD | LEFT | JUMP);
+    }
+
+    /// A client from 1.21.2 on reads its own flags, so nothing is translated.
+    #[test]
+    fn newer_clients_send_the_flags_themselves() {
+        assert!(player_input(&mut [0u8].as_slice(), ProtocolVersion::V1_21_2).is_none());
+    }
+
+    /// The flag goes between the "inside block" byte and the sequence, not at the end, and the
+    /// varints ahead of it are not a fixed width.
+    #[test]
+    fn the_world_border_flag_lands_before_the_sequence() {
+        // A hand and a face wide enough to need two bytes each, so a fixed offset would miss.
+        let mut body = vec![0x80, 0x01];
+        body.extend([0u8; 8]);
+        body.extend([0x81, 0x01]);
+        body.extend([1u8; 12]);
+        body.push(1);
+        body.push(42);
+
+        let out = use_item_on(&mut body.as_slice(), ProtocolVersion::V1_21)
+            .expect("1.21 is translated")
+            .expect("translates");
+
+        assert_eq!(out.len(), body.len() + 1);
+        assert_eq!(out[out.len() - 2], WORLD_BORDER_NOT_HIT);
+        assert_eq!(
+            *out.last().expect("not empty"),
+            42,
+            "the sequence should survive"
+        );
+    }
+
+    /// The player's own inventory is container -1, and a signed byte and a varint disagree about
+    /// what that is.
+    #[test]
+    fn a_negative_container_id_survives_widening() {
+        let out = container_close(&mut [0xFFu8].as_slice(), ProtocolVersion::V1_21)
+            .expect("1.21 is translated")
+            .expect("translates");
+        assert_eq!(out, vec![0xFF, 0xFF, 0xFF, 0xFF, 0x0F], "-1 as a varint");
     }
 
     /// A frozen cycle reaches 1.21 as a negative day time, and dawn has to stay frozen rather than

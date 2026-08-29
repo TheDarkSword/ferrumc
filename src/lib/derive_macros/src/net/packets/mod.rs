@@ -195,9 +195,34 @@ pub fn setup_packet_handling(input: TokenStream) -> TokenStream {
                     })
                 });
 
+                // A packet an older client sends in a different shape names a translator, which
+                // rewrites the body into the one this server reads.
+                let upgrade = item_struct
+                    .attrs
+                    .iter()
+                    .find(|attr| attr.path().is_ident("upgrade_with"))
+                    .map(|attr| {
+                        attr.parse_args::<syn::Path>()
+                            .expect("#[upgrade_with(..)] takes a path to a translator function")
+                    });
+                let decode = match upgrade {
+                    Some(path) => quote! {
+                        match #path(cursor, version) {
+                            Some(body) => <#struct_path as ferrumc_net_codec::decode::NetDecode>::decode(
+                                &mut std::io::Cursor::new(body?),
+                                &ferrumc_net_codec::decode::NetDecodeOpts::None,
+                            )?,
+                            None => <#struct_path as ferrumc_net_codec::decode::NetDecode>::decode(cursor, &ferrumc_net_codec::decode::NetDecodeOpts::None)?,
+                        }
+                    },
+                    None => quote! {
+                        <#struct_path as ferrumc_net_codec::decode::NetDecode>::decode(cursor, &ferrumc_net_codec::decode::NetDecodeOpts::None)?
+                    },
+                };
+
                 match_arms.push(quote! {
                         #(#pairs)|* => {
-                            let packet = <#struct_path as ferrumc_net_codec::decode::NetDecode>::decode(cursor, &ferrumc_net_codec::decode::NetDecodeOpts::None)?;
+                            let packet = #decode;
                             packet_sender.#field_name.send((packet, entity)).expect("Failed to send packet");
                             Ok(())
                         },

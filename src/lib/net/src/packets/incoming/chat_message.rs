@@ -2,6 +2,7 @@ use ferrumc_macros::{packet, NetDecode};
 use ferrumc_net_codec::net_types::{prefixed_optional::PrefixedOptional, var_int::VarInt};
 
 #[derive(NetDecode)]
+#[upgrade_with(crate::translate::to_1_21_4::chat)]
 #[packet(packet_id = "chat", state = "play")]
 pub struct ChatMessagePacket {
     pub message: String,

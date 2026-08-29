@@ -30,6 +30,7 @@
 //! replacing one. A field that moved or vanished mid-body therefore costs one line in the hop that
 //! changed it, rather than a second copy of the field list.
 //!
+use ferrumc_net_codec::decode::errors::NetDecodeError;
 use ferrumc_net_codec::encode::errors::NetEncodeError;
 use ferrumc_net_codec::encode::{NetEncode, NetEncodeOpts};
 use std::io::Write;
@@ -85,7 +86,25 @@ macro_rules! packet_id {
 }
 pub(crate) use packet_id;
 
-pub type Upgraded = Option<Result<Vec<u8>, ferrumc_net_codec::decode::errors::NetDecodeError>>;
+/// How many bytes the varint starting at `at` occupies, for a hop that has to find a field past
+/// one without decoding the packet it is still turning into.
+pub fn varint_len(body: &[u8], at: usize) -> Result<usize, NetDecodeError> {
+    let mut len = 0;
+    while let Some(&byte) = body.get(at + len) {
+        len += 1;
+        if byte & 0x80 == 0 {
+            return Ok(len);
+        }
+        if len == 5 {
+            break;
+        }
+    }
+    Err(NetDecodeError::ExternalError(
+        "a varint runs past the end of the packet".into(),
+    ))
+}
+
+pub type Upgraded = Option<Result<Vec<u8>, NetDecodeError>>;
 
 /// A packet body under construction, as the ordered fields a client will read.
 ///

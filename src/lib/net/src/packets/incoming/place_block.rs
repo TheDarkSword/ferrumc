@@ -3,6 +3,7 @@ use ferrumc_net_codec::net_types::network_position::NetworkPosition;
 use ferrumc_net_codec::net_types::var_int::VarInt;
 
 #[derive(NetDecode, Debug)]
+#[upgrade_with(crate::translate::to_1_21::use_item_on)]
 #[packet(packet_id = "use_item_on", state = "play")]
 pub struct PlaceBlock {
     pub hand: VarInt,

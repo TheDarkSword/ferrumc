@@ -1,6 +1,6 @@
 //! Everything 1.21.5 changed that a client on 1.21.4 or older does not read.
 
-use super::Translated;
+use super::{Translated, Upgraded};
 use crate::packets::outgoing::chunk_and_light_data::ChunkAndLightData;
 use ferrumc_net_codec::encode::{NetEncode, NetEncodeOpts};
 use ferrumc_net_codec::version::ProtocolVersion;
@@ -66,4 +66,21 @@ fn write_heightmaps_as_nbt<W: Write>(
     }
     writer.write_all(&[TAG_END])?;
     Ok(())
+}
+
+/// 1.21.5 added a checksum to the chat message. A client that old signs nothing of the sort, and a
+/// zero is what the server reads as "no checksum".
+const NO_CHECKSUM: u8 = 0;
+
+/// 1.21.5 appended a checksum byte to the chat message.
+pub fn chat<R: std::io::Read>(reader: &mut R, version: ProtocolVersion) -> Upgraded {
+    if version >= NATIVE {
+        return None;
+    }
+    Some((|| {
+        let mut body = Vec::new();
+        reader.read_to_end(&mut body)?;
+        body.push(NO_CHECKSUM);
+        Ok(body)
+    })())
 }
