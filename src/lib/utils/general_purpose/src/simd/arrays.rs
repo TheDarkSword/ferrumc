@@ -30,12 +30,15 @@ pub fn u8_slice_to_u32_be(input: &[u8]) -> Vec<u32> {
 
 fn u8_slice_to_u32_be_normal(input: &[u8]) -> Vec<u32> {
     input
-        .chunks_exact(4)
-        .map(|chunk| u32::from_be_bytes(chunk.try_into().unwrap()))
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .map(|chunk| u32::from_be_bytes(*chunk))
         .collect()
 }
 
 #[cfg(all(target_arch = "x86_64", not(target_os = "macos")))]
+#[target_feature(enable = "avx2")]
 unsafe fn u8_slice_to_u32_be_simd(input: &[u8]) -> Vec<u32> {
     debug_assert_eq!(
         input.len() % 4,
@@ -50,8 +53,8 @@ unsafe fn u8_slice_to_u32_be_simd(input: &[u8]) -> Vec<u32> {
         3, 2, 1, 0, 7, 6, 5, 4, 11, 10, 9, 8, 15, 14, 13, 12, 19, 18, 17, 16, 23, 22, 21, 20, 27,
         26, 25, 24, 31, 30, 29, 28,
     );
-    let mut input = input.chunks_exact(32);
-    for (i, chunk) in input.by_ref().enumerate() {
+    let (chunks, rest) = input.as_chunks::<32>();
+    for (i, chunk) in chunks.iter().enumerate() {
         let out = output.as_mut_ptr().cast::<__m256i>().add(i);
         let data = _mm256_loadu_si256(chunk.as_ptr().cast());
         let shuffled = _mm256_shuffle_epi8(data, shuffle_mask);
@@ -59,13 +62,8 @@ unsafe fn u8_slice_to_u32_be_simd(input: &[u8]) -> Vec<u32> {
         output.set_len((i + 1) * 8);
     }
 
-    let input = input.remainder();
-    let input = input.chunks_exact(8);
-
-    for chunk in input {
-        let bytes: [u8; 4] = chunk.try_into().unwrap();
-        let val = u32::from_be_bytes(bytes);
-        output.push(val);
+    for chunk in rest.as_chunks::<4>().0 {
+        output.push(u32::from_be_bytes(*chunk));
     }
 
     output
@@ -93,8 +91,10 @@ pub fn u8_slice_to_u64_be(input: &[u8]) -> Vec<u64> {
 
 fn u8_slice_to_u64_be_normal(input: &[u8]) -> Vec<u64> {
     input
-        .chunks_exact(8)
-        .map(|chunk| u64::from_be_bytes(chunk.try_into().unwrap()))
+        .as_chunks::<8>()
+        .0
+        .iter()
+        .map(|chunk| u64::from_be_bytes(*chunk))
         .collect()
 }
 
@@ -110,8 +110,6 @@ unsafe fn u8_slice_to_u64_be_simd(input: &[u8]) -> Vec<u64> {
     let mut output: Vec<u64> = Vec::new();
     output.reserve_exact(input.len() / 8);
 
-    let mut input = input.chunks_exact(32);
-
     let shuffle_mask = _mm256_setr_epi8(
         7, 6, 5, 4, 3, 2, 1, 0, // Reverse first u64
         15, 14, 13, 12, 11, 10, 9, 8, // Reverse second u64
@@ -119,19 +117,17 @@ unsafe fn u8_slice_to_u64_be_simd(input: &[u8]) -> Vec<u64> {
         31, 30, 29, 28, 27, 26, 25, 24, // Reverse fourth u64
     );
 
-    for (i, chunk) in input.by_ref().enumerate() {
+    let (chunks, rest) = input.as_chunks::<32>();
+    for (i, chunk) in chunks.iter().enumerate() {
         let out = output.as_mut_ptr().cast::<__m256i>().add(i);
         let data = _mm256_loadu_si256(chunk.as_ptr().cast());
         let shuffled = _mm256_shuffle_epi8(data, shuffle_mask);
         _mm256_storeu_si256(out, shuffled);
         output.set_len((i + 1) * 4);
     }
-    let input = input.remainder();
 
-    for chunk in input.chunks_exact(8) {
-        let bytes: [u8; 8] = chunk.try_into().unwrap();
-        let val = u64::from_be_bytes(bytes);
-        output.push(val);
+    for chunk in rest.as_chunks::<8>().0 {
+        output.push(u64::from_be_bytes(*chunk));
     }
 
     output
@@ -166,8 +162,8 @@ unsafe fn u32_slice_to_u8_be_simd(input: &[u32]) -> Vec<u8> {
         26, 25, 24, 31, 30, 29, 28,
     );
 
-    let mut input = input.chunks_exact(8);
-    for (i, chunk) in input.by_ref().enumerate() {
+    let (chunks, rest) = input.as_chunks::<8>();
+    for (i, chunk) in chunks.iter().enumerate() {
         let out = output.as_mut_ptr().cast::<__m256i>().add(i);
         let data = _mm256_loadu_si256(chunk.as_ptr().cast());
         let shuffled = _mm256_shuffle_epi8(data, shuffle_mask);
@@ -175,9 +171,7 @@ unsafe fn u32_slice_to_u8_be_simd(input: &[u32]) -> Vec<u8> {
         output.set_len((i + 1) * 32);
     }
 
-    let input = input.remainder();
-
-    for val in input {
+    for val in rest {
         let val = val.to_be_bytes();
         output.extend_from_slice(&val);
     }
@@ -210,9 +204,8 @@ unsafe fn u64_slice_to_u8_be_simd(input: &[u64]) -> Vec<u8> {
         31, 30, 29, 28, 27, 26, 25, 24, // Reverse fourth u64
     );
 
-    let mut input = input.chunks_exact(4);
-
-    for (i, chunk) in input.by_ref().enumerate() {
+    let (chunks, rest) = input.as_chunks::<4>();
+    for (i, chunk) in chunks.iter().enumerate() {
         let out = output.as_mut_ptr().cast::<__m256i>().add(i);
         let data = _mm256_loadu_si256(chunk.as_ptr().cast());
         let shuffled = _mm256_shuffle_epi8(data, shuffle_mask);
@@ -220,10 +213,56 @@ unsafe fn u64_slice_to_u8_be_simd(input: &[u64]) -> Vec<u8> {
         output.set_len((i + 1) * 32);
     }
 
-    for val in input.remainder() {
+    for val in rest {
         let val = val.to_be_bytes();
         output.extend_from_slice(&val);
     }
 
     output
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Lengths that leave a non-empty remainder after the 32-byte SIMD stride,
+    /// which is where the scalar tail runs.
+    #[test]
+    fn u32_be_matches_scalar_across_tail_lengths() {
+        for words in 0..24usize {
+            let input: Vec<u8> = (0..words * 4).map(|i| i as u8).collect();
+            let expected: Vec<u32> = input
+                .as_chunks::<4>()
+                .0
+                .iter()
+                .map(|c| u32::from_be_bytes(*c))
+                .collect();
+            assert_eq!(u8_slice_to_u32_be(&input), expected, "words = {words}");
+        }
+    }
+
+    #[test]
+    fn u64_be_matches_scalar_across_tail_lengths() {
+        for words in 0..24usize {
+            let input: Vec<u8> = (0..words * 8).map(|i| i as u8).collect();
+            let expected: Vec<u64> = input
+                .as_chunks::<8>()
+                .0
+                .iter()
+                .map(|c| u64::from_be_bytes(*c))
+                .collect();
+            assert_eq!(u8_slice_to_u64_be(&input), expected, "words = {words}");
+        }
+    }
+
+    #[test]
+    fn round_trips_through_byte_form() {
+        let words: Vec<u32> = (0..37u32).map(|i| i.wrapping_mul(0x0101_1001)).collect();
+        assert_eq!(u8_slice_to_u32_be(&u32_slice_to_u8_be(&words)), words);
+
+        let words: Vec<u64> = (0..37u64)
+            .map(|i| i.wrapping_mul(0x0101_1001_0110_0011))
+            .collect();
+        assert_eq!(u8_slice_to_u64_be(&u64_slice_to_u8_be(&words)), words);
+    }
 }
