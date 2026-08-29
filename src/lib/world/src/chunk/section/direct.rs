@@ -1,9 +1,11 @@
+use crate::chunk::remap::block_state_for;
 use crate::chunk::section::paletted::PalettedSection;
 use crate::chunk::section::uniform::UniformSection;
 use crate::chunk::section::{AIR, CHUNK_SECTION_LENGTH};
 use crate::chunk::BlockStateId;
 use bitcode_derive::{Decode, Encode};
 use deepsize::DeepSizeOf;
+use ferrumc_net_codec::version::ProtocolVersion;
 
 // Currently there are less block state ids than u16::MAX, so we can store ids as u16s to cut down on memory usage
 type CompactBlockStateId = u16;
@@ -59,14 +61,15 @@ impl DirectSection {
     /// exactly four entries fit in each long. We could in theory `bytemuck::cast_slice::<u16,
     /// u64>` the inner buffer, but that would assume a specific host endianness; the explicit
     /// shift below is portable and not on a hot path (chunk send, not per-tick).
-    pub fn to_network_longs(&self) -> Vec<u64> {
+    pub fn to_network_longs(&self, version: ProtocolVersion) -> Vec<u64> {
         const ENTRIES_PER_LONG: usize = 4;
         const BITS_PER_ENTRY: usize = 16;
         let mut out = vec![0u64; CHUNK_SECTION_LENGTH / ENTRIES_PER_LONG];
         for (i, &id) in self.0.iter().enumerate() {
             let long_idx = i / ENTRIES_PER_LONG;
             let bit_idx = (i % ENTRIES_PER_LONG) * BITS_PER_ENTRY;
-            out[long_idx] |= (id as u64) << bit_idx;
+            let id = block_state_for(u32::from(id), version);
+            out[long_idx] |= u64::from(id) << bit_idx;
         }
         out
     }
@@ -124,7 +127,7 @@ mod tests {
             section.set_block(idx, BlockStateId::new(id));
         }
 
-        let longs = section.to_network_longs();
+        let longs = section.to_network_longs(ProtocolVersion::CURRENT);
         assert_eq!(longs.len(), CHUNK_SECTION_LENGTH / 4);
 
         // Manually decode each long (4 entries of 16 bits, lowest index in the low bits) and

@@ -25,7 +25,7 @@ impl NetworkChunk {
         let opts = NetEncodeOpts::new(Framing::None, version);
 
         for section in chunk.sections.iter() {
-            NetworkSection::from(section).encode(&mut data, &opts)?;
+            NetworkSection::new(section, version).encode(&mut data, &opts)?;
         }
 
         Ok(Self {

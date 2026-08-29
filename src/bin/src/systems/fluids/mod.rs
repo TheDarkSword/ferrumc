@@ -24,9 +24,9 @@ use ferrumc_net::connection::StreamWriter;
 use ferrumc_net::packets::outgoing::block_update::BlockUpdate;
 use ferrumc_net::packets::outgoing::level_event::LevelEventPacket;
 use ferrumc_net_codec::net_types::network_position::NetworkPosition;
-use ferrumc_net_codec::net_types::var_int::VarInt;
 use ferrumc_state::{GlobalState, GlobalStateResource};
 use ferrumc_world::block_state_id::BlockStateId;
+use ferrumc_world::chunk::remap::NetworkBlockState;
 use ferrumc_world::dimension::Dimension;
 use ferrumc_world::fluid::is_fluid;
 use ferrumc_world::fluid::spread::{fluid_neighbours, would_react, BlockView, FluidChange};
@@ -382,7 +382,7 @@ fn broadcast_change(
             y: change.pos.pos.y as i16,
             z: change.pos.pos.z,
         },
-        block_state_id: VarInt::from(change.new_block),
+        block_state_id: NetworkBlockState::from(change.new_block),
     };
 
     for (eid, conn, position) in players.iter() {

@@ -2,6 +2,7 @@ pub mod heightmap;
 pub mod light;
 pub mod network;
 mod palette;
+pub mod remap;
 pub mod section;
 
 use crate::block_state_id::BlockStateId;

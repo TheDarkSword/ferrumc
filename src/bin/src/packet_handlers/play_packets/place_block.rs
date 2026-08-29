@@ -7,8 +7,8 @@ use ferrumc_net::packets::outgoing::block_change_ack::BlockChangeAck;
 use ferrumc_net::packets::outgoing::block_update::BlockUpdate;
 use ferrumc_net::PlaceBlockReceiver;
 use ferrumc_net_codec::net_types::network_position::NetworkPosition;
-use ferrumc_net_codec::net_types::var_int::VarInt;
 use ferrumc_state::GlobalStateResource;
+use ferrumc_world::chunk::remap::NetworkBlockState;
 use ferrumc_world::pos::BlockPos;
 use tracing::{debug, error, trace};
 
@@ -172,7 +172,7 @@ pub fn handle(
                             y: offset_pos.pos.y as i16,
                             z: offset_pos.pos.z,
                         },
-                        block_state_id: VarInt::from(*mapped_block_state_id),
+                        block_state_id: NetworkBlockState::from(*mapped_block_state_id),
                     };
 
                     // Broadcast the authoritative block state to every nearby player FIRST, then

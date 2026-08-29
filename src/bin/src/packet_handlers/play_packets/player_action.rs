@@ -3,12 +3,12 @@ use bevy_ecs::prelude::{Entity, MessageWriter, Query, Res};
 use ferrumc_components::player::abilities::PlayerAbilities;
 use ferrumc_messages::player_digging::*;
 use ferrumc_messages::BlockBrokenEvent;
+use ferrumc_world::chunk::remap::NetworkBlockState;
 
 use ferrumc_net::connection::StreamWriter;
 use ferrumc_net::packets::outgoing::block_change_ack::BlockChangeAck;
 use ferrumc_net::packets::outgoing::block_update::BlockUpdate;
 use ferrumc_net::PlayerActionReceiver;
-use ferrumc_net_codec::net_types::var_int::VarInt;
 use ferrumc_state::GlobalStateResource;
 use ferrumc_world::{block_state_id::BlockStateId, pos::BlockPos};
 use tracing::{error, warn};
@@ -61,7 +61,7 @@ pub fn handle(
 
                         let block_update_packet = BlockUpdate {
                             location: event.location.clone(),
-                            block_state_id: VarInt::from(BlockStateId::default()),
+                            block_state_id: NetworkBlockState::from(BlockStateId::default()),
                         };
                         conn.send_packet_ref(&block_update_packet)
                             .map_err(BinaryError::Net)?;

@@ -1,4 +1,5 @@
 use bevy_ecs::prelude::*;
+use ferrumc_world::chunk::remap::NetworkBlockState;
 use ferrumc_world::pos::BlockPos;
 use std::time::{Duration, Instant};
 
@@ -228,7 +229,7 @@ pub fn handle_finish_digging(
 
             let revert_packet = BlockUpdate {
                 location: event.position.clone(),
-                block_state_id: VarInt::from(real_block_state),
+                block_state_id: NetworkBlockState::from(real_block_state),
             };
 
             if let Err(e) = writer.send_packet_ref(&revert_packet) {
@@ -289,7 +290,7 @@ fn break_block(
     // Broadcast the block break to all players
     let block_update_packet = BlockUpdate {
         location: position.clone(),
-        block_state_id: VarInt::from(BlockStateId::default()),
+        block_state_id: NetworkBlockState::from(BlockStateId::default()),
     };
     for (eid, conn) in broadcast_query {
         if !state.0.players.is_connected(eid) {
