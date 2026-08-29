@@ -4,7 +4,7 @@
 #
 #   cargo run --release -- --server 127.0.0.1:25565 --bots 100
 #
-# Pinned to azalea 0.14 (Minecraft 1.21.8 / protocol 772) to match FerrumC's protocol version.
+# Pinned to an azalea revision that targets Minecraft 26.2 (protocol 776), matching FerrumC.
 [workspace]
 
 [package]
@@ -14,10 +14,10 @@ edition = "2021"
 publish = false
 
 [dependencies]
-# azalea 0.14.0 targets Minecraft 1.21.8 (protocol 772). Pinned exactly: newer azalea releases
-# follow the latest Minecraft version and will not connect to a 1.21.8 server without a translating
-# proxy (ViaProxy).
-azalea = "=0.14.0"
+# The published releases stop at 0.16.0+mc26.1; 26.2 support only exists on the repository's main
+# branch, so the dependency is pinned to an exact revision rather than a version. Bump it when
+# FerrumC's protocol version moves, and check azalea's README for the version it targets.
+azalea = { git = "https://github.com/azalea-rs/azalea", rev = "153c90aa5570b3a94b909e82c1c0b60a90fff5db" }
 tokio = { version = "1", features = ["macros", "rt-multi-thread", "time"] }
 anyhow = "1"
 clap = { version = "4", features = ["derive"] }

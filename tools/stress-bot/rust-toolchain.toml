@@ -1,0 +1,6 @@
+# azalea uses generic_const_exprs, so it needs nightly, and it tracks a recent one:
+# the toolchain the main workspace resolves to can lag behind what azalea's main
+# branch compiles under. Pinned to a dated nightly so this tool builds independently
+# of whatever `nightly` currently points at.
+[toolchain]
+channel = "nightly-2026-08-27"

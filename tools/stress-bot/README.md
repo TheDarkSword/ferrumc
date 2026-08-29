@@ -14,10 +14,20 @@ directory.
 
 ## Version compatibility
 
-Pinned to `azalea = "=0.14.0"`, which targets **Minecraft 1.21.8 (protocol 772)** — the version
-FerrumC speaks. Newer azalea releases track the latest Minecraft version and will not connect to a
-1.21.8 server without a translating proxy (ViaProxy). When FerrumC's protocol version changes, bump
-this pin to the matching azalea release (see the `+mc<version>` build metadata on crates.io).
+Pinned to an exact azalea git revision that targets **Minecraft 26.2 (protocol 776)** — the version
+FerrumC speaks. The published releases stop at `0.16.0+mc26.1`, so 26.2 is only reachable from the
+repository's main branch. When FerrumC's protocol version changes, move the pin to a revision whose
+README names the matching Minecraft version, or to a published release once one covers it.
+
+Because it speaks the server's own protocol version, this bot doubles as the connection smoke test:
+if a single bot reaches the play state and receives chunks, the handshake, login, configuration and
+registry payloads are all well formed.
+
+**Currently blocked upstream.** The pinned revision does not compile: `azalea-entity` fails with
+`E0284: type annotations needed` inside `azalea-core`'s `generic_const_exprs` bitset, on both
+nightly-2026-08-23 and nightly-2026-08-27. Nothing in this crate can work around it. Move the pin
+forward once azalea's main branch builds again, or to a published release once one targets the
+server's protocol version.
 
 ## Usage
 
