@@ -10,6 +10,7 @@ use ferrumc_config::favicon::get_favicon_base64;
 use ferrumc_config::server_config::get_global_config;
 use ferrumc_macros::lookup_packet;
 use ferrumc_net_codec::decode::{NetDecode, NetDecodeOpts};
+use ferrumc_net_codec::version::ProtocolVersion;
 use ferrumc_net_encryption::read::EncryptedReader;
 use ferrumc_state::GlobalState;
 use rand::prelude::SliceRandom;
@@ -63,7 +64,7 @@ pub(super) async fn status(
     // ---- Phase 2: Send Status Response ----
 
     let status_response = StatusResponse {
-        json_response: get_server_status(&state),
+        json_response: get_server_status(&state, conn_write.protocol_version()),
     };
 
     // Send server status information back to client
@@ -114,7 +115,7 @@ pub(super) async fn status(
 ///
 /// # Returns
 /// A JSON-encoded string containing the server's status.
-fn get_server_status(state: &GlobalState) -> String {
+fn get_server_status(state: &GlobalState, client_version: ProtocolVersion) -> String {
     // Internal structs serialized to match Minecraft's server list response schema
     mod structs {
         #[derive(serde_derive::Serialize)]
@@ -160,9 +161,12 @@ fn get_server_status(state: &GlobalState) -> String {
     let config = get_global_config();
 
     // Protocol info
+    // Echo back the version this client speaks, so anything inside the supported range shows as
+    // compatible in the server list rather than as "outdated". A client outside the range keeps
+    // the writer's default and sees what the server actually speaks.
     let version = structs::Version {
-        name: "26.2",
-        protocol: crate::conn_init::PROTOCOL_VERSION as u16,
+        name: client_version.name(),
+        protocol: client_version.number() as u16,
     };
 
     // Collect up to 5 players from the active player list

@@ -307,6 +307,9 @@ pub async fn handle_connection(
     )
     .await;
 
+    // The handshake names the client's version; every packet read afterwards is shaped by it.
+    let version = stream.protocol_version();
+
     let login_result = match handshake_result {
         // Handshake completed within timeout
         Ok(res) => match res {
@@ -428,6 +431,7 @@ pub async fn handle_connection(
 
         // Dispatch packet to handler
         match handle_packet(
+            version,
             packet_skele.id,
             entity,
             &mut packet_skele.data,

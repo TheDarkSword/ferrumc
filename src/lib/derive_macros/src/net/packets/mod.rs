@@ -154,6 +154,12 @@ pub fn setup_packet_handling(input: TokenStream) -> TokenStream {
 
             if state == "play" {
                 let struct_name = item_struct.ident;
+                let ids_for_arm = get_packet_ids_from_attributes(
+                    &item_struct.attrs,
+                    &PacketBoundiness::Serverbound,
+                )
+                .map(|(_, ids)| ids)
+                .expect("packet attribute already parsed above");
 
                 println!(
                     "   {} {} (ID: {}, State: {}, Struct Name: {})",
@@ -180,9 +186,17 @@ pub fn setup_packet_handling(input: TokenStream) -> TokenStream {
                     syn::parse_str::<syn::Ident>(&to_snake_case(&struct_name.to_string()))
                         .expect("to_snake_case failed");
 
+                // The same logical packet carries a different id in each version, so one arm
+                // matches every (version, id) pair that means this packet.
+                let pairs = ids_for_arm.iter().enumerate().filter_map(|(index, id)| {
+                    id.map(|id| {
+                        let id = id as u8;
+                        quote! { (#index, #id) }
+                    })
+                });
+
                 match_arms.push(quote! {
-                        (#packet_id) => {
-                            // let packet= #struct_path::net_decode(cursor)?;
+                        #(#pairs)|* => {
                             let packet = <#struct_path as ferrumc_net_codec::decode::NetDecode>::decode(cursor, &ferrumc_net_codec::decode::NetDecodeOpts::None)?;
                             packet_sender.#field_name.send((packet, entity)).expect("Failed to send packet");
                             Ok(())
@@ -245,10 +259,10 @@ pub fn setup_packet_handling(input: TokenStream) -> TokenStream {
     let match_arms = match_arms.into_iter();
 
     let output = quote! {
-        pub fn handle_packet<R: std::io::Read>(packet_id: u8, entity: bevy_ecs::entity::Entity, cursor: &mut R, packet_sender: Arc<PacketSender>) -> Result<(), crate::errors::NetError> {
-            match (packet_id) {
+        pub fn handle_packet<R: std::io::Read>(version: ferrumc_net_codec::version::ProtocolVersion, packet_id: u8, entity: bevy_ecs::entity::Entity, cursor: &mut R, packet_sender: Arc<PacketSender>) -> Result<(), crate::errors::NetError> {
+            match (version.index(), packet_id) {
                 #(#match_arms)*
-                _ => {tracing::debug!("No packet found for ID: 0x{:02X} (from {})", packet_id, entity); Err(crate::errors::PacketError::InvalidPacket(packet_id).into())},
+                _ => {tracing::debug!("No packet found for ID: 0x{:02X} in {} (from {})", packet_id, version, entity); Err(crate::errors::PacketError::InvalidPacket(packet_id).into())},
             }
         }
 
