@@ -23,6 +23,9 @@ pub fn set_time<W: Write>(
     if opts.version >= NATIVE {
         return None;
     }
+    if let Err(err) = super::packet_id!(writer, opts, "play", "set_time") {
+        return Some(Err(err));
+    }
 
     let overworld = packet
         .clock_updates

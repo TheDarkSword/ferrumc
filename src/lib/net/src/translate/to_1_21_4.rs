@@ -26,6 +26,9 @@ pub fn level_chunk_with_light<W: Write>(
     if opts.version >= NATIVE {
         return None;
     }
+    if let Err(err) = super::packet_id!(writer, opts, "play", "level_chunk_with_light") {
+        return Some(Err(err));
+    }
     Some((|| {
         packet.chunk_x.encode(writer, &opts.nested())?;
         packet.chunk_z.encode(writer, &opts.nested())?;

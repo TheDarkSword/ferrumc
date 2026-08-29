@@ -4,6 +4,7 @@ use ferrumc_net_codec::net_types::length_prefixed_vec::LengthPrefixedVec;
 use ferrumc_net_codec::net_types::var_int::VarInt;
 
 #[derive(NetEncode)]
+#[downgrade_with(crate::translate::to_1_21::container_set_content)]
 #[packet(packet_id = "container_set_content", state = "play")]
 pub struct SetContainerContent {
     pub window_id: VarInt,

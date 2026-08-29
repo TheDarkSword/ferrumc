@@ -20,6 +20,9 @@ pub fn login_finished<W: Write>(
     if opts.version >= NATIVE {
         return None;
     }
+    if let Err(err) = super::packet_id!(writer, opts, "login", "login_finished") {
+        return Some(Err(err));
+    }
     let body = Body::new()
         .field("uuid", &packet.uuid)
         .field("username", &packet.username)
@@ -37,6 +40,9 @@ pub fn login<W: Write>(
 ) -> Translated {
     if opts.version >= NATIVE {
         return None;
+    }
+    if let Err(err) = super::packet_id!(writer, opts, "play", "login") {
+        return Some(Err(err));
     }
     let body = Body::new()
         .field("entity_id", &packet.entity_id)

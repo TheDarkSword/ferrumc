@@ -5,6 +5,7 @@ use ferrumc_macros::{packet, NetEncode};
 use ferrumc_net_codec::net_types::var_int::VarInt;
 
 #[derive(NetEncode, Clone)]
+#[downgrade_with(crate::translate::to_1_21::entity_position_sync)]
 #[packet(packet_id = "entity_position_sync", state = "play")]
 pub struct TeleportEntityPacket {
     pub entity_id: VarInt,

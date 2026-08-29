@@ -36,6 +36,7 @@ use std::io::Write;
 
 pub mod to_1_21;
 pub mod to_1_21_11;
+pub mod to_1_21_2;
 pub mod to_1_21_4;
 pub mod to_1_21_7;
 pub mod to_26_1;
@@ -51,6 +52,39 @@ pub type Translated = Option<Result<(), NetEncodeError>>;
 /// each hop handing the next one up a body it understands — so they work on bytes rather than on
 /// the packet type. Only the body needs this: ids are matched per version when the packet is
 /// dispatched.
+/// Writes the id `packet` carries in the version being encoded for.
+///
+/// Hops write their own id because a downgrade is sometimes onto a different packet: what 26.2
+/// sends as an `entity_position_sync` reaches 1.21 as a `teleport_entity`, and the hop is the only
+/// place that knows which packet the older client is going to read.
+pub fn write_id<W: Write>(
+    writer: &mut W,
+    opts: &NetEncodeOpts,
+    packet: &'static str,
+    ids: [Option<i32>; 10],
+) -> Result<(), NetEncodeError> {
+    let Some(id) = ids[opts.version.index()] else {
+        return Err(NetEncodeError::PacketNotInVersion {
+            packet,
+            version: opts.version,
+        });
+    };
+    ferrumc_net_codec::net_types::var_int::VarInt::new(id).encode(writer, &opts.nested())
+}
+
+/// Writes the id of the packet an older client is about to read.
+macro_rules! packet_id {
+    ($writer:expr, $opts:expr, $state:literal, $name:literal) => {
+        $crate::translate::write_id(
+            $writer,
+            $opts,
+            $name,
+            ferrumc_macros::lookup_packet_versioned!($state, "clientbound", $name),
+        )
+    };
+}
+pub(crate) use packet_id;
+
 pub type Upgraded = Option<Result<Vec<u8>, ferrumc_net_codec::decode::errors::NetDecodeError>>;
 
 /// A packet body under construction, as the ordered fields a client will read.

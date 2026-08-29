@@ -1,8 +1,15 @@
 //! Everything 1.21.2 changed that a client on 1.21 does not read.
 
 use super::{Body, Translated, Upgraded};
+use crate::packets::outgoing::entity_position_sync::TeleportEntityPacket;
+use crate::packets::outgoing::set_container_content::SetContainerContent;
+use crate::packets::outgoing::set_container_slot::SetContainerSlot;
+use crate::packets::outgoing::set_player_inventory_slot::SetPlayerInventorySlot;
+use crate::packets::outgoing::synchronise_vehicle_position::SynchroniseVehiclePosition;
 use crate::packets::outgoing::synchronize_player_position::SynchronizePlayerPositionPacket;
 use ferrumc_net_codec::encode::{NetEncode, NetEncodeOpts};
+use ferrumc_net_codec::net_types::angle::NetAngle;
+use ferrumc_net_codec::net_types::var_int::VarInt;
 use ferrumc_net_codec::version::ProtocolVersion;
 use std::io::{Read, Write};
 
@@ -62,6 +69,9 @@ pub fn player_position<W: Write>(
     if opts.version >= NATIVE {
         return None;
     }
+    if let Err(err) = super::packet_id!(writer, opts, "play", "player_position") {
+        return Some(Err(err));
+    }
     Some((|| {
         packet.x.encode(writer, &opts.nested())?;
         packet.y.encode(writer, &opts.nested())?;
@@ -86,6 +96,139 @@ pub fn client_information<R: Read>(reader: &mut R, version: ProtocolVersion) -> 
         reader.read_to_end(&mut body)?;
         body.push(PARTICLE_STATUS_ALL);
         Ok(body)
+    })())
+}
+
+/// The window a client on 1.21 addresses its own inventory by, which is where a
+/// `set_player_inventory` lands once it becomes a plain slot update.
+const PLAYER_INVENTORY_WINDOW: i8 = -2;
+
+/// 1.21 has no inventory state to be out of step with when the server writes a slot directly.
+const NO_STATE_ID: i32 = 0;
+
+/// The teleport as 1.21 reads it: no velocity, rotation as two angle bytes rather than degrees,
+/// and no relative-movement flags.
+fn write_teleport<W: Write>(
+    entity_id: &VarInt,
+    (x, y, z): (f64, f64, f64),
+    (yaw, pitch): (f32, f32),
+    on_ground: bool,
+    writer: &mut W,
+    opts: &NetEncodeOpts,
+) -> Result<(), ferrumc_net_codec::encode::errors::NetEncodeError> {
+    entity_id.encode(writer, &opts.nested())?;
+    x.encode(writer, &opts.nested())?;
+    y.encode(writer, &opts.nested())?;
+    z.encode(writer, &opts.nested())?;
+    NetAngle::from_degrees(f64::from(yaw)).encode(writer, &opts.nested())?;
+    NetAngle::from_degrees(f64::from(pitch)).encode(writer, &opts.nested())?;
+    on_ground.encode(writer, &opts.nested())?;
+    Ok(())
+}
+
+/// 1.21.2 split the teleport in two, and what it added - a velocity and a set of relative-movement
+/// flags - has no field in the older packet. 1.21 reads an `entity_position_sync` as the plain
+/// `teleport_entity` it used to be.
+pub fn entity_position_sync<W: Write>(
+    packet: &TeleportEntityPacket,
+    writer: &mut W,
+    opts: &NetEncodeOpts,
+) -> Translated {
+    if opts.version >= NATIVE {
+        return None;
+    }
+    Some((|| {
+        super::packet_id!(writer, opts, "play", "teleport_entity")?;
+        write_teleport(
+            &packet.entity_id,
+            (packet.x, packet.y, packet.z),
+            (packet.yaw, packet.pitch),
+            packet.on_ground,
+            writer,
+            opts,
+        )
+    })())
+}
+
+/// The vehicle half of the same split, which reaches 1.21 as the same packet.
+pub fn teleport_entity<W: Write>(
+    packet: &SynchroniseVehiclePosition,
+    writer: &mut W,
+    opts: &NetEncodeOpts,
+) -> Translated {
+    if opts.version >= NATIVE {
+        return None;
+    }
+    Some((|| {
+        super::packet_id!(writer, opts, "play", "teleport_entity")?;
+        write_teleport(
+            &packet.entity_id,
+            (packet.x, packet.y, packet.z),
+            (packet.yaw, packet.pitch),
+            packet.on_ground,
+            writer,
+            opts,
+        )
+    })())
+}
+
+/// 1.21.2 gave the player inventory a packet of its own. Before it, writing a player's own slot was
+/// an ordinary slot update against the inventory window.
+pub fn set_player_inventory<W: Write>(
+    packet: &SetPlayerInventorySlot,
+    writer: &mut W,
+    opts: &NetEncodeOpts,
+) -> Translated {
+    if opts.version >= NATIVE {
+        return None;
+    }
+    Some((|| {
+        super::packet_id!(writer, opts, "play", "container_set_slot")?;
+        PLAYER_INVENTORY_WINDOW.encode(writer, &opts.nested())?;
+        VarInt::new(NO_STATE_ID).encode(writer, &opts.nested())?;
+        (packet.slot_index.0 as i16).encode(writer, &opts.nested())?;
+        packet.slot.encode(writer, &opts.nested())?;
+        Ok(())
+    })())
+}
+
+/// 1.21.2 widened the container id to a varint. 1.21 reads a signed byte here, which is what lets a
+/// negative id mean the player's own inventory.
+pub fn container_set_slot<W: Write>(
+    packet: &SetContainerSlot,
+    writer: &mut W,
+    opts: &NetEncodeOpts,
+) -> Translated {
+    if opts.version >= NATIVE {
+        return None;
+    }
+    Some((|| {
+        super::packet_id!(writer, opts, "play", "container_set_slot")?;
+        (packet.window_id.0 as i8).encode(writer, &opts.nested())?;
+        packet.state_id.encode(writer, &opts.nested())?;
+        packet.slot_index.encode(writer, &opts.nested())?;
+        packet.slot.encode(writer, &opts.nested())?;
+        Ok(())
+    })())
+}
+
+/// The same widening, on the packet that fills a whole container. This one reads its id unsigned,
+/// since a container's contents are never written to the player's own inventory window.
+pub fn container_set_content<W: Write>(
+    packet: &SetContainerContent,
+    writer: &mut W,
+    opts: &NetEncodeOpts,
+) -> Translated {
+    if opts.version >= NATIVE {
+        return None;
+    }
+    Some((|| {
+        super::packet_id!(writer, opts, "play", "container_set_content")?;
+        (packet.window_id.0 as u8).encode(writer, &opts.nested())?;
+        packet.state_id.encode(writer, &opts.nested())?;
+        packet.slots.encode(writer, &opts.nested())?;
+        packet.carried_item.encode(writer, &opts.nested())?;
+        Ok(())
     })())
 }
 

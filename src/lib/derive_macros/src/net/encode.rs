@@ -174,14 +174,16 @@ pub(crate) fn derive(input: TokenStream) -> TokenStream {
             let native_fields = generate_field_encoders(&data.fields);
             let native_async_fields = generate_async_field_encoders(&data.fields);
 
-            // A packet whose body changed between versions hands the body to a translator; the id
-            // above it is already written for the right version from the generated tables.
+            // A packet whose body changed between versions hands the whole packet to a translator,
+            // id included: a downgrade is sometimes onto a different packet entirely, and the
+            // translator is the only place that knows which. Where nothing changed the generated
+            // tables write the id for the version being encoded for.
             let (field_encoders, async_field_encoders) = match downgrade_path(&input) {
                 Some(path) => (
                     quote! {
                         match #path(self, writer, opts) {
                             Some(result) => result?,
-                            None => { #native_fields }
+                            None => { #packet_id_snippet #native_fields }
                         }
                     },
                     // Nothing drives packet encoding asynchronously, and translators are written
@@ -195,11 +197,14 @@ pub(crate) fn derive(input: TokenStream) -> TokenStream {
                                 }
                                 <W as tokio::io::AsyncWriteExt>::write_all(writer, &buffer).await?;
                             }
-                            None => { #native_async_fields }
+                            None => { #async_packet_id_snippet #native_async_fields }
                         }
                     },
                 ),
-                None => (native_fields, native_async_fields),
+                None => (
+                    quote! { #packet_id_snippet #native_fields },
+                    quote! { #async_packet_id_snippet #native_async_fields },
+                ),
             };
 
             (
@@ -207,7 +212,6 @@ pub(crate) fn derive(input: TokenStream) -> TokenStream {
                     fn encode<W: std::io::Write>(&self, writer: &mut W, opts: &ferrumc_net_codec::encode::NetEncodeOpts) -> Result<(),  ferrumc_net_codec::encode::errors::NetEncodeError> {
                         match opts.framing {
                             ferrumc_net_codec::encode::Framing::None => {
-                                #packet_id_snippet
                                 #field_encoders
                             }
                             ferrumc_net_codec::encode::Framing::WithLength => {
@@ -215,7 +219,6 @@ pub(crate) fn derive(input: TokenStream) -> TokenStream {
                                 let mut writer = Vec::new();
                                 let mut writer = &mut writer;
 
-                                #packet_id_snippet
                                 #field_encoders
 
                                 let len: ferrumc_net_codec::net_types::var_int::VarInt = writer.len().into();
@@ -231,7 +234,6 @@ pub(crate) fn derive(input: TokenStream) -> TokenStream {
                     async fn encode_async<W: tokio::io::AsyncWrite + std::marker::Unpin>(&self, writer: &mut W, opts: &ferrumc_net_codec::encode::NetEncodeOpts) -> Result<(),  ferrumc_net_codec::encode::errors::NetEncodeError> {
                         match opts.framing {
                             ferrumc_net_codec::encode::Framing::None => {
-                                #async_packet_id_snippet
                                 #async_field_encoders
                             }
                             ferrumc_net_codec::encode::Framing::WithLength => {
@@ -239,7 +241,8 @@ pub(crate) fn derive(input: TokenStream) -> TokenStream {
                                 let mut writer = Vec::new();
                                 let mut writer = &mut writer;
 
-                                #async_packet_id_snippet
+                                // The frame is built in memory, so its contents are written
+                                // synchronously; only the finished frame goes out asynchronously.
                                 #field_encoders
 
                                 let len: ferrumc_net_codec::net_types::var_int::VarInt = writer.len().into();

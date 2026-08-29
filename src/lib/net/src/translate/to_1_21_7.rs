@@ -1,6 +1,7 @@
 //! Everything 1.21.9 changed that a client on 1.21.7 or older does not read.
 
 use super::Translated;
+use crate::packets::outgoing::set_default_spawn_position::SetDefaultSpawnPositionPacket;
 use crate::packets::outgoing::spawn_entity::SpawnEntityPacket;
 use ferrumc_net_codec::encode::{NetEncode, NetEncodeOpts};
 use ferrumc_net_codec::version::ProtocolVersion;
@@ -20,6 +21,9 @@ pub fn add_entity<W: Write>(
     if opts.version >= NATIVE {
         return None;
     }
+    if let Err(err) = super::packet_id!(writer, opts, "play", "add_entity") {
+        return Some(Err(err));
+    }
     Some((|| {
         packet.entity_id.encode(writer, &opts.nested())?;
         packet.entity_uuid.encode(writer, &opts.nested())?;
@@ -35,6 +39,24 @@ pub fn add_entity<W: Write>(
         for _ in 0..3 {
             0i16.encode(writer, &opts.nested())?;
         }
+        Ok(())
+    })())
+}
+
+/// 1.21.9 put the default spawn in a named dimension and gave it a pitch. Older clients read a
+/// bare position and a yaw, and take the spawn to be in whatever dimension they are playing.
+pub fn set_default_spawn_position<W: std::io::Write>(
+    packet: &SetDefaultSpawnPositionPacket,
+    writer: &mut W,
+    opts: &NetEncodeOpts,
+) -> Translated {
+    if opts.version >= NATIVE {
+        return None;
+    }
+    Some((|| {
+        super::packet_id!(writer, opts, "play", "set_default_spawn_position")?;
+        packet.spawn_position.encode(writer, &opts.nested())?;
+        packet.yaw.encode(writer, &opts.nested())?;
         Ok(())
     })())
 }
