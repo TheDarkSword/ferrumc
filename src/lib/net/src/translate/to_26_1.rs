@@ -19,12 +19,23 @@ pub fn login_finished<W: std::io::Write>(
     if opts.version >= NATIVE {
         return None;
     }
-    Some((|| {
-        packet.uuid.encode(writer, &opts.nested())?;
-        packet.username.encode(writer, &opts.nested())?;
-        packet.properties.encode(writer, &opts.nested())?;
-        Ok(())
-    })())
+    // 1.21 adds a field of its own on top of this form, so the hop below gets first refusal.
+    if let Some(older) = super::to_1_21::login_finished(packet, writer, opts) {
+        return Some(older);
+    }
+    Some(write_login_finished(packet, writer, opts))
+}
+
+/// The game profile as 26.1 reads it. Hops below build on this rather than restating it.
+pub(super) fn write_login_finished<W: std::io::Write>(
+    packet: &LoginSuccessPacket<'_>,
+    writer: &mut W,
+    opts: &NetEncodeOpts,
+) -> Result<(), ferrumc_net_codec::encode::errors::NetEncodeError> {
+    packet.uuid.encode(writer, &opts.nested())?;
+    packet.username.encode(writer, &opts.nested())?;
+    packet.properties.encode(writer, &opts.nested())?;
+    Ok(())
 }
 
 /// 26.2 added an online-mode flag ahead of the secure chat flag. An older client reads the two as
@@ -36,6 +47,11 @@ pub fn login<W: std::io::Write>(
 ) -> Translated {
     if opts.version >= NATIVE {
         return None;
+    }
+    // 1.21 drops another field on top of this one. The derive calls a single function per packet,
+    // so the newest boundary that changes it hands older clients on to the next hop down.
+    if let Some(older) = super::to_1_21::login(packet, writer, opts) {
+        return Some(older);
     }
     Some((|| {
         packet.entity_id.encode(writer, &opts.nested())?;
@@ -101,12 +117,13 @@ mod tests {
         );
     }
 
-    /// Every version below the boundary gets the same body; only 26.2 differs.
+    /// Everything from 1.21.2 up to 26.1 reads the same body. 1.21 drops one more field, which
+    /// `to_1_21` handles.
     #[test]
-    fn every_older_version_gets_the_same_form() {
+    fn versions_between_the_two_boundaries_share_a_form() {
         let older = encoded_for(ProtocolVersion::V26_1);
         for version in ProtocolVersion::ALL {
-            if version >= ProtocolVersion::V26_2 {
+            if version >= ProtocolVersion::V26_2 || version < ProtocolVersion::V1_21_2 {
                 continue;
             }
             assert_eq!(
@@ -115,5 +132,9 @@ mod tests {
                 "{version} should get the same body as 26.1"
             );
         }
+        assert!(
+            encoded_for(ProtocolVersion::V1_21).len() < older.len(),
+            "1.21 is missing the sea level as well"
+        );
     }
 }

@@ -32,6 +32,7 @@
 
 use ferrumc_net_codec::encode::errors::NetEncodeError;
 
+pub mod to_1_21;
 pub mod to_1_21_11;
 pub mod to_1_21_4;
 pub mod to_1_21_7;

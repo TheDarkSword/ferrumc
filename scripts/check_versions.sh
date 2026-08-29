@@ -66,16 +66,18 @@ done
 printf '%-10s %-16s %s\n' VERSION RESULT DETAIL
 port=25600
 for version in "${VERSIONS[@]}"; do
-  before=$(grep -c 'loaded at' "$WORK/server.log")
+  # Whether the bot reached the play state, which every version can report. The server's own
+  # "loaded at" cannot be used: it comes from `player_loaded`, a packet 1.21 and 1.21.2 do not have.
   # A bot that is going to join does so in a couple of seconds; the rest is only waiting.
   (cd "$ROOT/tools/stress-bot" && timeout 12 cargo run -q -- \
-    --server "127.0.0.1:$port" --bots 1 --stats-interval-secs 30 > "$WORK/bot-$version.log" 2>&1)
-  after=$(grep -c 'loaded at' "$WORK/server.log")
+    --server "127.0.0.1:$port" --bots 1 --stats-interval-secs 3 > "$WORK/bot-$version.log" 2>&1)
+  joined=$(grep -oE 'joins=[0-9]+' "$WORK/bot-$version.log" | tail -1 | cut -d= -f2)
+  joined=${joined:-0}
   errors=$(grep -c 'ERROR IN' "$WORK/proxy-$version.log")
 
-  if [ "$after" -gt "$before" ] && [ "$errors" -eq 0 ]; then
+  if [ "$joined" -gt 0 ] && [ "$errors" -eq 0 ]; then
     printf '%-10s %-16s %s\n' "$version" "joined" "clean"
-  elif [ "$after" -gt "$before" ]; then
+  elif [ "$joined" -gt 0 ]; then
     printf '%-10s %-16s %s\n' "$version" "joined" "$errors translation errors"
   else
     detail=$(grep -oE 'ERROR IN [A-Za-z0-9_]+ IN REMAP OF [A-Z_]+' "$WORK/proxy-$version.log" | sort -u | head -1)
