@@ -31,6 +31,9 @@ pub enum NetworkPalette {
 #[derive(NetEncode)]
 pub struct NetworkSection<'section> {
     block_count: u16,
+    /// Cells holding a fluid. The client reads it straight off the wire without recomputing, and
+    /// uses it to decide whether entities moving through the section can be affected by fluid.
+    fluid_count: u16,
     block_states: PalettedContainer<'section>,
     biomes: PalettedContainer<'section>,
 }
@@ -133,6 +136,7 @@ impl<'section> From<&'section ChunkSection> for NetworkSection<'section> {
     fn from(value: &'section ChunkSection) -> Self {
         Self {
             block_count: value.block_count(),
+            fluid_count: value.fluid_count(),
             block_states: PalettedContainer::from(value),
             biomes: PalettedContainer::from(&value.biome),
         }

@@ -180,6 +180,22 @@ impl BlockPalette {
             .sum()
     }
 
+    /// Number of cells holding a fluid. Sent per section in the chunk packet, where the client uses
+    /// it to decide whether the section can affect entities moving through fluid.
+    pub fn fluid_count(&self) -> u16 {
+        self.palette
+            .iter()
+            .flatten()
+            .map(|(state, count)| {
+                if crate::fluid::is_fluid(*state) {
+                    count.get()
+                } else {
+                    0
+                }
+            })
+            .sum()
+    }
+
     #[allow(dead_code)] // this will eventually be used for saving to the disk
     pub fn get_minimum_bit_width(&self) -> u8 {
         let len = self.palette.iter().flatten().count();

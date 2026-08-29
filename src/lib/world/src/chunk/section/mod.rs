@@ -93,6 +93,20 @@ impl ChunkSectionType {
         }
     }
 
+    pub fn fluid_count(&self) -> u16 {
+        match self {
+            Self::Uniform(data) => {
+                if crate::fluid::is_fluid(data.get_block()) {
+                    4096
+                } else {
+                    0
+                }
+            }
+            Self::Paletted(data) => data.fluid_count(),
+            Self::Direct(data) => data.fluid_count(),
+        }
+    }
+
     /// Whether any distinct block state in the section satisfies `pred` (palette-only check). See
     /// [`ChunkSection::any_block`].
     pub fn any_block(&self, pred: impl Fn(BlockStateId) -> bool) -> bool {
@@ -181,6 +195,10 @@ impl ChunkSection {
     #[inline]
     pub fn block_count(&self) -> u16 {
         self.inner.block_count()
+    }
+
+    pub fn fluid_count(&self) -> u16 {
+        self.inner.fluid_count()
     }
 
     /// Returns whether any block state present in this section satisfies `pred`, inspecting only the

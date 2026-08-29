@@ -82,6 +82,10 @@ impl PalettedSection {
         self.palette.block_count()
     }
 
+    pub fn fluid_count(&self) -> u16 {
+        self.palette.fluid_count()
+    }
+
     fn resize(&mut self, new_bit_width: u8) {
         let mut new_buffer =
             vec![0u64; (CHUNK_SECTION_LENGTH / (8 / new_bit_width as usize)) / size_of::<u64>()]

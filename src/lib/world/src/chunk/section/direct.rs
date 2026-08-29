@@ -43,6 +43,15 @@ impl DirectSection {
         self.1
     }
 
+    /// Counts cells holding a fluid. Direct sections keep no palette, so every cell is inspected;
+    /// they only appear once a section exceeds the palette limit, well off the common path.
+    pub fn fluid_count(&self) -> u16 {
+        self.0
+            .iter()
+            .filter(|&&id| crate::fluid::is_fluid(BlockStateId::new(id as _)))
+            .count() as u16
+    }
+
     /// Packs every block id into the chunk-packet "data array" layout: a stream of u64s with
     /// 16-bit entries, lowest index in the low bits, no spillover across longs.
     ///
