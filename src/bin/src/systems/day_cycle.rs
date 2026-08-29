@@ -14,15 +14,8 @@ pub fn tick_daylight_cycle(
 ) {
     world_time.advance_tick();
 
-    let packet = UpdateTimePacket {
-        // The world age is the monotonically increasing total game-tick count. It must advance with
-        // real ticks (not be a constant) — TPS/clock HUDs such as MiniHUD derive server TPS from the
-        // world-age delta between consecutive time packets divided by the wall-clock interval, so a
-        // fixed value reads back as "TPS unavailable".
-        world_age: tick.get(),
-        time_of_day: world_time.current_time() as _,
-        time_of_day_increasing: true,
-    };
+    let packet =
+        UpdateTimePacket::overworld(tick.get() as i64, world_time.current_time() as i64, true);
 
     for (eid, writer) in players.iter() {
         if let Ok(mut last_sent_time_update) = last_sent_time.get_mut(eid) {
