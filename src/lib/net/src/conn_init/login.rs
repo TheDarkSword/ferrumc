@@ -217,6 +217,7 @@ async fn send_login_success(
                 })
                 .collect(),
         ),
+        session_id: crate::packets::outgoing::login_success::session_id(),
     };
     conn_write.send_packet(login_success)?;
 
