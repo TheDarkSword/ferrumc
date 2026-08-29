@@ -36,6 +36,12 @@ fn process_reg_packets() -> Vec<RegistryDataPacket> {
                 entries: LengthPrefixedVec::new(
                     decoded
                         .into_iter()
+                        // `world_clock` is a unit record, so its entries carry no fields and the
+                        // NBT writer produces no bytes for them. They are sent as absent, which a
+                        // translating proxy rejects with "cannot add a null tag" - sending
+                        // `Some(&[])` instead is worse, since an empty buffer is not valid NBT.
+                        // The fix is for the encoder to emit an empty compound; until then this
+                        // keeps the payload well formed for clients that read it directly.
                         .map(|(id, data)| RegistryEntry {
                             id,
                             data: if data.is_empty() {

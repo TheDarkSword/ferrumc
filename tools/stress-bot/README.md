@@ -90,3 +90,30 @@ gone stable; at that point the pins can simply be dropped.)
 Run the server with its TPS/tick instrumentation (or the dashboard) and watch tick duration as the
 bot count climbs. Comparing tick time at a fixed bot count across server revisions is the intended
 way to validate performance work (storage locking, fluid ticks, world generation, …).
+
+## Testing an older protocol version
+
+The bot always speaks azalea's own version. To exercise the server's older-version paths, put
+[ViaProxy] in front of it: the bot connects to the proxy, and the proxy speaks the version named by
+`--target-version` to the server.
+
+```bash
+java -jar ViaProxy-<version>.jar cli \
+  --bind-address 127.0.0.1:25568 \
+  --target-address 127.0.0.1:25565 \
+  --target-version 1.21.4 \
+  --proxy-online-mode false
+
+cargo run -- --server 127.0.0.1:25568 --bots 1
+```
+
+`--list-versions` prints the names it accepts.
+
+ViaProxy is a separate process and is never linked into FerrumC, so its GPLv3 licence does not
+reach this project — the same relationship as with any other build or test tool.
+
+The `azalea-viaversion` plugin wraps the same proxy and would be tidier, but it does not currently
+work: its `handle_change_address` startup system reads a `Swarm` resource that no longer exists in
+the azalea revision this tool is pinned to. Revisit once it catches up.
+
+[ViaProxy]: https://github.com/ViaVersion/ViaProxy
