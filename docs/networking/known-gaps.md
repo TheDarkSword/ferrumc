@@ -1,71 +1,56 @@
 # Known gaps in multi-version support
 
-Seven of the ten supported versions work end to end: **26.2, 26.1, 1.21.11, 1.21.10, 1.21.8,
-1.21.6 and 1.21.5** all join and play with no translation errors. Verify with
-`scripts/check_versions.sh`.
+All ten supported versions — **1.21 through 26.2** — join and play with no translation errors.
+Verify with `scripts/check_versions.sh`, which runs each of them through ViaProxy and reports the
+join count the bot observed.
 
-Three do not, and neither failure is waiting on a feature that has yet to be built.
+What follows is what is known to be missing rather than broken. None of it stops a client
+connecting.
 
-## 1.21.4 and 1.21.3 — the block palette after remapping
+## Serverbound bodies are translated one packet at a time
 
-```
-ERROR IN Protocol1_21_11To26_1 IN REMAP OF LEVEL_CHUNK_WITH_LIGHT
-Caused by: java.lang.IndexOutOfBoundsException: Index (0) is greater than or equal to list size (0)
-  at DataPaletteImpl.idAt
-```
+The clientbound direction has a translator for every body that differs. The serverbound direction
+has one, `client_information`, because that is the only difference reached so far by a client
+joining and moving.
 
-A section reports blocks but its palette reads as empty.
+ViaVersion's upgrade protocols name the rest. Within this range the bodies that change, per
+boundary, are:
 
-**Ruled out: the palette used to keep duplicate entries after translation.** The block state space
-shrinks going backwards — 1335 targets in 1.21.4 receive more than one 26.2 state, and `stone` alone
-receives 1120 — so a palette holding several states that all become stone ended up with duplicates,
-which a reader keying on the id would have shortened. `PalettedContainer::from_paletted` now
-deduplicates and rewrites the indices, collapsing to a single-valued section where everything
-merges. It did not fix this failure.
+| Boundary | Serverbound packets whose body changed |
+|---|---|
+| 1.21 → 1.21.2 | `accept_teleportation`, `client_information`, `container_close`, `move_player_pos`, `move_player_pos_rot`, `move_player_rot`, `move_player_status_only`, `place_recipe`, `player_input`, `pong`, `recipe_book_seen_recipe`, `use_item_on` |
+| 1.21.2 → 1.21.4 | `move_vehicle`, `pick_item_from_block`, `pick_item_from_entity` |
+| 1.21.4 → 1.21.5 | `chat`, `chat_command_signed` |
+| 1.21.5 → 1.21.6 | `change_difficulty`, `change_game_mode`, `player_command`, `player_input` |
+| 1.21.7 → 1.21.9 | `debug_sample_subscription` |
+| 1.21.9 → 1.21.11 | `client_tick_end`, `player_action` |
 
-**Also ruled out: terrain luck.** The seed used to be redrawn every launch, so two runs saw
-different chunks and a version could pass or fail by accident. The seed is now configurable and
-recorded with the world, and `check_versions.sh` pins it. The failure is reproducible and genuinely
-version-dependent.
+An older client sending one of these gets a decode error and is dropped. The work is one hop
+function each, in the same modules as the clientbound hops.
 
-**Still unexplained.** A section's palette is translated entry by entry, and the block state space
-shrinks going backwards — 32366 states in 26.2 become 27855 distinct ones in 1.21.4, with 1335
-targets receiving more than one source state and `stone` alone receiving 1120. A palette holding
-several states that all become stone therefore ends up with duplicate entries. A reader that keys
-the palette by id sees fewer entries than the packed data still indexes, and the first lookup runs
-off the end.
+## A teleport carries no velocity to 1.21
 
-The fix is to rebuild the palette after remapping: deduplicate the entries and rewrite the data
-array to the new indices, converting to a single-valued section when everything collapses to one
-block. That work belongs in `PalettedContainer::from_paletted`.
+1.21.2 added a velocity to the play teleport. 1.21 has no field for it, and vanilla clients on that
+version are pushed by a separate motion packet sent alongside. That packet is not sent yet, so a
+teleport that would have carried a push arrives on 1.21 as a plain move.
 
-Two other width bugs were found while looking for this, both fixed and both worth having
-regardless. They did not resolve it.
+Only teleports that set a velocity are affected, which the server does not currently produce.
 
-- Direct block sections declared sixteen bits per entry. That width is `ceil(log2(block state
-  count))` — fifteen for every supported version — and a strict reader sizes its reads by it.
-- Direct biome palettes declared eight bits regardless of version, and packed by reinterpreting the
-  backing memory rather than by writing at that width, which also assumed a host endianness.
+## Registry field types are not per-registry
 
-Both were wrong for 26.2 as well. A lenient client accepts them, which is why they survived until a
-translating proxy read the same bytes.
+Registry entries are sent as NBT built from each version's datapack, and the tag a field gets is
+inferred from its JSON value rather than from what the client expects. Strict clients log a missing
+field for entries where the two disagree — `minecraft:enchantment` is the one that appears in
+practice.
 
-## 1.21 — the play login
+Inferring by value is right for most registries. Fixing this properly means carrying the field types
+from the vanilla codecs, which is Phase 3 work.
 
-```
-ERROR IN Protocol1_21To1_21_2 IN REMAP OF LOGIN
-```
+## Ids are remapped for block states only
 
-The play `login` packet changed at 1.21.2 and no translator has been written for that boundary yet.
-It is the largest remaining one — eighteen of the packets this server sends change there, against
-one to five at every other boundary — and is ordinary outstanding work rather than a defect.
+Block state ids are translated per version. Item, entity type, sound and particle ids are not, so a
+packet carrying one sends the 26.2 id to every client. ViaVersion logs these as missing items when
+it sees them.
 
-## Why none of this is blocked
-
-Both failures are in code that exists. The chunk one is a defect in the block state remapping
-written for this; the 1.21 one is a translator not yet written. Neither depends on block entities,
-entity behaviour, world generation or anything else still to come.
-
-The chunk defect is the more interesting of the two, because it is a property of the remapping
-rather than of any one version: any target version whose block state space is smaller can collapse
-a palette the same way.
+Nothing sends those ids yet beyond what a join needs, which is why this has not surfaced as a
+failure.

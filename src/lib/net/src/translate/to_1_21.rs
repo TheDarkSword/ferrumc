@@ -1,8 +1,13 @@
 //! Everything 1.21.2 changed that a client on 1.21 does not read.
 
-use super::Body;
+use super::{Body, Translated, Upgraded};
+use crate::packets::outgoing::synchronize_player_position::SynchronizePlayerPositionPacket;
+use ferrumc_net_codec::encode::{NetEncode, NetEncodeOpts};
 use ferrumc_net_codec::version::ProtocolVersion;
-use std::io::Write;
+use std::io::{Read, Write};
+
+/// `ParticleStatus::All`, as a varint. 1.21 has no such setting and draws every particle.
+const PARTICLE_STATUS_ALL: u8 = 0;
 
 /// The boundary this hop is about: everything below it predates 1.21.2's changes.
 pub(super) const NATIVE: ProtocolVersion = ProtocolVersion::V1_21_2;
@@ -27,6 +32,63 @@ pub fn login_finished<W: Write>(body: Body<'_, W>, version: ProtocolVersion) -> 
     body.field("strict_error_handling", &true)
 }
 
+/// 1.21.2 gave the time its own daylight-cycle flag. 1.21 reads no such field and takes a negative
+/// day time to mean the cycle is frozen, so the flag folds into the sign.
+#[must_use]
+pub fn set_time(day_time: i64, advancing: bool, version: ProtocolVersion) -> (i64, Option<bool>) {
+    if version >= NATIVE {
+        return (day_time, Some(advancing));
+    }
+    if advancing {
+        (day_time, None)
+    } else if day_time == 0 {
+        // Zero has no negative, and a frozen dawn still has to read as frozen.
+        (-1, None)
+    } else {
+        (-day_time, None)
+    }
+}
+
+/// 1.21.2 rewrote the teleport: the id moved to the end, a velocity was added, and the relative
+/// flags widened from a byte to an int. 1.21 reads the older shape.
+///
+/// The velocity has nowhere to go here. Vanilla clients on 1.21 are pushed by a separate motion
+/// packet instead, which this does not send yet; see `docs/networking/known-gaps.md`.
+pub fn player_position<W: Write>(
+    packet: &SynchronizePlayerPositionPacket,
+    writer: &mut W,
+    opts: &NetEncodeOpts,
+) -> Translated {
+    if opts.version >= NATIVE {
+        return None;
+    }
+    Some((|| {
+        packet.x.encode(writer, &opts.nested())?;
+        packet.y.encode(writer, &opts.nested())?;
+        packet.z.encode(writer, &opts.nested())?;
+        packet.yaw.encode(writer, &opts.nested())?;
+        packet.pitch.encode(writer, &opts.nested())?;
+        // Only the low eight bits were ever used, so the widened field truncates back cleanly.
+        (packet.flags as u8).encode(writer, &opts.nested())?;
+        packet.teleport_id.encode(writer, &opts.nested())?;
+        Ok(())
+    })())
+}
+
+/// 1.21.2 added a particle status to the client information, which a 1.21 client does not send.
+/// It sits at the end, so the value that version behaved as is appended.
+pub fn client_information<R: Read>(reader: &mut R, version: ProtocolVersion) -> Upgraded {
+    if version >= NATIVE {
+        return None;
+    }
+    Some((|| {
+        let mut body = Vec::new();
+        reader.read_to_end(&mut body)?;
+        body.push(PARTICLE_STATUS_ALL);
+        Ok(body)
+    })())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -43,6 +105,24 @@ mod tests {
 
     fn length_for(version: ProtocolVersion) -> usize {
         encoded_for(version).len()
+    }
+
+    /// A frozen cycle reaches 1.21 as a negative day time, and dawn has to stay frozen rather than
+    /// become a running midnight.
+    #[test]
+    fn a_frozen_cycle_folds_into_the_sign() {
+        assert_eq!(set_time(6000, false, ProtocolVersion::V1_21), (-6000, None));
+        assert_eq!(set_time(0, false, ProtocolVersion::V1_21), (-1, None));
+        assert_eq!(set_time(6000, true, ProtocolVersion::V1_21), (6000, None));
+    }
+
+    /// 1.21.2 and up read the flag, so nothing is folded there.
+    #[test]
+    fn the_flag_survives_from_1_21_2() {
+        assert_eq!(
+            set_time(6000, false, ProtocolVersion::V1_21_2),
+            (6000, Some(false))
+        );
     }
 
     /// The sea level sits second from last, so dropping it has to leave what surrounds it alone.

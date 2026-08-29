@@ -267,6 +267,7 @@ async fn send_login_success(
 async fn receive_client_information(
     conn_read: &mut EncryptedReader<OwnedReadHalf>,
     compressed: bool,
+    version: ProtocolVersion,
 ) -> Result<ClientInformation, NetError> {
     let mut skel = PacketSkeleton::new(conn_read, compressed, Configuration).await?;
     let expected_id = lookup_packet!("configuration", "serverbound", "client_information");
@@ -279,7 +280,12 @@ async fn receive_client_information(
         }));
     }
 
-    let client_info = ClientInformation::decode(&mut skel.data, &NetDecodeOpts::None)?;
+    let client_info = match crate::translate::to_1_21::client_information(&mut skel.data, version) {
+        Some(body) => {
+            ClientInformation::decode(&mut std::io::Cursor::new(body?), &NetDecodeOpts::None)?
+        }
+        None => ClientInformation::decode(&mut skel.data, &NetDecodeOpts::None)?,
+    };
 
     trace!(
         "Client information: {{ locale: {}, view_distance: {}, chat_mode: {}, chat_colors: {}, displayed_skin_parts: {} }}",
@@ -595,7 +601,8 @@ pub(super) async fn login(
     .await?;
 
     // Phase 2: Configuration
-    let client_info = receive_client_information(conn_read, compressed).await?;
+    let client_info =
+        receive_client_information(conn_read, compressed, conn_write.protocol_version()).await?;
     exchange_known_packs(conn_read, conn_write, compressed).await?;
     finish_configuration(conn_read, conn_write, compressed).await?;
 

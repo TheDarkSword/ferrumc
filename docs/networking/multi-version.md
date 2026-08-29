@@ -1,8 +1,8 @@
 # Speaking to more than one client version
 
 The server holds one world and builds every packet in its own version — currently 26.2. Clients on
-older versions are served by translating on the way out, so nothing above the network layer has to
-know which version a player is on.
+older versions are served by translating on the way out, and their own packets are translated back
+up on the way in, so nothing above the network layer has to know which version a player is on.
 
 Supported range: **1.21 through 26.2**, protocol 767 to 776. The lower bound is where Mojang's data
 generator starts emitting a packet report; see [Target version](../versioning/target-version.md).
@@ -48,9 +48,28 @@ Translators live in `src/lib/net/src/translate/`, one module per release boundar
 version it serves. Minecraft changes between adjacent versions, so this is the shape the work
 actually has: a new release is a new module rather than an edit to every packet.
 
-Where a packet changed at more than one boundary, the lower module writes the older form directly
-rather than rewriting the higher module's output. That avoids an intermediate representation at the
-cost of the lower module accounting for both changes, explicitly, in one place.
+A packet that only one boundary changed is written directly by that module. Where several
+boundaries change the same packet, the newest one lists the fields once and the modules below it
+apply their own delta to what it built — dropping a field, appending one, folding two into one. A
+field that moved or vanished mid-body costs one line in the module that changed it, rather than a
+second copy of the field list.
+
+The play `login` is the example: `to_26_1` lists its fields as a `Body`, and `to_1_21` takes that
+body and removes the sea level 1.21.2 added.
+
+### Bodies coming the other way
+
+Serverbound hops run in the opposite order — the client's own version first, each hop handing the
+next one up a body it understands. They work on bytes rather than on the packet type, since the
+packet only exists once it has reached its native form:
+
+```rust
+pub fn client_information<R: Read>(reader: &mut R, version: ProtocolVersion) -> Upgraded
+```
+
+Only bodies need this. Ids are matched per version when the packet is dispatched.
+
+Most serverbound bodies that differ are not translated yet; see [Known gaps](known-gaps.md).
 
 ## Block states
 

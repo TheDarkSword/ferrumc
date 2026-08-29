@@ -40,9 +40,18 @@ pub mod to_1_21_4;
 pub mod to_1_21_7;
 pub mod to_26_1;
 
-/// What a hop returns: `None` when the client reads the packet's native form, otherwise the result
-/// of having written the older form.
+/// What a clientbound hop returns: `None` when the client reads the packet's native form,
+/// otherwise the result of having written the older form.
 pub type Translated = Option<Result<(), NetEncodeError>>;
+
+/// What a serverbound hop returns: `None` when the client already sends the native form, otherwise
+/// that body rewritten into it.
+///
+/// Serverbound hops run in the opposite order to clientbound ones — the client's own version first,
+/// each hop handing the next one up a body it understands — so they work on bytes rather than on
+/// the packet type. Only the body needs this: ids are matched per version when the packet is
+/// dispatched.
+pub type Upgraded = Option<Result<Vec<u8>, ferrumc_net_codec::decode::errors::NetDecodeError>>;
 
 /// A packet body under construction, as the ordered fields a client will read.
 ///

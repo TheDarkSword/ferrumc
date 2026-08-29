@@ -36,8 +36,12 @@ pub fn set_time<W: Write>(
         let (day_time, advancing) = overworld
             .map(|clock| (clock.total_ticks.0, clock.rate != 0.0))
             .unwrap_or((0, false));
+        // 1.21 has no flag of its own, so it takes the pair and gives back what it does read.
+        let (day_time, advancing) = super::to_1_21::set_time(day_time, advancing, opts.version);
         day_time.encode(writer, &opts.nested())?;
-        advancing.encode(writer, &opts.nested())?;
+        if let Some(advancing) = advancing {
+            advancing.encode(writer, &opts.nested())?;
+        }
         Ok(())
     })())
 }

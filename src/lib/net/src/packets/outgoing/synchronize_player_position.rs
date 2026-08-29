@@ -6,6 +6,7 @@ use ferrumc_net_codec::net_types::teleport_flags::TeleportFlags;
 use ferrumc_net_codec::net_types::var_int::VarInt;
 
 #[derive(NetEncode)]
+#[downgrade_with(crate::translate::to_1_21::player_position)]
 #[packet(packet_id = "player_position", state = "play")]
 pub struct SynchronizePlayerPositionPacket {
     pub teleport_id: VarInt,
