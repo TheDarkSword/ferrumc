@@ -1,10 +1,14 @@
 #!/usr/bin/env python3
-"""Build assets/data/registry_packets.json from an extracted vanilla datapack.
+"""Build assets/data/registry_packets/<version>.json from an extracted vanilla datapack.
 
 The configuration state sends the client the contents of every synchronized
 registry. `ferrumc_macros::build_registry_packets!` bakes that JSON into the
 binary, preserving order, so entries must appear in the same order vanilla
 registers them: sorted by resource location.
+
+A payload is built per supported version, because both the set of synchronized registries and
+their contents change between releases: sending a client the newest set is what makes a
+translating proxy fail with "cannot add a null tag".
 
 Usage:
     scripts/build_registry_packets.py assets/extracted/26.2
@@ -18,12 +22,12 @@ import json
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-DEFAULT_OUT = REPO_ROOT / "assets" / "data" / "registry_packets.json"
+DEFAULT_OUT_ROOT = REPO_ROOT / "assets" / "data" / "registry_packets"
 
-# Registries the server synchronizes to the client, taken from
-# RegistryDataLoader.SYNCHRONIZED_REGISTRIES. Datapack directories that are not
-# synchronized (advancements, recipes, loot tables, tags) are deliberately absent.
-# A registry missing from an older version's datapack is skipped with a warning.
+# Registries the server synchronizes to the client, taken from 26.2's
+# RegistryDataLoader.SYNCHRONIZED_REGISTRIES. Datapack directories that are not synchronized
+# (advancements, recipes, loot tables, tags) are deliberately absent. A registry a version does not
+# ship is skipped, which is also how the newer registries stay out of older payloads.
 SYNCHRONIZED_REGISTRIES = [
     "banner_pattern",
     "cat_sound_variant",
@@ -98,12 +102,17 @@ def main() -> None:
     parser.add_argument(
         "extracted", type=Path, help="an assets/extracted/<version> directory"
     )
-    parser.add_argument("--out", type=Path, default=DEFAULT_OUT)
+    parser.add_argument(
+        "--out",
+        type=Path,
+        help="output file; defaults to assets/data/registry_packets/<version>.json",
+    )
     parser.add_argument(
         "--namespace", default="minecraft", help="datapack namespace to read"
     )
     args = parser.parse_args()
 
+    out = args.out or DEFAULT_OUT_ROOT / f"{args.extracted.name}.json"
     root = args.extracted / "data" / args.namespace
     if not root.is_dir():
         raise SystemExit(f"no datapack at {root}")
@@ -118,11 +127,11 @@ def main() -> None:
         if entries:
             registries[f"{args.namespace}:{registry}"] = entries
 
-    args.out.parent.mkdir(parents=True, exist_ok=True)
-    args.out.write_text(json.dumps(registries, indent=2) + "\n", encoding="utf-8")
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps(registries, indent=2) + "\n", encoding="utf-8")
 
     total = sum(len(v) for v in registries.values())
-    print(f"wrote {args.out}: {len(registries)} registries, {total} entries")
+    print(f"wrote {out}: {len(registries)} registries, {total} entries")
 
 
 if __name__ == "__main__":

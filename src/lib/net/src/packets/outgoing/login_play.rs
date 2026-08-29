@@ -28,6 +28,8 @@ pub struct LoginPlayPacket<'a> {
     pub death_location: Option<u8>, // change this to actual Position. this won't work!!
     pub portal_cooldown: VarInt,
     pub sea_level: VarInt,
+    /// Added in 26.2; earlier clients read `enforces_secure_chat` straight after the sea level.
+    #[since(V26_2)]
     pub online_mode: bool,
     pub enforces_secure_chat: bool,
 }

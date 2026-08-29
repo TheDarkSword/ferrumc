@@ -45,13 +45,41 @@ fn generate_packet_id_snippets(
 }
 
 // Generate field encoding expressions for structs
+/// The version a field was added in, from `#[since(V26_2)]`. A field without one is written for
+/// every version.
+fn field_since(field: &syn::Field) -> Option<syn::Ident> {
+    field
+        .attrs
+        .iter()
+        .find(|attr| attr.path().is_ident("since"))
+        .map(|attr| {
+            attr.parse_args::<syn::Ident>()
+                .expect("#[since(..)] takes one ProtocolVersion variant, e.g. #[since(V26_2)]")
+        })
+}
+
+/// Wraps a field's encoding in a version check when the field only exists from some release on.
+fn gate_on_version(
+    since: Option<syn::Ident>,
+    body: proc_macro2::TokenStream,
+) -> proc_macro2::TokenStream {
+    match since {
+        Some(version) => quote! {
+            if opts.version >= ferrumc_net_codec::version::ProtocolVersion::#version {
+                #body
+            }
+        },
+        None => body,
+    }
+}
+
 fn generate_field_encoders(fields: &syn::Fields) -> proc_macro2::TokenStream {
     let encode_fields = fields.iter().map(|field| {
         let field_name = field.ident.as_ref().unwrap();
         let field_ty = &field.ty;
-        quote! {
+        gate_on_version(field_since(field), quote! {
             <#field_ty as ferrumc_net_codec::encode::NetEncode>::encode(&self.#field_name, writer, &opts.nested())?;
-        }
+        })
     });
     quote! { #(#encode_fields)* }
 }
@@ -60,9 +88,9 @@ fn generate_async_field_encoders(fields: &syn::Fields) -> proc_macro2::TokenStre
     let encode_fields = fields.iter().map(|field| {
         let field_name = field.ident.as_ref().unwrap();
         let field_ty = &field.ty;
-        quote! {
+        gate_on_version(field_since(field), quote! {
             <#field_ty as ferrumc_net_codec::encode::NetEncode>::encode_async(&self.#field_name, writer, &opts.nested()).await?;
-        }
+        })
     });
     quote! { #(#encode_fields)* }
 }

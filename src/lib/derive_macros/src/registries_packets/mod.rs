@@ -5,8 +5,32 @@ use std::collections::HashMap;
 
 use craftflow_nbt::DynNBT;
 
+/// The synced-registry payload for each supported version, in the order of
+/// `ferrumc_net_codec::version::ProtocolVersion::ALL`. Both the set of registries and their
+/// contents change between releases, so a client has to be sent the payload for the version it
+/// speaks rather than the newest one.
+const REGISTRY_PAYLOADS: [&[u8]; 10] = [
+    include_bytes!("../../../../../assets/data/registry_packets/1.21.json"),
+    include_bytes!("../../../../../assets/data/registry_packets/1.21.2.json"),
+    include_bytes!("../../../../../assets/data/registry_packets/1.21.4.json"),
+    include_bytes!("../../../../../assets/data/registry_packets/1.21.5.json"),
+    include_bytes!("../../../../../assets/data/registry_packets/1.21.6.json"),
+    include_bytes!("../../../../../assets/data/registry_packets/1.21.8.json"),
+    include_bytes!("../../../../../assets/data/registry_packets/1.21.9.json"),
+    include_bytes!("../../../../../assets/data/registry_packets/1.21.11.json"),
+    include_bytes!("../../../../../assets/data/registry_packets/26.1.json"),
+    include_bytes!("../../../../../assets/data/registry_packets/26.2.json"),
+];
+
 pub(crate) fn build_mapping(_: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    let json_file = include_bytes!("../../../../../assets/data/registry_packets.json");
+    let versions = REGISTRY_PAYLOADS.iter().map(|payload| build_one(payload));
+    quote! {
+        [#(#versions),*]
+    }
+    .into()
+}
+
+fn build_one(json_file: &[u8]) -> proc_macro2::TokenStream {
     let val: IndexMap<String, IndexMap<String, Value>> = serde_json::from_slice(json_file).unwrap();
 
     let mut registry_entries = vec![];
@@ -53,7 +77,6 @@ pub(crate) fn build_mapping(_: proc_macro::TokenStream) -> proc_macro::TokenStre
             #(#pairs),*
         ])
     }
-    .into()
 }
 
 /// The NBT numeric tag a value must use, when it differs from the generic default (integers → Int,

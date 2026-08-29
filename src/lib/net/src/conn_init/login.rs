@@ -8,7 +8,7 @@ use crate::packets::incoming::packet_skeleton::PacketSkeleton;
 use crate::packets::outgoing::login_success::{LoginSuccessPacket, LoginSuccessProperties};
 use crate::packets::outgoing::set_default_spawn_position::DEFAULT_SPAWN_POSITION;
 use crate::packets::outgoing::update_tags::UPDATE_TAGS_PACKET;
-use crate::packets::outgoing::{commands::CommandsPacket, registry_data::REGISTRY_PACKETS};
+use crate::packets::outgoing::{commands::CommandsPacket, registry_data::registry_packets_for};
 use crate::ConnState::*;
 use ferrumc_config::server_config::{get_global_config, ServerConfig};
 use ferrumc_core::identity::player_identity::{PlayerIdentity, PlayerProperty};
@@ -315,7 +315,7 @@ async fn finish_configuration(
     compressed: bool,
 ) -> Result<(), NetError> {
     // Send registry data
-    for packet in &*REGISTRY_PACKETS {
+    for packet in registry_packets_for(conn_write.protocol_version()) {
         conn_write.send_packet_ref(packet)?;
     }
 

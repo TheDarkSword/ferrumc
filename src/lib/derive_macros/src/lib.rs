@@ -28,7 +28,7 @@ pub fn nbt_de(input: TokenStream) -> TokenStream {
     nbt::ser::derive(input)
 }
 
-#[proc_macro_derive(NetEncode, attributes(net))]
+#[proc_macro_derive(NetEncode, attributes(net, since))]
 pub fn net_encode(input: TokenStream) -> TokenStream {
     net::encode::derive(input)
 }
