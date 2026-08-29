@@ -61,6 +61,14 @@ pub fn setup_packet_handling(input: TokenStream) -> TokenStream {
 pub fn lookup_packet(input: TokenStream) -> TokenStream {
     static_loading::packets::lookup_packet(input)
 }
+
+/// Every version's id for a packet, as `[Option<i32>; N]` indexed by `ProtocolVersion::index()`.
+/// Use where a packet id is compared against what a specific client sent.
+/// e.g. `lookup_packet_versioned!("play", "serverbound", "move_player_pos_rot")`
+#[proc_macro]
+pub fn lookup_packet_versioned(input: TokenStream) -> TokenStream {
+    static_loading::packets::lookup_packet_versioned(input)
+}
 // #=================== PACKETS ===================#
 
 /// Creates a command.

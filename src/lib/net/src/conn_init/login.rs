@@ -14,11 +14,12 @@ use ferrumc_config::server_config::{get_global_config, ServerConfig};
 use ferrumc_core::identity::player_identity::{PlayerIdentity, PlayerProperty};
 use ferrumc_core::transform::position::Position;
 use ferrumc_core::transform::rotation::Rotation;
-use ferrumc_macros::lookup_packet;
+use ferrumc_macros::{lookup_packet, lookup_packet_versioned};
 use ferrumc_net_codec::decode::NetDecode;
 use ferrumc_net_codec::encode::NetEncodeOpts;
 use ferrumc_net_codec::net_types::length_prefixed_vec::LengthPrefixedVec;
 use ferrumc_net_codec::net_types::prefixed_optional::PrefixedOptional;
+use ferrumc_net_codec::version::ProtocolVersion;
 use ferrumc_net_encryption::errors::NetEncryptionError;
 use ferrumc_net_encryption::get_encryption_keys;
 use ferrumc_net_encryption::read::EncryptedReader;
@@ -54,6 +55,17 @@ use uuid::Uuid;
 // =================================================================================================
 // Helper Functions
 // =================================================================================================
+
+/// The id a client speaking `version` uses for a packet, from a `lookup_packet_versioned!` table.
+fn serverbound_id<const N: usize>(
+    ids: [Option<i32>; N],
+    version: ProtocolVersion,
+) -> Result<i32, NetError> {
+    ids[version.index()].ok_or(NetError::MismatchedProtocolVersion(
+        version.number(),
+        ProtocolVersion::CURRENT.number(),
+    ))
+}
 
 /// Waits for a specific packet type, ignoring any other packets received in the meantime.
 async fn wait_for_packet<T: NetDecode>(
@@ -425,8 +437,16 @@ async fn sync_player_position(
         VarInt::new(teleport_id_i32),
     ))?;
 
+    // These wait on ids the client sends, so they have to be the ids that client's version uses
+    // rather than the server's own. `move_player_pos_rot` in particular is 0x1F in 26.2 and
+    // something else in 1.21.4, which stalled the whole login until the handshake timed out.
+    let version = conn_write.protocol_version();
+
     // Wait for teleport confirmation
-    let expected_id = lookup_packet!("play", "serverbound", "accept_teleportation");
+    let expected_id = serverbound_id(
+        lookup_packet_versioned!("play", "serverbound", "accept_teleportation"),
+        version,
+    )?;
     let confirm: ConfirmPlayerTeleport =
         wait_for_packet(conn_read, compressed, Play, expected_id).await?;
 
@@ -438,7 +458,10 @@ async fn sync_player_position(
     }
 
     // Wait for first movement packet
-    let expected_id = lookup_packet!("play", "serverbound", "move_player_pos_rot");
+    let expected_id = serverbound_id(
+        lookup_packet_versioned!("play", "serverbound", "move_player_pos_rot"),
+        version,
+    )?;
     let _: SetPlayerPositionAndRotationPacket =
         wait_for_packet(conn_read, compressed, Play, expected_id).await?;
 

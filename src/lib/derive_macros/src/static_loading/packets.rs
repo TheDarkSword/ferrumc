@@ -150,6 +150,7 @@ struct PacketTypeInput {
     packet_name: String,
 }
 
+#[derive(Clone, Copy)]
 pub(crate) enum PacketState {
     Configuration,
     Handshake,
@@ -227,6 +228,27 @@ impl Parse for PacketTypeInput {
             packet_name,
         })
     }
+}
+
+/// Like [`lookup_packet`], but resolved against a protocol version at run time. Serverbound ids
+/// move between versions, so anything that waits for a specific packet has to ask for the id the
+/// connected client actually uses.
+pub fn lookup_packet_versioned(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    let input = parse_macro_input!(input as PacketTypeInput);
+
+    let ids = get_packet_ids(input.state, &input.bound, &input.packet_name);
+    let entries = ids.iter().map(|id| match id {
+        Some(id) => quote! { Some(#id) },
+        None => quote! { None },
+    });
+    let count = ids.len();
+
+    proc_macro::TokenStream::from(quote! {
+        {
+            const IDS: [Option<i32>; #count] = [#(#entries),*];
+            IDS
+        }
+    })
 }
 
 pub fn lookup_packet(input: proc_macro::TokenStream) -> proc_macro::TokenStream {

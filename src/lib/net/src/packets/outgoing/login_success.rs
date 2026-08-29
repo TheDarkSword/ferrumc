@@ -15,6 +15,9 @@ pub struct LoginSuccessPacket<'a> {
     pub uuid: u128,
     pub username: &'a str,
     pub properties: LengthPrefixedVec<LoginSuccessProperties<'a>>,
+    /// Added in 26.2. Sending it to an older client leaves sixteen bytes it never reads, which
+    /// stalls the rest of the login exchange.
+    #[since(V26_2)]
     pub session_id: u128,
 }
 
