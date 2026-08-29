@@ -14,6 +14,7 @@ const FROZEN: f32 = 0.0;
 
 #[derive(NetEncode)]
 #[packet(packet_id = "set_time", state = "play")]
+#[downgrade_with(crate::translate::to_1_21_11::set_time)]
 pub struct UpdateTimePacket {
     /// Monotonic total game-tick count. TPS readouts such as MiniHUD derive the server tick rate
     /// from the delta between consecutive packets, so this has to advance with real ticks.

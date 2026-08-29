@@ -41,6 +41,9 @@ impl TestServer {
         SHARED.get_or_init(|| TestServer::start().expect("shared test server starts"))
     }
 
+    /// Also fails when the server is up but never answers, which a listening port alone does not
+    /// rule out.
+    ///
     /// Starts a server with its own world.
     ///
     /// A port is chosen by binding one and letting it go, so two servers starting at the same
@@ -58,15 +61,26 @@ impl TestServer {
     }
 
     fn try_start() -> io::Result<TestServer> {
-        let directory = tempfile::tempdir()?;
+        // Under the target directory rather than the system temporary one: the server binary is
+        // hundreds of megabytes, and an instance needs its own copy, which fills a tmpfs the
+        // moment a few tests run at once. Being on the same filesystem also lets that copy be a
+        // hard link.
+        let base = PathBuf::from(env!("CARGO_TARGET_TMPDIR"));
+        std::fs::create_dir_all(&base)?;
+        let directory = tempfile::TempDir::new_in(&base)?;
         let root = directory.path();
 
         // `get_root_path()` resolves to the executable's directory, so the binary has to live
         // beside the configuration and world this instance should use.
         let binary = root.join("ferrumc");
-        std::fs::copy(server_binary(), &binary)?;
+        if std::fs::hard_link(server_binary(), &binary).is_err() {
+            std::fs::copy(server_binary(), &binary)?;
+        }
 
         let port = free_port()?;
+        // The dashboard binds a port of its own and defaults to a fixed one, so several test
+        // servers running at once would fight over it and all but the first would exit.
+        let dashboard_port = free_port()?;
         std::fs::create_dir_all(root.join("configs"))?;
         std::fs::write(
             root.join("configs/config.toml"),
@@ -77,11 +91,15 @@ impl TestServer {
                  port = {port}\n\
                  online_mode = false\n\
                  encryption_enabled = false\n\
-                 network_compression_threshold = -1\n"
+                 network_compression_threshold = -1\n\
+                 \n\
+                 [dashboard]\n\
+                 port = {dashboard_port}\n"
             ),
         )?;
 
-        let mut child = spawn_server(&binary)?;
+        let log = root.join("server.log");
+        let mut child = spawn_server(&binary, &log)?;
         let address = SocketAddr::from(([127, 0, 0, 1], port));
         wait_until_listening(address)?;
 
@@ -89,7 +107,8 @@ impl TestServer {
         // server that lost the race for this port has already exited.
         if let Some(status) = child.try_wait()? {
             return Err(io::Error::other(format!(
-                "server on port {port} exited during startup with {status}"
+                "server on port {port} exited during startup with {status}:\n{}",
+                std::fs::read_to_string(&log).unwrap_or_default()
             )));
         }
 
@@ -122,13 +141,16 @@ fn free_port() -> io::Result<u16> {
         .map(|a| a.port())
 }
 
-fn spawn_server(binary: &PathBuf) -> io::Result<Child> {
+fn spawn_server(binary: &PathBuf, log: &std::path::Path) -> io::Result<Child> {
+    // Kept rather than discarded: a server that exits during startup says why here, and the
+    // failure is otherwise just a port that never opens.
+    let output = std::fs::File::create(log)?;
     let mut command = Command::new(binary);
     command
         .arg("--log=warn")
         .stdin(Stdio::null())
-        .stdout(Stdio::null())
-        .stderr(Stdio::null());
+        .stdout(Stdio::from(output.try_clone()?))
+        .stderr(Stdio::from(output));
 
     // Without this a failed or interrupted test run leaves a server holding a port and a world.
     #[cfg(target_os = "linux")]
