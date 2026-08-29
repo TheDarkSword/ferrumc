@@ -1,0 +1,321 @@
+//! Harness for tests that need a server actually running.
+//!
+//! Unit tests cover logic that can be called directly; this covers what only shows up on a socket —
+//! version negotiation, the login exchange, packet layout. Those were previously checked by hand:
+//! start a server, start a proxy, run a bot, read the logs. Everything here is meant to make that a
+//! plain `cargo test`.
+//!
+//! The server reads its configuration and world from the directory holding its executable, so an
+//! instance is isolated by copying the binary into a temporary directory of its own. That is not
+//! cheap, so tests share one instance unless they need to mutate the world.
+
+#![allow(dead_code)] // grows a test at a time; not every helper has a caller yet
+
+use std::io::{self, Read, Write};
+use std::net::{SocketAddr, TcpListener, TcpStream};
+use std::path::PathBuf;
+use std::process::{Child, Command, Stdio};
+use std::sync::OnceLock;
+use std::time::{Duration, Instant};
+
+/// How long to wait for a freshly started server to accept connections.
+const STARTUP_TIMEOUT: Duration = Duration::from_secs(60);
+const READ_TIMEOUT: Duration = Duration::from_secs(10);
+/// How many ports to try before giving up on starting a server.
+const PORT_ATTEMPTS: usize = 5;
+
+pub struct TestServer {
+    address: SocketAddr,
+    // Kept so the directory outlives the server and is removed with it.
+    _directory: tempfile::TempDir,
+    _child: Child,
+}
+
+impl TestServer {
+    /// The instance shared by every test in this binary, started on first use.
+    ///
+    /// Starting a server takes seconds, so tests that only read state share one. A test that
+    /// changes the world should call [`TestServer::start`] for an instance of its own.
+    pub fn shared() -> &'static TestServer {
+        static SHARED: OnceLock<TestServer> = OnceLock::new();
+        SHARED.get_or_init(|| TestServer::start().expect("shared test server starts"))
+    }
+
+    /// Starts a server with its own world.
+    ///
+    /// A port is chosen by binding one and letting it go, so two servers starting at the same
+    /// moment can be handed the same one; the loser fails to bind and exits. That is detected by
+    /// checking the child is still alive once something is listening, and retried.
+    pub fn start() -> io::Result<TestServer> {
+        let mut last = None;
+        for _ in 0..PORT_ATTEMPTS {
+            match TestServer::try_start() {
+                Ok(server) => return Ok(server),
+                Err(e) => last = Some(e),
+            }
+        }
+        Err(last.unwrap_or_else(|| io::Error::other("could not start a test server on any port")))
+    }
+
+    fn try_start() -> io::Result<TestServer> {
+        let directory = tempfile::tempdir()?;
+        let root = directory.path();
+
+        // `get_root_path()` resolves to the executable's directory, so the binary has to live
+        // beside the configuration and world this instance should use.
+        let binary = root.join("ferrumc");
+        std::fs::copy(server_binary(), &binary)?;
+
+        let port = free_port()?;
+        std::fs::create_dir_all(root.join("configs"))?;
+        std::fs::write(
+            root.join("configs/config.toml"),
+            // Compression is off because the client below does not implement it, and encryption
+            // and online mode are off so a test can log in without a Mojang account.
+            format!(
+                "host = \"127.0.0.1\"\n\
+                 port = {port}\n\
+                 online_mode = false\n\
+                 encryption_enabled = false\n\
+                 network_compression_threshold = -1\n"
+            ),
+        )?;
+
+        let mut child = spawn_server(&binary)?;
+        let address = SocketAddr::from(([127, 0, 0, 1], port));
+        wait_until_listening(address)?;
+
+        // Something is listening, but it is only ours if our own process is still running: a
+        // server that lost the race for this port has already exited.
+        if let Some(status) = child.try_wait()? {
+            return Err(io::Error::other(format!(
+                "server on port {port} exited during startup with {status}"
+            )));
+        }
+
+        Ok(TestServer {
+            address,
+            _directory: directory,
+            _child: child,
+        })
+    }
+
+    pub fn address(&self) -> SocketAddr {
+        self.address
+    }
+
+    /// Opens a connection to this server.
+    pub fn connect(&self) -> io::Result<TestClient> {
+        TestClient::connect(self.address)
+    }
+}
+
+fn server_binary() -> PathBuf {
+    PathBuf::from(env!("CARGO_BIN_EXE_ferrumc"))
+}
+
+/// Asks the operating system for a port, then releases it. A different process could take it in
+/// between, which is unlikely enough to be worth the simplicity.
+fn free_port() -> io::Result<u16> {
+    TcpListener::bind("127.0.0.1:0")?
+        .local_addr()
+        .map(|a| a.port())
+}
+
+fn spawn_server(binary: &PathBuf) -> io::Result<Child> {
+    let mut command = Command::new(binary);
+    command
+        .arg("--log=warn")
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null());
+
+    // Without this a failed or interrupted test run leaves a server holding a port and a world.
+    #[cfg(target_os = "linux")]
+    unsafe {
+        use std::os::unix::process::CommandExt;
+        command.pre_exec(|| {
+            libc::prctl(libc::PR_SET_PDEATHSIG, libc::SIGTERM);
+            Ok(())
+        });
+    }
+
+    command.spawn()
+}
+
+fn wait_until_listening(address: SocketAddr) -> io::Result<()> {
+    let deadline = Instant::now() + STARTUP_TIMEOUT;
+    while Instant::now() < deadline {
+        if TcpStream::connect_timeout(&address, Duration::from_millis(200)).is_ok() {
+            return Ok(());
+        }
+        std::thread::sleep(Duration::from_millis(100));
+    }
+    Err(io::Error::new(
+        io::ErrorKind::TimedOut,
+        format!("server did not start listening on {address} within {STARTUP_TIMEOUT:?}"),
+    ))
+}
+
+/// A minimal protocol client.
+///
+/// Framing and varints are written by hand rather than reused from `ferrumc-net-codec` on purpose:
+/// a client built out of the server's own encoder agrees with it by construction and could never
+/// catch it being wrong. Everything above the frame is parsed as plain data.
+pub struct TestClient {
+    stream: TcpStream,
+}
+
+impl TestClient {
+    pub fn connect(address: SocketAddr) -> io::Result<TestClient> {
+        let stream = TcpStream::connect_timeout(&address, Duration::from_secs(5))?;
+        stream.set_read_timeout(Some(READ_TIMEOUT))?;
+        Ok(TestClient { stream })
+    }
+
+    /// Sends the handshake that opens every connection. `next_state` is 1 for a status request and
+    /// 2 to log in.
+    pub fn handshake(&mut self, protocol: i32, next_state: i32) -> io::Result<()> {
+        let address = self.stream.peer_addr()?;
+        let host = address.ip().to_string();
+
+        let mut body = Vec::new();
+        write_varint(&mut body, protocol);
+        write_string(&mut body, &host);
+        body.extend_from_slice(&address.port().to_be_bytes());
+        write_varint(&mut body, next_state);
+        self.send(0x00, &body)
+    }
+
+    /// Performs a server list ping and returns the JSON the server answered with.
+    pub fn status(&mut self, protocol: i32) -> io::Result<serde_json::Value> {
+        self.handshake(protocol, 1)?;
+        self.send(0x00, &[])?;
+
+        let (id, payload) = self.receive()?;
+        assert_eq!(
+            id, 0x00,
+            "expected a status response, got packet 0x{id:02X}"
+        );
+
+        let mut cursor = payload.as_slice();
+        let json = read_string(&mut cursor)?;
+        serde_json::from_str(&json)
+            .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, format!("status json: {e}")))
+    }
+
+    /// Writes one uncompressed packet: length, id, body.
+    fn send(&mut self, id: i32, body: &[u8]) -> io::Result<()> {
+        let mut framed = Vec::new();
+        write_varint(&mut framed, id);
+        framed.extend_from_slice(body);
+
+        let mut out = Vec::new();
+        write_varint(&mut out, framed.len() as i32);
+        out.extend_from_slice(&framed);
+        self.stream.write_all(&out)
+    }
+
+    /// Reads one uncompressed packet and returns its id and body.
+    fn receive(&mut self) -> io::Result<(i32, Vec<u8>)> {
+        let length = read_varint(&mut self.stream)?;
+        let mut frame = vec![0u8; length as usize];
+        self.stream.read_exact(&mut frame)?;
+
+        let mut cursor = frame.as_slice();
+        let id = read_varint(&mut cursor)?;
+        Ok((id, cursor.to_vec()))
+    }
+}
+
+fn write_varint(out: &mut Vec<u8>, mut value: i32) {
+    loop {
+        let byte = (value & 0x7F) as u8;
+        value = ((value as u32) >> 7) as i32;
+        if value == 0 {
+            out.push(byte);
+            return;
+        }
+        out.push(byte | 0x80);
+    }
+}
+
+fn write_string(out: &mut Vec<u8>, value: &str) {
+    write_varint(out, value.len() as i32);
+    out.extend_from_slice(value.as_bytes());
+}
+
+fn read_varint(reader: &mut impl Read) -> io::Result<i32> {
+    let mut value = 0i32;
+    for shift in (0..35).step_by(7) {
+        let mut byte = [0u8; 1];
+        reader.read_exact(&mut byte)?;
+        value |= i32::from(byte[0] & 0x7F) << shift;
+        if byte[0] & 0x80 == 0 {
+            return Ok(value);
+        }
+    }
+    Err(io::Error::new(
+        io::ErrorKind::InvalidData,
+        "varint too long",
+    ))
+}
+
+fn read_string(reader: &mut impl Read) -> io::Result<String> {
+    let length = read_varint(reader)? as usize;
+    let mut bytes = vec![0u8; length];
+    reader.read_exact(&mut bytes)?;
+    String::from_utf8(bytes)
+        .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, format!("not utf-8: {e}")))
+}
+
+/// What the server answered with when a login was attempted.
+pub struct LoginFinished {
+    pub uuid: [u8; 16],
+    pub username: String,
+    pub property_count: i32,
+    /// Bytes after the game profile. 26.2 appends a session id here; earlier versions append
+    /// nothing, and sending them sixteen bytes they never read stalls the rest of the exchange.
+    pub trailing: Vec<u8>,
+}
+
+impl TestClient {
+    /// Logs in as `username` and returns the server's `login_finished`, without acknowledging it.
+    ///
+    /// Only valid against a server with encryption and online mode off, which is how
+    /// [`TestServer`] configures itself.
+    pub fn login(&mut self, protocol: i32, username: &str) -> io::Result<LoginFinished> {
+        self.handshake(protocol, 2)?;
+
+        let mut body = Vec::new();
+        write_string(&mut body, username);
+        // An offline-mode uuid; the server does not check it.
+        body.extend_from_slice(&[0u8; 16]);
+        self.send(0x00, &body)?;
+
+        // Compression may be negotiated first; this client does not implement it, so a server that
+        // asks for it would need the test config to disable it.
+        let (id, payload) = self.receive()?;
+        assert_eq!(
+            id, 0x02,
+            "expected login_finished (0x02), got packet 0x{id:02X}"
+        );
+
+        let mut cursor = payload.as_slice();
+        let mut uuid = [0u8; 16];
+        cursor.read_exact(&mut uuid)?;
+        let username = read_string(&mut cursor)?;
+        let property_count = read_varint(&mut cursor)?;
+        assert_eq!(
+            property_count, 0,
+            "offline login should carry no profile properties"
+        );
+
+        Ok(LoginFinished {
+            uuid,
+            username,
+            property_count,
+            trailing: cursor.to_vec(),
+        })
+    }
+}

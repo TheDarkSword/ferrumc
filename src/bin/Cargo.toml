@@ -72,6 +72,8 @@ release = ["dashboard"]
 
 [dev-dependencies]
 tempfile = { workspace = true }
+# Only for PR_SET_PDEATHSIG, so a server started by a test dies with the test process.
+libc = { workspace = true }
 
 [[bin]]
 name = "ferrumc"
