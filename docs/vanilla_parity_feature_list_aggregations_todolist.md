@@ -1,5 +1,10 @@
 # 🛠️ Vanilla 1:1 Parity Feature Implementation Checklist for FerrumC
 
+> **This list has drifted from the code.** Known-stale entries: fluids, particles and several
+> commands are marked missing but exist; the protocol section describes 1.21.8 while the server
+> now speaks 26.2 (see [Target version](versioning/target-version.md)). Verify against the source
+> before relying on any line here.
+
 > **Legend:**
 > - [x] = Done
 > - [/] = Partial
