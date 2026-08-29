@@ -7,6 +7,7 @@ pub mod network_position;
 pub mod prefixed_optional;
 pub mod teleport_flags;
 pub mod var_int;
+pub mod var_long;
 
 #[derive(Debug, thiserror::Error)]
 pub enum NetTypesError {
@@ -14,6 +15,8 @@ pub enum NetTypesError {
     Io(#[from] std::io::Error),
     #[error("Invalid VarInt")]
     InvalidVarInt,
+    #[error("Invalid VarLong")]
+    InvalidVarLong,
     #[error("I couldn't convert the value into a valid i32")]
     InvalidInputI32,
 }
