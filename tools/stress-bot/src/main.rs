@@ -17,7 +17,6 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::OnceLock;
 use std::time::Duration;
 
-use azalea::bot::BotClientExt;
 use azalea::prelude::*;
 use azalea::swarm::prelude::*;
 use azalea::WalkDirection;
@@ -128,11 +127,10 @@ async fn main() -> anyhow::Result<()> {
         builder = builder.add_account(Account::offline(&format!("{}_{}", args.name_prefix, i)));
     }
 
-    builder
-        .join_delay(join_delay)
-        .start(args.server.as_str())
-        .await?;
-    Ok(())
+    match builder.join_delay(join_delay).start(args.server.as_str()).await {
+        AppExit::Success => Ok(()),
+        AppExit::Error(code) => anyhow::bail!("swarm exited with code {code}"),
+    }
 }
 
 /// Per-bot event handler: counts connections and, unless `--idle`, drives continuous movement so
@@ -154,7 +152,7 @@ async fn handle(bot: Client, event: Event, _state: BotState) -> anyhow::Result<(
             let mut rng = rand::thread_rng();
             if rng.gen_bool(0.05) {
                 let yaw: f32 = rng.gen_range(-180.0..180.0);
-                bot.set_direction(yaw, 0.0);
+                let _ = bot.set_direction(yaw, 0.0);
             }
             bot.walk(WalkDirection::Forward);
             if rng.gen_bool(0.02) {
@@ -175,7 +173,7 @@ async fn swarm_handle(
 ) -> anyhow::Result<()> {
     if let SwarmEvent::Disconnect(account, join_opts) = event {
         CONNECTED
-            .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |c| Some(c.saturating_sub(1)))
+            .try_update(Ordering::Relaxed, Ordering::Relaxed, |c| Some(c.saturating_sub(1)))
             .ok();
         DISCONNECTS.fetch_add(1, Ordering::Relaxed);
         let delay = CONFIG
@@ -183,7 +181,7 @@ async fn swarm_handle(
             .map(|c| c.reconnect_delay_secs)
             .unwrap_or(5);
         tokio::time::sleep(Duration::from_secs(delay)).await;
-        swarm.add_with_opts(&account, BotState, &join_opts).await?;
+        swarm.add_with_opts(&account, BotState, &join_opts).await;
     }
     Ok(())
 }

@@ -23,11 +23,10 @@ Because it speaks the server's own protocol version, this bot doubles as the con
 if a single bot reaches the play state and receives chunks, the handshake, login, configuration and
 registry payloads are all well formed.
 
-**Currently blocked upstream.** The pinned revision does not compile: `azalea-entity` fails with
-`E0284: type annotations needed` inside `azalea-core`'s `generic_const_exprs` bitset, on both
-nightly-2026-08-23 and nightly-2026-08-27. Nothing in this crate can work around it. Move the pin
-forward once azalea's main branch builds again, or to a published release once one targets the
-server's protocol version.
+azalea's bitset relies on `generic_const_exprs`, which the new trait solver cannot yet resolve, so
+`.cargo/config.toml` here repeats the `-Znext-solver=coherence` flag azalea sets for itself — a git
+dependency's own cargo config does not reach the workspace consuming it. `rust-toolchain.toml` pins
+a dated nightly for the same reason.
 
 ## Usage
 
