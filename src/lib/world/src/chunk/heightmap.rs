@@ -58,11 +58,17 @@ impl TryFrom<&VanillaHeightmaps> for Heightmaps {
     }
 }
 
+/// One heightmap in the form used from 1.21.5 on: a numeric kind and its packed longs. Older
+/// versions carry the same data as an NBT compound instead, which a translator writes.
 #[derive(NetEncode)]
 pub struct NetworkHeightmap {
-    heightmap: VarInt,
-    data: LengthPrefixedVec<u64>,
+    pub heightmap: VarInt,
+    pub data: LengthPrefixedVec<u64>,
 }
+
+/// The `heightmap` values above, as named by the versions that key them by name rather than id.
+pub const WORLD_SURFACE: i32 = 1;
+pub const MOTION_BLOCKING: i32 = 4;
 
 impl Heightmaps {
     pub fn get_network_repr(

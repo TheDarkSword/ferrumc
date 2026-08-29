@@ -11,8 +11,11 @@ use std::io::Cursor;
 
 #[derive(NetEncode)]
 pub struct NetworkChunk {
-    heightmaps: LengthPrefixedVec<NetworkHeightmap>,
-    data: ByteArray,
+    /// Public so a translator can write these in the form older clients expect: they became a list
+    /// keyed by a numeric kind in 1.21.5, and were an NBT compound before that.
+    pub heightmaps: LengthPrefixedVec<NetworkHeightmap>,
+    /// The sections, already packed for the target version.
+    pub data: ByteArray,
 }
 
 impl NetworkChunk {

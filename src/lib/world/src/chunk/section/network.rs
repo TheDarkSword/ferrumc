@@ -30,12 +30,18 @@ pub enum NetworkPalette {
     },
 }
 
+/// The release that added a fluid count to every section. Sections are packed into an opaque byte
+/// run before the chunk packet exists, so a packet-level translator cannot reach inside them; the
+/// boundary has to be honoured here instead. See `ferrumc_net::translate`.
+const FLUID_COUNT_SINCE: ProtocolVersion = ProtocolVersion::V26_1;
+
 #[derive(NetEncode)]
 pub struct NetworkSection<'section> {
     block_count: u16,
-    /// Cells holding a fluid. The client reads it straight off the wire without recomputing, and
-    /// uses it to decide whether entities moving through the section can be affected by fluid.
-    fluid_count: u16,
+    /// Cells holding a fluid, from 26.1 on. The client reads it straight off the wire without
+    /// recomputing, and uses it to decide whether entities moving through the section can be
+    /// affected by fluid. Older clients have no such field and misread the section if sent one.
+    fluid_count: Option<u16>,
     block_states: PalettedContainer<'section>,
     biomes: PalettedContainer<'section>,
 }
@@ -140,7 +146,7 @@ impl<'section> NetworkSection<'section> {
     pub fn new(value: &'section ChunkSection, version: ProtocolVersion) -> Self {
         Self {
             block_count: value.block_count(),
-            fluid_count: value.fluid_count(),
+            fluid_count: (version >= FLUID_COUNT_SINCE).then(|| value.fluid_count()),
             block_states: PalettedContainer::from_section(value, version),
             biomes: PalettedContainer::from(&value.biome),
         }

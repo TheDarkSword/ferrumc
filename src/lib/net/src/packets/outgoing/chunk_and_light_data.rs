@@ -25,6 +25,7 @@ pub struct NetHeightmap {
 
 #[derive(NetEncode)]
 #[packet(packet_id = "level_chunk_with_light", state = "play")]
+#[downgrade_with(crate::translate::to_1_21_4::level_chunk_with_light)]
 pub struct ChunkAndLightData<'chunk> {
     pub chunk_x: i32,
     pub chunk_z: i32,
