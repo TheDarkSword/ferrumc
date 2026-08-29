@@ -22,6 +22,8 @@ pub enum WorldError {
     InvalidImportPath(String),
     #[error("No region files")]
     NoRegionFiles,
+    #[error("World has data version {0} but this server reads {1}. Open it once in the matching Minecraft version to upgrade its chunks, then import again.")]
+    UnsupportedWorldVersion(i32, i32),
     #[error("Unable to obtain permission to access file/folder: {0}")]
     PermissionError(String),
     #[error("Some kind of IO error occurred: {0}")]

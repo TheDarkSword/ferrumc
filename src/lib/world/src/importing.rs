@@ -10,7 +10,13 @@ use rayon::prelude::*;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
-use tracing::{error, info};
+use tracing::{error, info, warn};
+
+/// Data version of the chunk format this server reads, matching the `WORLD_VERSION` of the
+/// Minecraft release it targets. Chunks written by any other version are laid out differently
+/// enough that reading them would silently produce a wrong world, so they are skipped rather than
+/// converted: porting Minecraft's own migration chain is out of scope.
+pub const SUPPORTED_DATA_VERSION: i32 = 4903;
 
 impl World {
     fn get_chunk_count(&self, import_dir: &Path) -> Result<u64, WorldError> {
@@ -65,6 +71,11 @@ impl World {
 
         progress.set_message("Importing chunks...");
 
+        // Data versions of chunks left out because they predate or postdate the format this server
+        // reads. Collected rather than reported one by one: a whole world from another version
+        // would otherwise print a line per chunk.
+        let mut skipped: Vec<i32> = Vec::new();
+
         for region_result in regions_dir {
             let region_entry = region_result?;
             if region_entry.path().is_dir() {
@@ -89,6 +100,11 @@ impl World {
             for (index, location) in locations.iter().enumerate() {
                 if let Ok(Some(chunk_data)) = anvil_file.get_chunk_from_location(*location) {
                     if let Ok(vanilla_chunk) = VanillaChunk::from_bytes(&chunk_data) {
+                        if vanilla_chunk.data_version != SUPPORTED_DATA_VERSION {
+                            skipped.push(vanilla_chunk.data_version);
+                            progress.inc(1);
+                            continue;
+                        }
                         batch.execute({
                             let self_clone = arc_self.clone();
                             let progress = progress.clone();
@@ -123,11 +139,27 @@ impl World {
 
         arc_self.storage_backend.flush()?;
 
-        info!(
-            "Imported {} chunks in {:?}",
-            progress.position(),
-            start.elapsed()
-        );
+        let imported = progress.position() - skipped.len() as u64;
+        if !skipped.is_empty() {
+            if imported == 0 {
+                let found = *skipped.first().expect("skipped is not empty");
+                return Err(WorldError::UnsupportedWorldVersion(
+                    found,
+                    SUPPORTED_DATA_VERSION,
+                ));
+            }
+            let mut versions: Vec<i32> = skipped.clone();
+            versions.sort_unstable();
+            versions.dedup();
+            warn!(
+                "Skipped {} chunk(s) with data version(s) {:?}; this server reads {}. Open the world in the matching Minecraft version to upgrade them, then import again.",
+                skipped.len(),
+                versions,
+                SUPPORTED_DATA_VERSION
+            );
+        }
+
+        info!("Imported {} chunks in {:?}", imported, start.elapsed());
 
         Ok(())
     }
