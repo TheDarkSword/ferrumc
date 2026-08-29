@@ -107,6 +107,14 @@ lto = true
 opt-level = 3
 codegen-units = 1
 
+# For the edit, run, look loop. Release optimises well but rebuilds from scratch every time, which
+# is minutes per change; this keeps the generated code fast enough to run a server while letting
+# cargo reuse what it already built.
+[profile.quick]
+inherits = "release"
+incremental = true
+codegen-units = 256
+
 [profile.bench]
 debug = true
 

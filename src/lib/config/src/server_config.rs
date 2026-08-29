@@ -46,6 +46,10 @@ pub struct ServerConfig {
     pub tps: u32,
     pub database: DatabaseConfig,
     pub world: String,
+    /// Seed for terrain generation. Left out, a fresh one is drawn each launch and logged; setting
+    /// it makes a world reproducible, which is what comparing two runs needs.
+    #[serde(default)]
+    pub world_seed: Option<u64>,
     pub network_compression_threshold: i32, // Can be negative
     pub verify_decompressed_packets: bool,
     pub encryption_enabled: bool,

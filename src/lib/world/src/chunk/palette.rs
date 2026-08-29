@@ -41,11 +41,6 @@ impl BlockPalette {
         }
     }
 
-    #[inline]
-    pub fn len(&self) -> usize {
-        self.palette.len()
-    }
-
     pub fn palette_data(&self) -> Vec<BlockStateId> {
         self.palette
             .iter()

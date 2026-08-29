@@ -65,9 +65,12 @@ fn build_one(json_file: &[u8]) -> proc_macro2::TokenStream {
     let pairs = registry_entries
         .iter()
         .map(|(key, packets)| {
-            let raw_packets_data = bitcode::encode(packets);
+            // Emitted as one byte-string literal rather than a comma-separated list of integers.
+            // Ten versions of registry data is a few megabytes, and a token per byte is minutes of
+            // compile time for this crate alone.
+            let raw_packets_data = proc_macro2::Literal::byte_string(&bitcode::encode(packets));
             quote! {
-                (#key.to_string(), vec![#(#raw_packets_data),*])
+                (#key.to_string(), #raw_packets_data.to_vec())
             }
         })
         .collect::<Vec<_>>();

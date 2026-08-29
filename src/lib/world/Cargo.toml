@@ -37,6 +37,7 @@ uuid = { workspace = true }
 
 
 [dev-dependencies]
+tempfile = { workspace = true }
 criterion = { workspace = true }
 rand = { workspace = true }
 

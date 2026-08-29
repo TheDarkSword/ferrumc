@@ -5,6 +5,7 @@ pub mod dimension;
 pub mod errors;
 pub mod fluid;
 mod importing;
+pub mod metadata;
 mod player;
 pub mod pos;
 pub mod scheduler;

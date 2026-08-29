@@ -1,3 +1,4 @@
+use crate::chunk::palette::BlockPalette;
 use crate::chunk::remap::block_state_for;
 use crate::chunk::section::biome::{biome_palette_bits, BiomeData};
 use crate::chunk::section::direct::DirectSection;
@@ -60,8 +61,49 @@ impl<'section> PalettedContainer<'section> {
 
 impl<'section> PalettedContainer<'section> {
     fn from_paletted(section: &'section PalettedSection, version: ProtocolVersion) -> Self {
-        let bits_per_entry = section.bit_width.max(4); // Minecraft supports lowest bit width of 4 for indirect palettes
-        let data_array: NetworkArray<u64> = if bits_per_entry != section.bit_width {
+        // Translating each entry can land two of them on the same block: the state space shrinks
+        // going backwards, and in 1.21.4 over a thousand ids collapse onto stone alone. A palette
+        // with duplicates is read by keying it on the id, which leaves fewer entries than the
+        // packed data still indexes, so the palette is rebuilt and the indices rewritten.
+        let translated: Vec<u32> = section
+            .palette
+            .palette_data()
+            .into_iter()
+            .map(|state| block_state_for(state.raw(), version))
+            .collect();
+
+        let mut unique: Vec<u32> = Vec::with_capacity(translated.len());
+        let mut remapped_index: Vec<u8> = Vec::with_capacity(translated.len());
+        for state in &translated {
+            let index = unique.iter().position(|existing| existing == state);
+            remapped_index.push(match index {
+                Some(index) => index as u8,
+                None => {
+                    unique.push(*state);
+                    (unique.len() - 1) as u8
+                }
+            });
+        }
+
+        // Everything in the section became the same block, which is what a single-valued section
+        // says in one varint.
+        if let [only] = unique[..] {
+            return PalettedContainer {
+                bits_per_entry: 0,
+                palette: NetworkPalette::SingleValued {
+                    value: VarInt(only as i32),
+                },
+                data_array: NetworkArray::new_owned(vec![]),
+            };
+        }
+
+        // Four is the narrowest an indirect palette may be.
+        let bits_per_entry = BlockPalette::bit_width_for_len(unique.len()).max(4);
+        let unchanged = unique.len() == translated.len() && bits_per_entry == section.bit_width;
+
+        let data_array: NetworkArray<u64> = if unchanged {
+            NetworkArray::new_borrowed(&section.block_data)
+        } else {
             let mut new_buffer = vec![
                 0u64;
                 (CHUNK_SECTION_LENGTH / (8 / bits_per_entry as usize))
@@ -69,29 +111,24 @@ impl<'section> PalettedContainer<'section> {
             ];
 
             for block in 0..CHUNK_SECTION_LENGTH {
+                let old =
+                    PalettedSection::unpack_value(&section.block_data, block, section.bit_width);
                 PalettedSection::pack_value(
                     &mut new_buffer,
                     block,
                     bits_per_entry,
-                    PalettedSection::unpack_value(&section.block_data, block, section.bit_width),
+                    remapped_index[old as usize],
                 );
             }
 
             NetworkArray::new_owned(new_buffer)
-        } else {
-            NetworkArray::new_borrowed(&section.block_data)
         };
 
         PalettedContainer {
             bits_per_entry,
             palette: NetworkPalette::Indirect {
-                palette_length: VarInt(section.palette.len() as _),
-                palette_values: section
-                    .palette
-                    .palette_data()
-                    .into_iter()
-                    .map(|v| VarInt(block_state_for(v.raw() as _, version) as _))
-                    .collect(),
+                palette_length: VarInt(unique.len() as i32),
+                palette_values: unique.into_iter().map(|s| VarInt(s as i32)).collect(),
             },
             data_array,
         }
@@ -161,5 +198,83 @@ impl<'section> NetworkSection<'section> {
             block_states: PalettedContainer::from_section(value, version),
             biomes: PalettedContainer::from_biomes(&value.biome, version),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::chunk::section::paletted::PalettedSection;
+    use crate::chunk::BlockStateId;
+
+    // 26.2 short grass and short dry grass both become 1.21.4's short grass. Translating a palette
+    // holding both leaves two entries pointing at one block, which is what used to make a reader
+    // run off the end of the palette.
+    const SHORT_GRASS: u32 = 2248;
+    const SHORT_DRY_GRASS: u32 = 2252;
+
+    fn section_with(blocks: &[(usize, u32)]) -> PalettedSection {
+        let mut section = PalettedSection::default();
+        for &(index, state) in blocks {
+            section.set_block(index, BlockStateId::new(state));
+        }
+        section
+    }
+
+    fn palette_of(container: &PalettedContainer<'_>) -> Vec<i32> {
+        match &container.palette {
+            NetworkPalette::SingleValued { value } => vec![value.0],
+            NetworkPalette::Indirect { palette_values, .. } => {
+                palette_values.iter().map(|v| v.0).collect()
+            }
+            NetworkPalette::Direct {} => vec![],
+        }
+    }
+
+    /// Two blocks that become one must leave one palette entry, not two.
+    #[test]
+    fn a_translated_palette_has_no_duplicates() {
+        let section = section_with(&[(0, SHORT_GRASS), (1, SHORT_DRY_GRASS)]);
+        let container = PalettedContainer::from_paletted(&section, ProtocolVersion::V1_21_4);
+
+        let palette = palette_of(&container);
+        let mut unique = palette.clone();
+        unique.sort_unstable();
+        unique.dedup();
+        assert_eq!(
+            palette.len(),
+            unique.len(),
+            "translated palette still holds duplicates: {palette:?}"
+        );
+    }
+
+    /// The same section keeps both blocks apart for a version that has both.
+    #[test]
+    fn the_native_version_keeps_both_blocks() {
+        let section = section_with(&[(0, SHORT_GRASS), (1, SHORT_DRY_GRASS)]);
+        let container = PalettedContainer::from_paletted(&section, ProtocolVersion::CURRENT);
+
+        let palette = palette_of(&container);
+        assert!(
+            palette.contains(&(SHORT_GRASS as i32)) && palette.contains(&(SHORT_DRY_GRASS as i32)),
+            "both blocks should survive for a version that has them: {palette:?}"
+        );
+    }
+
+    /// A palette that translates down to one block becomes a single-valued section rather than an
+    /// indirect palette of length one. A paletted section always carries air at index zero, so the
+    /// case that reaches this is a section holding nothing else.
+    #[test]
+    fn a_palette_of_one_block_becomes_single_valued() {
+        let empty = PalettedSection::default();
+        let container = PalettedContainer::from_paletted(&empty, ProtocolVersion::V1_21_4);
+        assert!(
+            matches!(container.palette, NetworkPalette::SingleValued { .. }),
+            "a section holding only air is a single-valued section"
+        );
+        assert_eq!(
+            container.bits_per_entry, 0,
+            "a single value needs no data array"
+        );
     }
 }

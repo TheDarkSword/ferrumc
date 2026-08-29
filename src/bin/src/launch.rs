@@ -11,17 +11,35 @@ use ferrumc_world::pos::ChunkPos;
 use ferrumc_world::World;
 use ferrumc_world_gen::WorldGenerator;
 use std::time::Instant;
-use tracing::{error, info};
+use tracing::{error, info, warn};
 
 /// Creates the initial server state with all required components.
 pub fn create_state(start_time: Instant) -> Result<ServerState, BinaryError> {
-    // A fresh random world seed each launch. The chosen value is logged so a world worth keeping can
-    // be reproduced by pinning the seed. (Persisted chunks are not regenerated, so a new seed only
-    // shapes terrain that has not been generated yet.)
-    let seed: u64 = rand::random();
+    let world = World::new(&get_global_config().database.db_path);
+
+    // A world keeps the seed it was generated with. Drawing a new one would reshape the terrain
+    // beyond what has already been written, leaving a seam wherever generation resumes, so a
+    // recorded seed wins over the configured one.
+    let configured = get_global_config().world_seed;
+    let seed = match world.seed()? {
+        Some(recorded) => {
+            if configured.is_some_and(|configured| configured != recorded) {
+                warn!(
+                    "Ignoring the configured world seed: this world was generated with {recorded}.                      Clear the world to generate it afresh."
+                );
+            }
+            recorded
+        }
+        None => {
+            let chosen = configured.unwrap_or_else(rand::random);
+            world.set_seed(chosen)?;
+            chosen
+        }
+    };
     info!("World generation seed: {seed}");
+
     Ok(ServerState {
-        world: World::new(&get_global_config().database.db_path),
+        world,
         terrain_generator: WorldGenerator::new(seed),
         shut_down: false.into(),
         players: PlayerList::default(),
