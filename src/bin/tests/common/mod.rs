@@ -319,3 +319,91 @@ impl TestClient {
         })
     }
 }
+
+/// How far a connection got, and what it saw on the way.
+pub struct PlaySession {
+    /// Ids of the configuration packets received, in order. Useful when a version gets stuck.
+    pub configuration_packets: Vec<i32>,
+    /// The play `login` packet's id and body.
+    pub login_id: i32,
+    pub login_body: Vec<u8>,
+}
+
+impl TestClient {
+    /// Reads up to `count` further packets, stopping early if the server stops sending. Returns
+    /// each packet's id and length.
+    pub fn drain_play(&mut self, count: usize) -> Vec<(i32, usize)> {
+        let mut seen = Vec::new();
+        for _ in 0..count {
+            match self.receive() {
+                Ok((id, body)) => seen.push((id, body.len())),
+                Err(_) => break,
+            }
+        }
+        seen
+    }
+}
+
+// Ids used to drive the exchange. These are stable across the supported range, which is why they
+// can be constants here; `docs/networking/multi-version.md` lists what does move.
+const LOGIN_ACKNOWLEDGED: i32 = 0x03;
+const CONFIG_CLIENT_INFORMATION: i32 = 0x00;
+const CONFIG_SELECT_KNOWN_PACKS_IN: i32 = 0x07;
+const CONFIG_FINISH_IN: i32 = 0x03;
+const CONFIG_SELECT_KNOWN_PACKS_OUT: i32 = 14;
+const CONFIG_FINISH_OUT: i32 = 3;
+/// Give up rather than hang if the server never finishes configuration.
+const MAX_CONFIGURATION_PACKETS: usize = 200;
+
+impl TestClient {
+    /// Logs in and drives the exchange all the way to the play state, returning the play `login`
+    /// packet. Fails with what it last saw if the server stops partway.
+    pub fn reach_play(&mut self, protocol: i32, username: &str) -> io::Result<PlaySession> {
+        self.login(protocol, username)?;
+        self.send(LOGIN_ACKNOWLEDGED, &[])?;
+        self.send_client_information()?;
+
+        let mut configuration_packets = Vec::new();
+        loop {
+            if configuration_packets.len() > MAX_CONFIGURATION_PACKETS {
+                return Err(io::Error::other(format!(
+                    "configuration did not finish after {} packets: {configuration_packets:?}",
+                    configuration_packets.len()
+                )));
+            }
+            let (id, _) = self.receive()?;
+            configuration_packets.push(id);
+
+            if id == CONFIG_SELECT_KNOWN_PACKS_OUT {
+                // Agree to nothing; the server then sends its own registries.
+                let mut body = Vec::new();
+                write_varint(&mut body, 0);
+                self.send(CONFIG_SELECT_KNOWN_PACKS_IN, &body)?;
+            } else if id == CONFIG_FINISH_OUT {
+                self.send(CONFIG_FINISH_IN, &[])?;
+                break;
+            }
+        }
+
+        let (login_id, login_body) = self.receive()?;
+        Ok(PlaySession {
+            configuration_packets,
+            login_id,
+            login_body,
+        })
+    }
+
+    fn send_client_information(&mut self) -> io::Result<()> {
+        let mut body = Vec::new();
+        write_string(&mut body, "en_us");
+        body.push(8); // view distance
+        write_varint(&mut body, 0); // chat mode: enabled
+        body.push(1); // chat colours
+        body.push(0x7F); // every skin part
+        write_varint(&mut body, 1); // main hand: right
+        body.push(0); // text filtering
+        body.push(1); // allow server listings
+        write_varint(&mut body, 0); // particle status: all
+        self.send(CONFIG_CLIENT_INFORMATION, &body)
+    }
+}
