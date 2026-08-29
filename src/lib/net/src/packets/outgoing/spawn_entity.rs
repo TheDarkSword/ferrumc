@@ -9,6 +9,13 @@ use ferrumc_macros::{get_registry_entry, packet, NetEncode};
 use ferrumc_net_codec::net_types::angle::NetAngle;
 use ferrumc_net_codec::net_types::var_int::VarInt;
 
+/// Spawn-time movement, in the compressed vector encoding the packet now uses. A leading zero byte
+/// is the whole encoding for "not moving", which is what every entity spawned here reports.
+///
+// ponytail: only the zero vector is expressible; implementing the packed form (see LpVec3 in the
+// vanilla sources) is required before any entity can be spawned already in motion.
+const NOT_MOVING: u8 = 0;
+
 #[derive(NetEncode)]
 #[packet(packet_id = "add_entity", state = "play")]
 pub struct SpawnEntityPacket {
@@ -18,13 +25,11 @@ pub struct SpawnEntityPacket {
     x: f64,
     y: f64,
     z: f64,
+    movement: u8,
     pitch: NetAngle,
     yaw: NetAngle,
     head_yaw: NetAngle,
     data: VarInt,
-    velocity_x: i16,
-    velocity_y: i16,
-    velocity_z: i16,
 }
 
 const PLAYER_ID: u64 = get_registry_entry!("minecraft:entity_type.entries.minecraft:player");
@@ -51,13 +56,11 @@ impl SpawnEntityPacket {
             x,
             y,
             z,
+            movement: NOT_MOVING,
             pitch: NetAngle::from_degrees(pitch as f64),
             yaw: NetAngle::from_degrees(yaw as f64),
             head_yaw: NetAngle::from_degrees(yaw as f64),
             data: VarInt::new(0),
-            velocity_x: 0,
-            velocity_y: 0,
-            velocity_z: 0,
         }
     }
 
@@ -79,13 +82,11 @@ impl SpawnEntityPacket {
             x,
             y,
             z,
+            movement: NOT_MOVING,
             pitch: NetAngle::from_degrees(pitch as f64),
             yaw: NetAngle::from_degrees(yaw as f64),
             head_yaw: NetAngle::from_degrees(yaw as f64),
             data: VarInt::new(0),
-            velocity_x: 0,
-            velocity_y: 0,
-            velocity_z: 0,
         })
     }
 
@@ -115,13 +116,11 @@ impl SpawnEntityPacket {
             x,
             y,
             z,
+            movement: NOT_MOVING,
             pitch: NetAngle::from_degrees(pitch as f64),
             yaw: NetAngle::from_degrees(yaw as f64),
             head_yaw: NetAngle::from_degrees(yaw as f64),
             data: VarInt::new(0),
-            velocity_x: 0,
-            velocity_y: 0,
-            velocity_z: 0,
         })
     }
 }
