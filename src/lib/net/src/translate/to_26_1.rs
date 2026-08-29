@@ -67,3 +67,53 @@ pub fn login<W: std::io::Write>(
         Ok(())
     })())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use ferrumc_net_codec::encode::Framing;
+
+    fn encoded_for(version: ProtocolVersion) -> Vec<u8> {
+        let packet = LoginPlayPacket::new(1, 0);
+        let mut buffer = Vec::new();
+        packet
+            .encode(&mut buffer, &NetEncodeOpts::new(Framing::None, version))
+            .expect("encodes");
+        buffer
+    }
+
+    /// 26.2 writes an online-mode boolean the older form leaves out. Without the hop an older
+    /// client reads that byte as the secure chat flag and everything after it shifts.
+    #[test]
+    fn online_mode_is_written_only_for_26_2() {
+        let native = encoded_for(ProtocolVersion::V26_2);
+        let older = encoded_for(ProtocolVersion::V26_1);
+
+        assert_eq!(
+            native.len(),
+            older.len() + 1,
+            "the 26.2 form should be exactly one boolean longer than the 26.1 form"
+        );
+        assert_eq!(
+            native[..older.len() - 1],
+            older[..older.len() - 1],
+            "everything before the added flag should be identical"
+        );
+    }
+
+    /// Every version below the boundary gets the same body; only 26.2 differs.
+    #[test]
+    fn every_older_version_gets_the_same_form() {
+        let older = encoded_for(ProtocolVersion::V26_1);
+        for version in ProtocolVersion::ALL {
+            if version >= ProtocolVersion::V26_2 {
+                continue;
+            }
+            assert_eq!(
+                encoded_for(version).len(),
+                older.len(),
+                "{version} should get the same body as 26.1"
+            );
+        }
+    }
+}
