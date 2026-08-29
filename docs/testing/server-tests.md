@@ -66,3 +66,25 @@ The harness speaks the protocol the way this server implements it, so it cannot 
 Minecraft client agrees. For that, put ViaProxy in front of the server and connect the stress bot
 through it — see `tools/stress-bot/README.md`. Use the harness for behaviour the server owns, and
 the proxy for conformance against a real implementation.
+
+## Keeping the loop fast
+
+An edit that touches the network or world crates used to cost about four minutes to rebuild and
+another five to check every version. Both are now under a minute of waiting:
+
+```bash
+cargo build --profile quick          # ~30s after a change
+scripts/check_versions.sh            # ~2m for all ten versions
+```
+
+- **`quick`** is a cargo profile that optimises like release but reuses what it already built.
+  `check_versions.sh` runs that binary by default; `PROFILE=release` overrides it.
+- **The version check starts every proxy at once.** ViaProxy spends twenty-odd seconds loading its
+  mapping tables, and doing that ten times in sequence was most of the wait.
+- **The seed is pinned** (`WORLD_SEED`, default 1234567890) and the world deleted first, so two runs
+  see the same chunks and one version's result can be compared against another's. Without that a
+  version could pass or fail on terrain luck.
+
+If a rebuild is slow again, `cargo build --timings` writes a report naming the crate responsible.
+That is how the registry macro was found emitting one token per byte of baked data, which alone was
+88% of every rebuild.

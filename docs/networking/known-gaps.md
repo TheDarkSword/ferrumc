@@ -16,8 +16,19 @@ Caused by: java.lang.IndexOutOfBoundsException: Index (0) is greater than or equ
 
 A section reports blocks but its palette reads as empty.
 
-**Leading explanation: remapping collapses palette entries without rebuilding the indices that
-point at them.** A section's palette is translated entry by entry, and the block state space
+**Ruled out: the palette used to keep duplicate entries after translation.** The block state space
+shrinks going backwards — 1335 targets in 1.21.4 receive more than one 26.2 state, and `stone` alone
+receives 1120 — so a palette holding several states that all become stone ended up with duplicates,
+which a reader keying on the id would have shortened. `PalettedContainer::from_paletted` now
+deduplicates and rewrites the indices, collapsing to a single-valued section where everything
+merges. It did not fix this failure.
+
+**Also ruled out: terrain luck.** The seed used to be redrawn every launch, so two runs saw
+different chunks and a version could pass or fail by accident. The seed is now configurable and
+recorded with the world, and `check_versions.sh` pins it. The failure is reproducible and genuinely
+version-dependent.
+
+**Still unexplained.** A section's palette is translated entry by entry, and the block state space
 shrinks going backwards — 32366 states in 26.2 become 27855 distinct ones in 1.21.4, with 1335
 targets receiving more than one source state and `stone` alone receiving 1120. A palette holding
 several states that all become stone therefore ends up with duplicate entries. A reader that keys
