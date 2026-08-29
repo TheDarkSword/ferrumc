@@ -23,6 +23,10 @@ pub(crate) fn build_mapping(_: proc_macro::TokenStream) -> proc_macro::TokenStre
             // `Int`, not a `Long`). `dimension_type` is encoded through a schema-aware converter so
             // every field carries its correct tag; all other registries keep the byte-for-byte
             // output of the previous generic path until they, too, need a schema.
+            //
+            // Defaulting every registry to `Int` was tried and made things worse: a strict client
+            // rejected roughly twice as many `minecraft:enchantment` entries. Each registry needs
+            // its own field tags rather than one blanket rule.
             if reg_entry == "minecraft:dimension_type" {
                 let nbt = dimension_type_to_nbt(value);
                 craftflow_nbt::to_writer(&mut nbt_data_buf, &nbt).unwrap();
