@@ -32,7 +32,8 @@
 //!
 use ferrumc_net_codec::decode::errors::NetDecodeError;
 use ferrumc_net_codec::encode::errors::NetEncodeError;
-use ferrumc_net_codec::encode::{NetEncode, NetEncodeOpts};
+use ferrumc_net_codec::encode::{Framing, NetEncode, NetEncodeOpts};
+use ferrumc_net_codec::version::ProtocolVersion;
 use std::io::Write;
 
 pub mod to_1_21;
@@ -45,6 +46,20 @@ pub mod to_26_1;
 /// What a clientbound hop returns: `None` when the client reads the packet's native form,
 /// otherwise the result of having written the older form.
 pub type Translated = Option<Result<(), NetEncodeError>>;
+
+/// What a serverbound hop produces from a body an older client sent.
+#[derive(Debug)]
+pub enum Upgrade {
+    /// The same packet, in the shape this server reads.
+    Body(Vec<u8>),
+    /// A different packet. Versions split one packet into several - an attack used to be an
+    /// interaction with a flag - so a body sometimes has to be dispatched as something else
+    /// entirely. Which packet is named by `#[upgrade_into(..)]` alongside the translator.
+    Into(Vec<u8>),
+    /// Nothing. An older client sometimes says the same thing twice, once in a packet this server
+    /// no longer has, and acting on both would use the entity twice.
+    Dropped,
+}
 
 /// What a serverbound hop returns: `None` when the client already sends the native form, otherwise
 /// that body rewritten into it.
@@ -104,7 +119,19 @@ pub fn varint_len(body: &[u8], at: usize) -> Result<usize, NetDecodeError> {
     ))
 }
 
-pub type Upgraded = Option<Result<Vec<u8>, NetDecodeError>>;
+/// Builds the body a serverbound hop produces, so the one place an encoding failure can happen on
+/// the decode path reports it the same way every time.
+pub fn upgraded_body(
+    version: ProtocolVersion,
+    write: impl FnOnce(&mut Vec<u8>, &NetEncodeOpts) -> Result<(), NetEncodeError>,
+) -> Result<Vec<u8>, NetDecodeError> {
+    let mut body = Vec::new();
+    let opts = NetEncodeOpts::new(Framing::None, version);
+    write(&mut body, &opts).map_err(|err| NetDecodeError::ExternalError(Box::new(err)))?;
+    Ok(body)
+}
+
+pub type Upgraded = Option<Result<Upgrade, NetDecodeError>>;
 
 /// A packet body under construction, as the ordered fields a client will read.
 ///

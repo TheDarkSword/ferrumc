@@ -33,7 +33,7 @@ pub fn net_encode(input: TokenStream) -> TokenStream {
     net::encode::derive(input)
 }
 
-#[proc_macro_derive(NetDecode, attributes(net, upgrade_with))]
+#[proc_macro_derive(NetDecode, attributes(net, upgrade_with, upgrade_into))]
 pub fn net_decode(input: TokenStream) -> TokenStream {
     net::decode::derive(input)
 }

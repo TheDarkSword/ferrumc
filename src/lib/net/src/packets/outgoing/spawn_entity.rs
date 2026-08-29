@@ -7,15 +7,12 @@ use ferrumc_core::transform::position::Position;
 use ferrumc_core::transform::rotation::Rotation;
 use ferrumc_macros::{get_registry_entry, packet, NetEncode};
 use ferrumc_net_codec::net_types::angle::NetAngle;
+use ferrumc_net_codec::net_types::lp_vec3::LowPrecisionVec3;
 use ferrumc_net_codec::net_types::var_int::VarInt;
 use ferrumc_net_codec::registry_remap::NetworkEntityType;
 
-/// Spawn-time movement, in the compressed vector encoding the packet now uses. A leading zero byte
-/// is the whole encoding for "not moving", which is what every entity spawned here reports.
-///
-// ponytail: only the zero vector is expressible; implementing the packed form (see LpVec3 in the
-// vanilla sources) is required before any entity can be spawned already in motion.
-const NOT_MOVING: u8 = 0;
+/// Spawn-time movement. Nothing spawns in motion yet, and a vector that short is a single byte.
+const NOT_MOVING: LowPrecisionVec3 = LowPrecisionVec3::ZERO;
 
 #[derive(NetEncode)]
 #[packet(packet_id = "add_entity", state = "play")]
@@ -27,7 +24,7 @@ pub struct SpawnEntityPacket {
     pub x: f64,
     pub y: f64,
     pub z: f64,
-    pub movement: u8,
+    pub movement: LowPrecisionVec3,
     pub pitch: NetAngle,
     pub yaw: NetAngle,
     pub head_yaw: NetAngle,

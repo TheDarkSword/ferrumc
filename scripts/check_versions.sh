@@ -51,15 +51,29 @@ until ss -ltn 2>/dev/null | grep -q ':25565'; do sleep 1; done
 # started at once on a port of its own rather than one after another.
 port=25600
 for version in "${VERSIONS[@]}"; do
-  java -jar "$PROXY" cli --bind-address "127.0.0.1:$port" --target-address 127.0.0.1:25565 \
-    --target-version "$version" --proxy-online-mode false > "$WORK/proxy-$version.log" 2>&1 &
+  # Each proxy rewrites its own config files on startup, through a temp file and a rename, so two
+  # of them sharing a working directory race and the loser dies on a file that is no longer there.
+  mkdir -p "$WORK/run-$version"
+  (cd "$WORK/run-$version" && java -jar "$PROXY" cli --bind-address "127.0.0.1:$port" \
+    --target-address 127.0.0.1:25565 --target-version "$version" --proxy-online-mode false \
+    > "$WORK/proxy-$version.log" 2>&1) &
   PROXY_PIDS+=($!)
   port=$((port + 1))
 done
 
 port=25600
+DEAD=()
 for version in "${VERSIONS[@]}"; do
-  until ss -ltn 2>/dev/null | grep -q ":$port"; do sleep 1; done
+  # A proxy that failed to start would otherwise be waited on for ever.
+  waited=0
+  until ss -ltn 2>/dev/null | grep -q ":$port"; do
+    sleep 1
+    waited=$((waited + 1))
+    if [ "$waited" -ge 90 ]; then
+      DEAD+=("$version")
+      break
+    fi
+  done
   port=$((port + 1))
 done
 
@@ -69,6 +83,11 @@ for version in "${VERSIONS[@]}"; do
   # Whether the bot reached the play state, which every version can report. The server's own
   # "loaded at" cannot be used: it comes from `player_loaded`, a packet 1.21 and 1.21.2 do not have.
   # A bot that is going to join does so in a couple of seconds; the rest is only waiting.
+  if [[ " ${DEAD[*]} " == *" $version "* ]]; then
+    printf '%-10s %-16s %s\n' "$version" "no proxy" "its proxy never came up"
+    port=$((port + 1))
+    continue
+  fi
   (cd "$ROOT/tools/stress-bot" && timeout 12 cargo run -q -- \
     --server "127.0.0.1:$port" --bots 1 --stats-interval-secs 3 > "$WORK/bot-$version.log" 2>&1)
   joined=$(grep -oE 'joins=[0-9]+' "$WORK/bot-$version.log" | tail -1 | cut -d= -f2)

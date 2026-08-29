@@ -1,42 +1,25 @@
 //! Interact Entity packet.
 //!
-//! Sent when a player interacts with another entity (attack, use, etc).
+//! Sent when a player uses an entity. Attacking one is [`super::attack::AttackEntity`], which 26.1
+//! split out of this packet; an older client sends both as an interaction with an action field,
+//! and the translator sorts them out.
 
 use ferrumc_macros::{packet, NetDecode};
+use ferrumc_net_codec::net_types::lp_vec3::LowPrecisionVec3;
 use ferrumc_net_codec::net_types::var_int::VarInt;
 
-/// Interaction types for the interact packet.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, NetDecode)]
-#[net(type_cast = "VarInt", type_cast_handler = "value.0 as u8")]
-#[repr(u8)]
-pub enum InteractionType {
-    /// Interact with the entity (right-click)
-    Interact = 0,
-    /// Attack the entity (left-click)
-    Attack = 1,
-    /// Interact at a specific position
-    InteractAt = 2,
-}
-
 /// Sent when a player interacts with an entity.
-///
-/// This packet is used for both attacking (left-click) and interacting (right-click).
 #[derive(NetDecode, Debug)]
+#[upgrade_with(crate::translate::to_1_21_11::interact)]
+#[upgrade_into(crate::packets::incoming::attack::AttackEntity)]
 #[packet(packet_id = "interact", state = "play")]
 pub struct InteractEntity {
-    /// The entity ID being interacted with
+    /// The entity being interacted with.
     pub entity_id: VarInt,
-    /// The type of interaction
-    pub interaction_type: InteractionType,
-    // Note: interact_at has additional target_x, target_y, target_z, hand fields
-    // For now we'll only handle the attack case properly
-    /// Whether the player is sneaking
-    pub sneaking: bool,
-}
-
-impl InteractEntity {
-    /// Check if this is an attack interaction.
-    pub fn is_attack(&self) -> bool {
-        self.interaction_type == InteractionType::Attack
-    }
+    /// Which hand was used.
+    pub hand: VarInt,
+    /// Where on the entity, relative to it. Zero where the client did not aim at a point.
+    pub location: LowPrecisionVec3,
+    /// Whether the player was sneaking, which selects the secondary interaction.
+    pub using_secondary_action: bool,
 }

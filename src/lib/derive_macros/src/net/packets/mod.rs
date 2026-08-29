@@ -205,28 +205,73 @@ pub fn setup_packet_handling(input: TokenStream) -> TokenStream {
                         attr.parse_args::<syn::Path>()
                             .expect("#[upgrade_with(..)] takes a path to a translator function")
                     });
-                let decode = match upgrade {
+                // A packet an older client sends as something else names where its body goes.
+                let into = item_struct
+                    .attrs
+                    .iter()
+                    .find(|attr| attr.path().is_ident("upgrade_into"))
+                    .map(|attr| {
+                        attr.parse_args::<syn::Path>()
+                            .expect("#[upgrade_into(..)] takes a path to another packet")
+                    });
+
+                let native = quote! {
+                    let packet = <#struct_path as ferrumc_net_codec::decode::NetDecode>::decode(cursor, &ferrumc_net_codec::decode::NetDecodeOpts::None)?;
+                    packet_sender.#field_name.send((packet, entity)).expect("Failed to send packet");
+                };
+                let from_body = quote! {
+                    let packet = <#struct_path as ferrumc_net_codec::decode::NetDecode>::decode(
+                        &mut std::io::Cursor::new(body),
+                        &ferrumc_net_codec::decode::NetDecodeOpts::None,
+                    )?;
+                    packet_sender.#field_name.send((packet, entity)).expect("Failed to send packet");
+                };
+                let redirected = match &into {
+                    Some(into_path) => {
+                        let into_name = into_path
+                            .segments
+                            .last()
+                            .expect("#[upgrade_into(..)] needs a struct name")
+                            .ident
+                            .to_string();
+                        let into_field = syn::parse_str::<syn::Ident>(&to_snake_case(&into_name))
+                            .expect("to_snake_case failed");
+                        quote! {
+                            crate::translate::Upgrade::Into(body) => {
+                                let packet = <#into_path as ferrumc_net_codec::decode::NetDecode>::decode(
+                                    &mut std::io::Cursor::new(body),
+                                    &ferrumc_net_codec::decode::NetDecodeOpts::None,
+                                )?;
+                                packet_sender.#into_field.send((packet, entity)).expect("Failed to send packet");
+                            }
+                        }
+                    }
+                    None => quote! {
+                        crate::translate::Upgrade::Into(_) => unreachable!(
+                            "this packet's translator has no #[upgrade_into(..)] to send it to"
+                        ),
+                    },
+                };
+                let handle = match upgrade {
                     Some(path) => quote! {
                         match #path(cursor, version) {
-                            Some(body) => <#struct_path as ferrumc_net_codec::decode::NetDecode>::decode(
-                                &mut std::io::Cursor::new(body?),
-                                &ferrumc_net_codec::decode::NetDecodeOpts::None,
-                            )?,
-                            None => <#struct_path as ferrumc_net_codec::decode::NetDecode>::decode(cursor, &ferrumc_net_codec::decode::NetDecodeOpts::None)?,
+                            Some(upgraded) => match upgraded? {
+                                crate::translate::Upgrade::Body(body) => { #from_body }
+                                crate::translate::Upgrade::Dropped => {}
+                                #redirected
+                            },
+                            None => { #native }
                         }
                     },
-                    None => quote! {
-                        <#struct_path as ferrumc_net_codec::decode::NetDecode>::decode(cursor, &ferrumc_net_codec::decode::NetDecodeOpts::None)?
-                    },
+                    None => native,
                 };
 
                 match_arms.push(quote! {
-                        #(#pairs)|* => {
-                            let packet = #decode;
-                            packet_sender.#field_name.send((packet, entity)).expect("Failed to send packet");
-                            Ok(())
-                        },
-                    });
+                    #(#pairs)|* => {
+                        #handle
+                        Ok(())
+                    },
+                });
             }
         }
     }

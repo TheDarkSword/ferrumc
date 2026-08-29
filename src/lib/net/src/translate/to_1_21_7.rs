@@ -10,6 +10,9 @@ use std::io::Write;
 /// The boundary this hop is about: everything below it predates 1.21.9's changes.
 const NATIVE: ProtocolVersion = ProtocolVersion::V1_21_9;
 
+/// A velocity short counts eighth-thousandths of a block a tick.
+const VELOCITY_UNITS: f64 = 8000.0;
+
 /// 1.21.9 moved an entity's spawn movement ahead of its rotations and replaced the three velocity
 /// shorts with a compressed vector. Older clients read the shorts, at the end, after the data
 /// field.
@@ -35,9 +38,10 @@ pub fn add_entity<W: Write>(
         packet.yaw.encode(writer, &opts.nested())?;
         packet.head_yaw.encode(writer, &opts.nested())?;
         packet.data.encode(writer, &opts.nested())?;
-        // Every entity is spawned at rest, which the older form says with three zero shorts.
-        for _ in 0..3 {
-            0i16.encode(writer, &opts.nested())?;
+        // The older form carries velocity as three shorts, in eight-thousandths of a block a tick.
+        for axis in [packet.movement.x, packet.movement.y, packet.movement.z] {
+            let ticks = (axis * VELOCITY_UNITS).clamp(f64::from(i16::MIN), f64::from(i16::MAX));
+            (ticks as i16).encode(writer, &opts.nested())?;
         }
         Ok(())
     })())

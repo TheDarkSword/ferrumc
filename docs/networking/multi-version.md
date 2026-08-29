@@ -67,9 +67,36 @@ packet only exists once it has reached its native form:
 pub fn client_information<R: Read>(reader: &mut R, version: ProtocolVersion) -> Upgraded
 ```
 
-Only bodies need this. Ids are matched per version when the packet is dispatched.
+A hop can also say the body is a different packet now, or that it should not be acted on at all:
 
-Most serverbound bodies that differ are not translated yet; see [Known gaps](known-gaps.md).
+```rust
+pub enum Upgrade { Body(Vec<u8>), Into(Vec<u8>), Dropped }
+```
+
+`Into` goes to the packet named by `#[upgrade_into(..)]` next to the translator — 26.1 split the
+attack out of the interaction, so an older client's attack arrives as an interaction and has to be
+dispatched as an attack. `Dropped` is for a gesture an older client reports twice.
+
+## Ids
+
+A hop writes its own packet id, because a downgrade is sometimes onto a different packet rather
+than an older shape of the same one: what 26.2 sends as an `entity_position_sync` reaches 1.21 as a
+`teleport_entity`. Where no hop fires, the id comes from the generated tables.
+
+A packet Mojang merely renamed needs no hop; the rename is recorded next to the tables so a lookup
+that misses the current name retries the older ones.
+
+## Registry ids
+
+Items, entity types, sounds and particles travel as bare indices into registries that grow between
+releases, so those ids shift too. `NetworkItemId`, `NetworkEntityType`, `NetworkSound` and
+`NetworkParticle` translate as they are encoded, from tables built by
+`scripts/build_registry_remap.py`.
+
+An id the target version has nothing for is handled differently per registry: an item takes a
+stand-in from the same family, since a container slot has to hold something, while the rest refuse
+to encode and the send paths drop that packet for that one recipient. A wrong entity or sound is
+worse than none.
 
 ## Block states
 

@@ -1,47 +1,45 @@
 pub mod ack_finish_configuration;
+pub mod attack;
+pub mod change_difficulty;
+pub mod change_game_mode;
+pub mod chat_message;
+pub mod chunk_batch_ack;
+pub mod click_container;
+pub mod client_command;
 pub mod client_information;
+pub mod client_tick_end;
+pub mod close_container;
+pub mod command;
+pub mod command_suggestion_request;
+pub mod confirm_player_teleport;
+pub mod encryption_response;
 pub mod handshake;
+pub mod interact;
+pub mod keep_alive;
 pub mod login_acknowledged;
 pub mod login_start;
+pub mod move_player_status_only;
+pub mod move_vehicle;
+pub mod packet_skeleton;
+pub mod pick_item_from_block;
+pub mod pick_item_from_entity;
 pub mod ping;
+pub mod place_block;
+pub mod place_recipe;
+pub mod player_abilities;
+pub mod player_action;
+pub mod player_command;
+pub mod player_input;
+pub mod player_loaded;
+pub mod recipe_book_seen_recipe;
+pub mod rename_item;
 pub mod server_bound_known_packs;
 pub mod server_bound_plugin_message;
-pub mod status_request;
-
-pub mod keep_alive;
-pub mod packet_skeleton;
-
-pub mod place_block;
-pub mod player_command;
+pub mod set_creative_mode_slot;
+pub mod set_held_item;
 pub mod set_player_position;
 pub mod set_player_position_and_rotation;
 pub mod set_player_rotation;
-
-pub mod chat_message;
-pub mod command;
-pub mod command_suggestion_request;
-
+pub mod status_request;
 pub mod swing_arm;
-
-pub mod chunk_batch_ack;
-
-pub mod pick_item_from_block;
-pub mod player_abilities;
-pub mod player_action;
-
-pub mod client_tick_end;
-pub mod confirm_player_teleport;
-pub mod player_input;
-
-pub mod player_loaded;
-pub mod set_creative_mode_slot;
-
-pub mod set_held_item;
-
-pub mod change_game_mode;
-pub mod click_container;
-pub mod client_command;
-pub mod close_container;
-pub mod encryption_response;
-pub mod interact;
 pub mod use_item;

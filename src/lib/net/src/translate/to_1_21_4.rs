@@ -81,6 +81,6 @@ pub fn chat<R: std::io::Read>(reader: &mut R, version: ProtocolVersion) -> Upgra
         let mut body = Vec::new();
         reader.read_to_end(&mut body)?;
         body.push(NO_CHECKSUM);
-        Ok(body)
+        Ok(super::Upgrade::Body(body))
     })())
 }

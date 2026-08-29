@@ -1,9 +1,14 @@
 //! Everything 26.1 changed that a client on 1.21.11 or older does not read.
 
-use super::Translated;
+use super::{Translated, Upgrade, Upgraded};
 use crate::packets::outgoing::update_time::UpdateTimePacket;
+use ferrumc_net_codec::decode::errors::NetDecodeError;
+use ferrumc_net_codec::decode::{NetDecode, NetDecodeOpts};
 use ferrumc_net_codec::encode::{NetEncode, NetEncodeOpts};
+use ferrumc_net_codec::net_types::lp_vec3::LowPrecisionVec3;
+use ferrumc_net_codec::net_types::var_int::VarInt;
 use ferrumc_net_codec::version::ProtocolVersion;
+use std::io::Read;
 use std::io::Write;
 
 /// The boundary this hop is about: everything below it predates 26.1's changes.
@@ -46,6 +51,58 @@ pub fn set_time<W: Write>(
             advancing.encode(writer, &opts.nested())?;
         }
         Ok(())
+    })())
+}
+
+/// What the action field meant before 26.1 split the packet up.
+const INTERACT: i32 = 0;
+const ATTACK: i32 = 1;
+const INTERACT_AT: i32 = 2;
+
+/// 26.1 split the interaction in two: an attack became its own packet, and the aimed-at point
+/// moved into the interaction itself as a packed vector.
+///
+/// A client older than that sends an `interact_at` and then a plain `interact` for the same
+/// gesture. Only the first carries the point, and acting on both would use the entity twice, so
+/// the second is dropped.
+///
+/// Vanilla turns a spectator's attack into a spectate instead. Spectator mode is not tracked here
+/// yet, so an attack stays an attack; see `docs/networking/known-gaps.md`.
+pub fn interact<R: Read>(reader: &mut R, version: ProtocolVersion) -> Upgraded {
+    if version >= NATIVE {
+        return None;
+    }
+    Some((|| {
+        let opts = NetDecodeOpts::None;
+        let entity_id = VarInt::decode(reader, &opts)?;
+        let action = VarInt::decode(reader, &opts)?;
+        match action.0 {
+            ATTACK => Ok(Upgrade::Into(super::upgraded_body(
+                version,
+                |body, opts| entity_id.encode(body, opts),
+            )?)),
+            INTERACT => Ok(Upgrade::Dropped),
+            INTERACT_AT => {
+                let x = f32::decode(reader, &opts)?;
+                let y = f32::decode(reader, &opts)?;
+                let z = f32::decode(reader, &opts)?;
+                let hand = VarInt::decode(reader, &opts)?;
+                let secondary = bool::decode(reader, &opts)?;
+                Ok(Upgrade::Body(super::upgraded_body(
+                    version,
+                    |body, opts| {
+                        entity_id.encode(body, opts)?;
+                        hand.encode(body, opts)?;
+                        LowPrecisionVec3::new(f64::from(x), f64::from(y), f64::from(z))
+                            .encode(body, opts)?;
+                        secondary.encode(body, opts)
+                    },
+                )?))
+            }
+            other => Err(NetDecodeError::ExternalError(
+                format!("interaction {other} is not one this server knows").into(),
+            )),
+        }
     })())
 }
 

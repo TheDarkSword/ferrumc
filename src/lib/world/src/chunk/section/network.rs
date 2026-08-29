@@ -18,11 +18,6 @@ pub struct PalettedContainer<'section> {
     data_array: NetworkArray<'section, u64>,
 }
 
-/// The release that stopped prefixing a section's packed values with their length, because it can
-/// be derived from the entry width. Older clients still read that length, and without it they take
-/// the first long as a count and everything after the section is garbage.
-const UNPREFIXED_VALUES_SINCE: ProtocolVersion = ProtocolVersion::V1_21_5;
-
 impl NetEncode for PalettedContainer<'_> {
     fn encode<W: std::io::Write>(
         &self,
@@ -51,10 +46,10 @@ impl NetEncode for PalettedContainer<'_> {
 
 impl PalettedContainer<'_> {
     fn values_opts(&self, opts: &NetEncodeOpts) -> NetEncodeOpts {
-        if opts.version >= UNPREFIXED_VALUES_SINCE {
-            opts.nested()
-        } else {
+        if opts.version.section_values_are_length_prefixed() {
             opts.framed(Framing::SizePrefixed)
+        } else {
+            opts.nested()
         }
     }
 }
@@ -72,11 +67,6 @@ pub enum NetworkPalette {
         // No values
     },
 }
-
-/// The release that added a fluid count to every section. Sections are packed into an opaque byte
-/// run before the chunk packet exists, so a packet-level translator cannot reach inside them; the
-/// boundary has to be honoured here instead. See `ferrumc_net::translate`.
-const FLUID_COUNT_SINCE: ProtocolVersion = ProtocolVersion::V26_1;
 
 #[derive(NetEncode)]
 pub struct NetworkSection<'section> {
@@ -236,7 +226,7 @@ impl<'section> NetworkSection<'section> {
     pub fn new(value: &'section ChunkSection, version: ProtocolVersion) -> Self {
         Self {
             block_count: value.block_count(),
-            fluid_count: (version >= FLUID_COUNT_SINCE).then(|| value.fluid_count()),
+            fluid_count: version.sections_count_fluids().then(|| value.fluid_count()),
             block_states: PalettedContainer::from_section(value, version),
             biomes: PalettedContainer::from_biomes(&value.biome, version),
         }

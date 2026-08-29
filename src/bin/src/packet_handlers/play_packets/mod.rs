@@ -18,6 +18,7 @@ mod set_player_position;
 mod set_player_position_and_rotation;
 mod set_player_rotation;
 mod swing_arm;
+mod unhandled;
 
 pub fn register_packet_handlers(schedule: &mut Schedule) {
     // Added separately so if we mess up the signature of one of the systems we can know exactly
@@ -36,6 +37,7 @@ pub fn register_packet_handlers(schedule: &mut Schedule) {
     schedule.add_systems(update_survival_mode_slot::handle);
     schedule.add_systems(close_container::handle);
     schedule.add_systems(player_loaded::handle);
+    schedule.add_systems(unhandled::handle);
     schedule.add_systems(command::handle);
     schedule.add_systems(command_suggestions::handle);
     schedule.add_systems(chat_message::handle);

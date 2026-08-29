@@ -96,7 +96,7 @@ pub fn client_information<R: Read>(reader: &mut R, version: ProtocolVersion) -> 
         let mut body = Vec::new();
         reader.read_to_end(&mut body)?;
         body.push(PARTICLE_STATUS_ALL);
-        Ok(body)
+        Ok(super::Upgrade::Body(body))
     })())
 }
 
@@ -257,7 +257,7 @@ pub fn use_item_on<R: Read>(reader: &mut R, version: ProtocolVersion) -> Upgrade
             ));
         }
         body.insert(at, WORLD_BORDER_NOT_HIT);
-        Ok(body)
+        Ok(super::Upgrade::Body(body))
     })())
 }
 
@@ -282,7 +282,7 @@ pub fn container_close<R: Read>(reader: &mut R, version: ProtocolVersion) -> Upg
                 &NetEncodeOpts::new(ferrumc_net_codec::encode::Framing::None, version),
             )
             .map_err(|err| NetDecodeError::ExternalError(Box::new(err)))?;
-        Ok(out)
+        Ok(super::Upgrade::Body(out))
     })())
 }
 
@@ -340,7 +340,7 @@ pub fn player_input<R: Read>(reader: &mut R, version: ProtocolVersion) -> Upgrad
         if old & OLD_SNEAK != 0 {
             flags |= SNEAK;
         }
-        Ok(vec![flags])
+        Ok(super::Upgrade::Body(vec![flags]))
     })())
 }
 
@@ -348,6 +348,7 @@ pub fn player_input<R: Read>(reader: &mut R, version: ProtocolVersion) -> Upgrad
 mod tests {
     use super::*;
     use crate::packets::outgoing::login_play::LoginPlayPacket;
+    use crate::translate::Upgrade;
     use ferrumc_net_codec::encode::{Framing, NetEncode, NetEncodeOpts};
 
     fn encoded_for(version: ProtocolVersion) -> Vec<u8> {
@@ -362,6 +363,17 @@ mod tests {
         encoded_for(version).len()
     }
 
+    /// The body a hop rewrote, for a test that does not care which packet it became.
+    fn body_of(upgraded: Upgraded) -> Vec<u8> {
+        match upgraded
+            .expect("this version is translated")
+            .expect("translates")
+        {
+            Upgrade::Body(body) | Upgrade::Into(body) => body,
+            Upgrade::Dropped => panic!("the packet was dropped"),
+        }
+    }
+
     /// The two axes only survive as a direction each, and jump and sneak move to new bits.
     #[test]
     fn the_movement_axes_become_flags() {
@@ -369,9 +381,7 @@ mod tests {
             let mut body = sideways.to_be_bytes().to_vec();
             body.extend(forward.to_be_bytes());
             body.push(old);
-            player_input(&mut body.as_slice(), ProtocolVersion::V1_21)
-                .expect("1.21 is translated")
-                .expect("translates")[0]
+            body_of(player_input(&mut body.as_slice(), ProtocolVersion::V1_21))[0]
         };
 
         assert_eq!(input(0.0, 1.0, 0), FORWARD);
@@ -403,9 +413,7 @@ mod tests {
         body.push(1);
         body.push(42);
 
-        let out = use_item_on(&mut body.as_slice(), ProtocolVersion::V1_21)
-            .expect("1.21 is translated")
-            .expect("translates");
+        let out = body_of(use_item_on(&mut body.as_slice(), ProtocolVersion::V1_21));
 
         assert_eq!(out.len(), body.len() + 1);
         assert_eq!(out[out.len() - 2], WORLD_BORDER_NOT_HIT);
@@ -420,9 +428,10 @@ mod tests {
     /// what that is.
     #[test]
     fn a_negative_container_id_survives_widening() {
-        let out = container_close(&mut [0xFFu8].as_slice(), ProtocolVersion::V1_21)
-            .expect("1.21 is translated")
-            .expect("translates");
+        let out = body_of(container_close(
+            &mut [0xFFu8].as_slice(),
+            ProtocolVersion::V1_21,
+        ));
         assert_eq!(out, vec![0xFF, 0xFF, 0xFF, 0xFF, 0x0F], "-1 as a varint");
     }
 

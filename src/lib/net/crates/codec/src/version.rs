@@ -101,6 +101,25 @@ impl ProtocolVersion {
         }
     }
 
+    /// Whether a chunk section's packed block data carries its own length.
+    ///
+    /// The length follows from the palette width and the section size, so from 1.21.5 it is left
+    /// out. A client older than that reads the first long as a count, and everything after it one
+    /// entry short.
+    #[must_use]
+    pub const fn section_values_are_length_prefixed(self) -> bool {
+        (self as u8) < (Self::V1_21_5 as u8)
+    }
+
+    /// Whether a chunk section states how many of its blocks are fluid.
+    ///
+    /// Added in 26.1 for the client's own fluid ticking. Sending it to anything older leaves two
+    /// bytes in front of the biome container.
+    #[must_use]
+    pub const fn sections_count_fluids(self) -> bool {
+        (self as u8) >= (Self::V26_1 as u8)
+    }
+
     /// Index into the per-version tables the packet id codegen produces.
     #[must_use]
     pub const fn index(self) -> usize {

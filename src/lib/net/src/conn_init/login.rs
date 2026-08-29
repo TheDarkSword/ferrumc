@@ -280,10 +280,17 @@ async fn receive_client_information(
         }));
     }
 
+    // Configuration packets are read here rather than through the play dispatch, so this is the
+    // one place a translator is applied by hand.
     let client_info = match crate::translate::to_1_21::client_information(&mut skel.data, version) {
-        Some(body) => {
-            ClientInformation::decode(&mut std::io::Cursor::new(body?), &NetDecodeOpts::None)?
-        }
+        Some(upgraded) => match upgraded? {
+            crate::translate::Upgrade::Body(body) => {
+                ClientInformation::decode(&mut std::io::Cursor::new(body), &NetDecodeOpts::None)?
+            }
+            other => unreachable!(
+                "client information is only ever rewritten in place, not turned into {other:?}"
+            ),
+        },
         None => ClientInformation::decode(&mut skel.data, &NetDecodeOpts::None)?,
     };
 
