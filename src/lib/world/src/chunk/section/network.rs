@@ -104,7 +104,7 @@ impl<'section> PalettedContainer<'section> {
         // client decoded every block as 0, which is what made e.g. lava sections render with
         // water's texture on the initial chunk send.
         PalettedContainer {
-            bits_per_entry: 16,
+            bits_per_entry: crate::chunk::section::direct::GLOBAL_PALETTE_BITS,
             palette: NetworkPalette::Direct {},
             data_array: NetworkArray::new_owned(section.to_network_longs(version)),
         }

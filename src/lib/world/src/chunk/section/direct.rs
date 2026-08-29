@@ -8,6 +8,14 @@ use deepsize::DeepSizeOf;
 use ferrumc_net_codec::version::ProtocolVersion;
 
 // Currently there are less block state ids than u16::MAX, so we can store ids as u16s to cut down on memory usage
+/// Width of an entry in a section carrying global block state ids rather than a palette.
+///
+/// This is not free: it is `ceil(log2(block state count))`, and a client sizes its reads by it.
+/// Every version this server speaks has between 26684 and 32366 block states, so all of them use
+/// fifteen bits. Declaring sixteen packed the same four entries per long but told the client the
+/// wrong width, and a translating proxy then read an empty palette out of the section.
+pub const GLOBAL_PALETTE_BITS: u8 = 15;
+
 type CompactBlockStateId = u16;
 
 const AIR_COMPACT: CompactBlockStateId = AIR.raw() as CompactBlockStateId;
@@ -57,13 +65,13 @@ impl DirectSection {
     /// Packs every block id into the chunk-packet "data array" layout: a stream of u64s with
     /// 16-bit entries, lowest index in the low bits, no spillover across longs.
     ///
-    /// `bits_per_entry` is fixed at 16 for direct sections (we ship the global palette id), so
-    /// exactly four entries fit in each long. We could in theory `bytemuck::cast_slice::<u16,
+    /// Entries are [`GLOBAL_PALETTE_BITS`] wide, so four fit in each long with the top bits
+    /// unused; vanilla never lets an entry span two longs. We could in theory `bytemuck::cast_slice::<u16,
     /// u64>` the inner buffer, but that would assume a specific host endianness; the explicit
     /// shift below is portable and not on a hot path (chunk send, not per-tick).
     pub fn to_network_longs(&self, version: ProtocolVersion) -> Vec<u64> {
-        const ENTRIES_PER_LONG: usize = 4;
-        const BITS_PER_ENTRY: usize = 16;
+        const ENTRIES_PER_LONG: usize = 64 / GLOBAL_PALETTE_BITS as usize;
+        const BITS_PER_ENTRY: usize = GLOBAL_PALETTE_BITS as usize;
         let mut out = vec![0u64; CHUNK_SECTION_LENGTH / ENTRIES_PER_LONG];
         for (i, &id) in self.0.iter().enumerate() {
             let long_idx = i / ENTRIES_PER_LONG;
@@ -120,7 +128,7 @@ mod tests {
             (2, 3),
             (3, 4),      // first long
             (4, 100),    // second long, low entry
-            (7, 0xFFFF), // second long, high entry (max representable)
+            (7, 32_767), // second long, the widest id fifteen bits can carry
             (4095, 7),   // last cell
         ];
         for &(idx, id) in samples {
@@ -130,12 +138,14 @@ mod tests {
         let longs = section.to_network_longs(ProtocolVersion::CURRENT);
         assert_eq!(longs.len(), CHUNK_SECTION_LENGTH / 4);
 
-        // Manually decode each long (4 entries of 16 bits, lowest index in the low bits) and
-        // compare against the section's stored ids.
+        // Manually decode each long (four entries, lowest index in the low bits) and compare
+        // against the section's stored ids.
         for (long_idx, _) in longs.iter().enumerate() {
             for entry in 0..4 {
                 let block_idx = long_idx * 4 + entry;
-                let decoded = ((longs[long_idx] >> (entry * 16)) & 0xFFFF) as u32;
+                let width = u32::from(GLOBAL_PALETTE_BITS);
+                let mask = (1u64 << width) - 1;
+                let decoded = ((longs[long_idx] >> (entry as u32 * width)) & mask) as u32;
                 assert_eq!(
                     decoded,
                     section.get_block(block_idx).raw(),

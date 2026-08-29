@@ -12,7 +12,7 @@ use deepsize::DeepSizeOf;
 use ferrumc_macros::block;
 
 pub(crate) mod biome;
-mod direct;
+pub mod direct;
 pub mod network;
 mod paletted;
 mod uniform;

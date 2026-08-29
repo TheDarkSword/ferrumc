@@ -18,18 +18,19 @@ const NOT_MOVING: u8 = 0;
 
 #[derive(NetEncode)]
 #[packet(packet_id = "add_entity", state = "play")]
+#[downgrade_with(crate::translate::to_1_21_7::add_entity)]
 pub struct SpawnEntityPacket {
-    entity_id: VarInt,
-    entity_uuid: u128,
-    r#type: VarInt,
-    x: f64,
-    y: f64,
-    z: f64,
-    movement: u8,
-    pitch: NetAngle,
-    yaw: NetAngle,
-    head_yaw: NetAngle,
-    data: VarInt,
+    pub entity_id: VarInt,
+    pub entity_uuid: u128,
+    pub entity_type: VarInt,
+    pub x: f64,
+    pub y: f64,
+    pub z: f64,
+    pub movement: u8,
+    pub pitch: NetAngle,
+    pub yaw: NetAngle,
+    pub head_yaw: NetAngle,
+    pub data: VarInt,
 }
 
 const PLAYER_ID: u64 = get_registry_entry!("minecraft:entity_type.entries.minecraft:player");
@@ -52,7 +53,7 @@ impl SpawnEntityPacket {
         Self {
             entity_id: VarInt::new(entity_id),
             entity_uuid,
-            r#type: VarInt::new(entity_type_id),
+            entity_type: VarInt::new(entity_type_id),
             x,
             y,
             z,
@@ -78,7 +79,7 @@ impl SpawnEntityPacket {
         Ok(Self {
             entity_id: VarInt::new(player_identity.short_uuid),
             entity_uuid: player_identity.uuid.as_u128(),
-            r#type: VarInt::new(PLAYER_ID as i32),
+            entity_type: VarInt::new(PLAYER_ID as i32),
             x,
             y,
             z,
@@ -112,7 +113,7 @@ impl SpawnEntityPacket {
         Ok(Self {
             entity_id: VarInt::new(identity.entity_id),
             entity_uuid: identity.uuid.as_u128(),
-            r#type: VarInt::new(entity_type_id as i32),
+            entity_type: VarInt::new(entity_type_id as i32),
             x,
             y,
             z,

@@ -34,6 +34,7 @@ use ferrumc_net_codec::encode::errors::NetEncodeError;
 
 pub mod to_1_21_11;
 pub mod to_1_21_4;
+pub mod to_1_21_7;
 pub mod to_26_1;
 
 /// What a hop returns: `None` when the client reads the packet's native form, otherwise the result
