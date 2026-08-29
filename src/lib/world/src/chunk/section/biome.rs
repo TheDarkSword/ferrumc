@@ -7,12 +7,29 @@ use deepsize::DeepSizeOf;
 #[derive(Copy, Clone, Encode, Decode, Default, PartialEq, DeepSizeOf, Pod, Zeroable)]
 pub struct BiomeType(pub u8);
 
+/// Width of an entry in a section carrying global biome ids rather than a palette, per supported
+/// version, in the order of [`ProtocolVersion::ALL`].
+///
+/// Like the block palette this is `ceil(log2(count))` of what the version's registry holds, and a
+/// strict reader sizes its reads by it rather than by what the packet declares. 1.21 and 1.21.2
+/// ship 64 biomes; everything above them ships 65 or 66.
+const BIOME_PALETTE_BITS: [u8; 10] = [6, 6, 7, 7, 7, 7, 7, 7, 7, 7];
+
+/// The width a client speaking `version` expects a global biome id to occupy.
+#[must_use]
+pub fn biome_palette_bits(version: ferrumc_net_codec::version::ProtocolVersion) -> u8 {
+    BIOME_PALETTE_BITS[version.index()]
+}
+
 #[derive(Clone, DeepSizeOf, Encode, Decode)]
 pub enum BiomeData {
     Uniform(BiomeType),
     Mixed(Box<[BiomeType]>),
 }
 
+// Per-cell biome access has no caller yet: terrain generation currently fills a section with one
+// biome. Phase 6's biome placement is what will use it.
+#[expect(dead_code)]
 impl BiomeData {
     pub fn new_uniform(value: BiomeType) -> Self {
         BiomeData::Uniform(value)

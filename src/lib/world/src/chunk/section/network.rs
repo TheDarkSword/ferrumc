@@ -1,5 +1,5 @@
 use crate::chunk::remap::block_state_for;
-use crate::chunk::section::biome::BiomeData;
+use crate::chunk::section::biome::{biome_palette_bits, BiomeData};
 use crate::chunk::section::direct::DirectSection;
 use crate::chunk::section::paletted::PalettedSection;
 use crate::chunk::section::uniform::UniformSection;
@@ -121,8 +121,8 @@ impl<'section> PalettedContainer<'section> {
     }
 }
 
-impl<'section> From<&'section BiomeData> for PalettedContainer<'section> {
-    fn from(value: &'section BiomeData) -> Self {
+impl<'section> PalettedContainer<'section> {
+    fn from_biomes(value: &'section BiomeData, version: ProtocolVersion) -> Self {
         match value {
             BiomeData::Uniform(data) => PalettedContainer {
                 bits_per_entry: 0,
@@ -131,11 +131,22 @@ impl<'section> From<&'section BiomeData> for PalettedContainer<'section> {
                 },
                 data_array: NetworkArray::new_owned(vec![]),
             },
-            BiomeData::Mixed(data) => PalettedContainer {
-                bits_per_entry: 8,
-                palette: NetworkPalette::Direct {},
-                data_array: NetworkArray::new_borrowed(bytemuck::cast_slice(data)),
-            },
+            BiomeData::Mixed(data) => {
+                // Packed explicitly rather than reinterpreted: the entries are narrower than a
+                // byte, and casting the backing memory would also assume a host endianness.
+                let bits = u32::from(biome_palette_bits(version));
+                let per_long = 64 / bits as usize;
+                let mut longs = vec![0u64; data.len().div_ceil(per_long)];
+                for (index, biome) in data.iter().enumerate() {
+                    longs[index / per_long] |=
+                        u64::from(biome.0) << ((index % per_long) as u32 * bits);
+                }
+                PalettedContainer {
+                    bits_per_entry: biome_palette_bits(version),
+                    palette: NetworkPalette::Direct {},
+                    data_array: NetworkArray::new_owned(longs),
+                }
+            }
         }
     }
 }
@@ -148,7 +159,7 @@ impl<'section> NetworkSection<'section> {
             block_count: value.block_count(),
             fluid_count: (version >= FLUID_COUNT_SINCE).then(|| value.fluid_count()),
             block_states: PalettedContainer::from_section(value, version),
-            biomes: PalettedContainer::from(&value.biome),
+            biomes: PalettedContainer::from_biomes(&value.biome, version),
         }
     }
 }
