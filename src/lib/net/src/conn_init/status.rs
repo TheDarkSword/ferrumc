@@ -161,8 +161,8 @@ fn get_server_status(state: &GlobalState) -> String {
 
     // Protocol info
     let version = structs::Version {
-        name: "1.21.8",
-        protocol: crate::conn_init::PROTOCOL_VERSION_1_21_8 as u16,
+        name: "26.2",
+        protocol: crate::conn_init::PROTOCOL_VERSION as u16,
     };
 
     // Collect up to 5 players from the active player list

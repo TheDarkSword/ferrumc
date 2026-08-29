@@ -30,9 +30,9 @@ pub(crate) struct LoginResult {
     pub client_information_component: Option<ClientInformationComponent>,
 }
 
-/// Protocol version supported by this server implementation (Minecraft 1.21.8).
+/// Protocol version supported by this server implementation (Minecraft 26.2).
 /// Used for rejecting clients with mismatched versions during handshake.
-pub const PROTOCOL_VERSION_1_21_8: i32 = 772;
+pub const PROTOCOL_VERSION: i32 = 776;
 
 /// Handles the initial handshake sequence from a connecting client.
 ///
@@ -88,11 +88,11 @@ pub async fn handle_handshake(
     let hs_packet = Handshake::decode_async(&mut skel.data, &NetDecodeOpts::None).await?;
 
     // If protocol version is mismatched, handle gracefully or disconnect client.
-    if hs_packet.protocol_version.0 != PROTOCOL_VERSION_1_21_8 {
+    if hs_packet.protocol_version.0 != PROTOCOL_VERSION {
         trace!(
             "Protocol version mismatch: {} != {}",
             hs_packet.protocol_version.0,
-            PROTOCOL_VERSION_1_21_8
+            PROTOCOL_VERSION
         );
         return handle_version_mismatch(hs_packet, conn_read, conn_write, state).await;
     }
@@ -139,7 +139,7 @@ async fn handle_version_mismatch(
             trace!(
                 "Protocol version mismatch during status request: {} != {}",
                 hs_packet.protocol_version.0,
-                PROTOCOL_VERSION_1_21_8
+                PROTOCOL_VERSION
             );
             status(conn_read, conn_write, state).await
         }
@@ -156,18 +156,18 @@ async fn handle_version_mismatch(
             trace!(
                 "Sent login disconnect due to protocol version mismatch: {} != {}",
                 hs_packet.protocol_version.0,
-                PROTOCOL_VERSION_1_21_8
+                PROTOCOL_VERSION
             );
 
             Err(NetError::MismatchedProtocolVersion(
                 hs_packet.protocol_version.0,
-                PROTOCOL_VERSION_1_21_8,
+                PROTOCOL_VERSION,
             ))
         }
         // Unknown or unsupported state: just return a generic mismatch error.
         _ => Err(NetError::MismatchedProtocolVersion(
             hs_packet.protocol_version.0,
-            PROTOCOL_VERSION_1_21_8,
+            PROTOCOL_VERSION,
         )),
     }
 }
@@ -177,8 +177,8 @@ async fn handle_version_mismatch(
 /// # Format
 /// ```text
 /// Your client is outdated!
-/// Please use Minecraft version 1.21.8 to connect to this server.
-/// Server Version: 772 | Your Version: <client_version>
+/// Please use Minecraft version 26.2 to connect to this server.
+/// Server Version: 776 | Your Version: <client_version>
 /// ```
 ///
 /// This message is used in disconnect packets for login attempts with an
@@ -194,14 +194,14 @@ fn get_mismatched_version_message(client_version: i32) -> TextComponent {
         .extra(ComponentBuilder::text("\n\n"))
         .extra(ComponentBuilder::text("Please use Minecraft version ").color(NamedColor::Gray))
         .extra(
-            ComponentBuilder::text("1.21.8")
+            ComponentBuilder::text("26.2")
                 .color(NamedColor::Green)
                 .bold(),
         )
         .extra(ComponentBuilder::text(" to connect to this server.").color(NamedColor::Gray))
         .extra(ComponentBuilder::text("\n\n"))
         .extra(ComponentBuilder::text("Server Version: ").color(NamedColor::DarkGray))
-        .extra(ComponentBuilder::text(PROTOCOL_VERSION_1_21_8.to_string()).color(NamedColor::Aqua))
+        .extra(ComponentBuilder::text(PROTOCOL_VERSION.to_string()).color(NamedColor::Aqua))
         .extra(ComponentBuilder::text(" | Your Version: ").color(NamedColor::DarkGray))
         .extra(ComponentBuilder::text(client_version.to_string()).color(NamedColor::Red))
         .build()
