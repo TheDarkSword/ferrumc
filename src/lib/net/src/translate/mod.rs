@@ -24,13 +24,15 @@
 //!
 //! # Ordering
 //!
-//! A hop function receives the packet in its native form and writes the body for the target
-//! version directly, rather than each hop rewriting the previous hop's output. Where a packet
-//! changed at more than one boundary the lower hop accounts for both — explicitly, in one place.
-//! That keeps every hop readable without an intermediate representation for packets to be
-//! progressively rewritten through.
-
+//! A hop that is the only one to touch a packet writes the older body directly. Where several
+//! boundaries change the same packet the newest one lists the fields once, as a [`Body`], and the
+//! hops below it take that body and apply their own delta — dropping a field, appending one,
+//! replacing one. A field that moved or vanished mid-body therefore costs one line in the hop that
+//! changed it, rather than a second copy of the field list.
+//!
 use ferrumc_net_codec::encode::errors::NetEncodeError;
+use ferrumc_net_codec::encode::{NetEncode, NetEncodeOpts};
+use std::io::Write;
 
 pub mod to_1_21;
 pub mod to_1_21_11;
@@ -41,3 +43,58 @@ pub mod to_26_1;
 /// What a hop returns: `None` when the client reads the packet's native form, otherwise the result
 /// of having written the older form.
 pub type Translated = Option<Result<(), NetEncodeError>>;
+
+/// A packet body under construction, as the ordered fields a client will read.
+///
+/// Hops pass one of these down the chain and edit it by name, which is what lets a boundary drop a
+/// field from the middle without the hops below it restating the fields around it. Only packets
+/// that more than one boundary changes need this; a single hop writes its body directly.
+pub struct Body<'a, W> {
+    fields: Vec<(&'static str, FieldWriter<'a, W>)>,
+}
+
+/// One field of a [`Body`], kept as a closure so a hop can move or drop it without knowing its type.
+type FieldWriter<'a, W> = Box<dyn Fn(&mut W, &NetEncodeOpts) -> Result<(), NetEncodeError> + 'a>;
+
+impl<'a, W: Write> Body<'a, W> {
+    #[must_use]
+    pub fn new() -> Self {
+        Self { fields: Vec::new() }
+    }
+
+    /// Appends a field. The name is what hops below address it by, and matches the packet's own
+    /// field name.
+    #[must_use]
+    pub fn field<T: NetEncode + 'a>(mut self, name: &'static str, value: &'a T) -> Self {
+        self.fields
+            .push((name, Box::new(move |w, opts| value.encode(w, opts))));
+        self
+    }
+
+    /// Drops a field a version does not read.
+    #[must_use]
+    pub fn without(mut self, name: &str) -> Self {
+        let before = self.fields.len();
+        self.fields.retain(|(field, _)| *field != name);
+        debug_assert!(
+            self.fields.len() < before,
+            "`{name}` is not in this body: a hop is addressing a field the version above it \
+             already removed, or the name is misspelt"
+        );
+        self
+    }
+
+    pub fn write(self, writer: &mut W, opts: &NetEncodeOpts) -> Result<(), NetEncodeError> {
+        let opts = opts.nested();
+        for (_, encode) in self.fields {
+            encode(writer, &opts)?;
+        }
+        Ok(())
+    }
+}
+
+impl<W: Write> Default for Body<'_, W> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
