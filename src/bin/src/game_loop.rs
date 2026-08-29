@@ -19,7 +19,7 @@ use crate::systems::physics::register_physics;
 use crate::systems::register_game_systems;
 use crate::systems::shutdown_systems::register_shutdown_systems;
 use bevy_ecs::prelude::World;
-use bevy_ecs::schedule::{ApplyDeferred, ExecutorKind, IntoScheduleConfigs, Schedule};
+use bevy_ecs::schedule::{ApplyDeferred, IntoScheduleConfigs, Schedule, SingleThreadedExecutor};
 use crossbeam_channel::Sender;
 use ferrumc_commands::infrastructure::register_command_systems;
 use ferrumc_config::server_config::get_global_config;
@@ -250,7 +250,7 @@ fn build_timed_scheduler() -> Scheduler {
     // It processes packets, updates players, handles commands, and runs game systems.
     // Uses Burst behavior to catch up if ticks are missed (up to 5 at a time).
     let build_tick = |s: &mut Schedule| {
-        s.set_executor_kind(ExecutorKind::SingleThreaded);
+        s.set_executor(SingleThreadedExecutor::default());
         s.add_systems(crate::systems::tick_counter::handle); // Advance the global tick counter
         register_packet_handlers(s); // Handle incoming packets from players
         register_player_systems(s); // Update player state (position, inventory, etc.)
