@@ -6,15 +6,57 @@ use crate::chunk::section::paletted::PalettedSection;
 use crate::chunk::section::uniform::UniformSection;
 use crate::chunk::section::{ChunkSection, ChunkSectionType, CHUNK_SECTION_LENGTH};
 use ferrumc_macros::NetEncode;
+use ferrumc_net_codec::encode::errors::NetEncodeError;
+use ferrumc_net_codec::encode::{Framing, NetEncode, NetEncodeOpts};
 use ferrumc_net_codec::net_types::net_array::NetworkArray;
 use ferrumc_net_codec::net_types::var_int::VarInt;
 use ferrumc_net_codec::version::ProtocolVersion;
 
-#[derive(NetEncode)]
 pub struct PalettedContainer<'section> {
     bits_per_entry: u8,
     palette: NetworkPalette,
     data_array: NetworkArray<'section, u64>,
+}
+
+/// The release that stopped prefixing a section's packed values with their length, because it can
+/// be derived from the entry width. Older clients still read that length, and without it they take
+/// the first long as a count and everything after the section is garbage.
+const UNPREFIXED_VALUES_SINCE: ProtocolVersion = ProtocolVersion::V1_21_5;
+
+impl NetEncode for PalettedContainer<'_> {
+    fn encode<W: std::io::Write>(
+        &self,
+        writer: &mut W,
+        opts: &NetEncodeOpts,
+    ) -> Result<(), NetEncodeError> {
+        self.bits_per_entry.encode(writer, &opts.nested())?;
+        self.palette.encode(writer, &opts.nested())?;
+        self.data_array.encode(writer, &self.values_opts(opts))
+    }
+
+    async fn encode_async<W: tokio::io::AsyncWrite + Unpin>(
+        &self,
+        writer: &mut W,
+        opts: &NetEncodeOpts,
+    ) -> Result<(), NetEncodeError> {
+        self.bits_per_entry
+            .encode_async(writer, &opts.nested())
+            .await?;
+        self.palette.encode_async(writer, &opts.nested()).await?;
+        self.data_array
+            .encode_async(writer, &self.values_opts(opts))
+            .await
+    }
+}
+
+impl PalettedContainer<'_> {
+    fn values_opts(&self, opts: &NetEncodeOpts) -> NetEncodeOpts {
+        if opts.version >= UNPREFIXED_VALUES_SINCE {
+            opts.nested()
+        } else {
+            opts.framed(Framing::SizePrefixed)
+        }
+    }
 }
 
 #[derive(NetEncode)]
