@@ -17,6 +17,8 @@ pub enum NetTypesError {
     InvalidVarInt,
     #[error("Invalid VarLong")]
     InvalidVarLong,
+    #[error("Unsupported protocol version: {0}")]
+    UnsupportedProtocolVersion(i32),
     #[error("I couldn't convert the value into a valid i32")]
     InvalidInputI32,
 }

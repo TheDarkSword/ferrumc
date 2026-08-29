@@ -125,6 +125,11 @@ def main() -> None:
     parser.add_argument("--out-dir", type=Path, help="override the output directory")
     parser.add_argument("--cache-dir", type=Path, default=DEFAULT_CACHE)
     parser.add_argument("--java", default="java", help="java binary to run the generator")
+    parser.add_argument(
+        "--packets-only",
+        action="store_true",
+        help="keep only reports/packets.json, for versions needed just for their packet ids",
+    )
     args = parser.parse_args()
 
     if args.list:
@@ -146,12 +151,22 @@ def main() -> None:
         if out_dir.exists():
             shutil.rmtree(out_dir)
         out_dir.mkdir(parents=True)
-        for name in ("reports", "data"):
-            source = generated / name
-            if source.is_dir():
-                shutil.copytree(source, out_dir / name)
-            else:
-                print(f"warning: generator produced no {name}/")
+
+        if args.packets_only:
+            packets = generated / "reports" / "packets.json"
+            if not packets.is_file():
+                raise SystemExit(
+                    f"{args.version} produces no packet report; its generator predates one"
+                )
+            (out_dir / "reports").mkdir()
+            shutil.copy(packets, out_dir / "reports" / "packets.json")
+        else:
+            for name in ("reports", "data"):
+                source = generated / name
+                if source.is_dir():
+                    shutil.copytree(source, out_dir / name)
+                else:
+                    print(f"warning: generator produced no {name}/")
 
     metadata = extract_version_metadata(jar, out_dir)
     if metadata:
