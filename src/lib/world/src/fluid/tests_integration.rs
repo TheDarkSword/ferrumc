@@ -86,7 +86,7 @@ fn run_with(
 
     for offset in 0..ticks {
         let current = start_tick + offset;
-        let due = scheduler.drain_due(current);
+        let due = scheduler.drain_due(current, TickKind::FluidSpread);
         if due.is_empty() {
             continue;
         }
@@ -211,7 +211,7 @@ fn run_with_timing(
 
     for offset in 0..ticks {
         let current = start_tick + offset;
-        let due = scheduler.drain_due(current);
+        let due = scheduler.drain_due(current, TickKind::FluidSpread);
         if due.is_empty() {
             continue;
         }

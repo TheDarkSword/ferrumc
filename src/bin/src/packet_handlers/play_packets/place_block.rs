@@ -15,6 +15,7 @@ use tracing::{debug, error, trace};
 
 use crate::systems::fluids::{seed_fluid_tick, ActiveDimension, FluidScheduler};
 
+use crate::systems::block_world::WorldAccess;
 use ferrumc_config::server_config::get_global_config;
 use ferrumc_core::mq;
 use ferrumc_inventories::hotbar::Hotbar;
@@ -74,7 +75,7 @@ pub fn handle(
                 // placed against it. Only a sneaking player with something in hand skips this, and
                 // whether a player is sneaking is not tracked yet.
                 let clicked: BlockPos = event.position.into();
-                let mut world = UsedBlocks::new(&state.0);
+                let mut world = WorldAccess::new(&state.0, &mut fluid_scheduler.0, tick.get());
                 let clicked_state = world.block_at(clicked);
                 if let Some(behaviour) = behaviour_at(clicked_state) {
                     let mut ctx = Use {
@@ -86,7 +87,10 @@ pub fn handle(
                         == InteractionResult::Success
                     {
                         let changed = world.changed;
-                        broadcast_changes(&changed, &query);
+                        crate::systems::block_world::broadcast_changes(
+                            &changed,
+                            query.iter().map(|(_, conn, _, _, pos, _)| (conn, pos)),
+                        );
                         if let Err(err) = conn.send_packet_ref(&BlockChangeAck {
                             sequence: event.sequence,
                         }) {
@@ -267,82 +271,6 @@ pub fn handle(
             }
             _ => {
                 debug!("Invalid hand");
-            }
-        }
-    }
-}
-
-/// The world as a block behaviour sees it, remembering what it changed so the changes can be sent.
-///
-/// Each read and write takes the chunk guard and gives it back before the next one: holding two at
-/// once on the same shard deadlocks the tick thread.
-struct UsedBlocks<'a> {
-    state: &'a ferrumc_state::GlobalState,
-    changed: Vec<(BlockPos, BlockStateId)>,
-}
-
-impl<'a> UsedBlocks<'a> {
-    fn new(state: &'a ferrumc_state::GlobalState) -> Self {
-        Self {
-            state,
-            changed: Vec::new(),
-        }
-    }
-}
-
-impl BlockWorld for UsedBlocks<'_> {
-    fn block_at(&mut self, pos: BlockPos) -> BlockStateId {
-        match ferrumc_utils::world::load_or_generate_mut(self.state, pos.chunk(), "overworld") {
-            Ok(chunk) => chunk.get_block(pos.chunk_block_pos()),
-            Err(err) => {
-                error!("Could not read the block at {}: {:?}", pos, err);
-                BlockStateId::new(0)
-            }
-        }
-    }
-
-    fn set_block(&mut self, pos: BlockPos, state: BlockStateId) {
-        match ferrumc_utils::world::load_or_generate_mut(self.state, pos.chunk(), "overworld") {
-            Ok(mut chunk) => {
-                chunk.set_block(pos.chunk_block_pos(), state);
-                self.changed.push((pos, state));
-            }
-            Err(err) => error!("Could not set the block at {}: {:?}", pos, err),
-        }
-    }
-}
-
-/// Tells everyone in range about blocks a behaviour changed.
-fn broadcast_changes(
-    changed: &[(BlockPos, BlockStateId)],
-    query: &Query<(
-        Entity,
-        &StreamWriter,
-        &Inventory,
-        &Hotbar,
-        &Position,
-        &Rotation,
-    )>,
-) {
-    let render_distance = get_global_config().chunk_render_distance as i32;
-    for &(pos, state) in changed {
-        let packet = BlockUpdate {
-            location: NetworkPosition {
-                x: pos.pos.x,
-                y: pos.pos.y as i16,
-                z: pos.pos.z,
-            },
-            block_state_id: NetworkBlockState::from(state),
-        };
-        let chunk = pos.chunk();
-        for (_, conn, _, _, player, _) in query.iter() {
-            let player_chunk = player.chunk();
-            if (chunk.x() - player_chunk.x).abs() <= render_distance
-                && (chunk.z() - player_chunk.y).abs() <= render_distance
-            {
-                if let Err(err) = conn.send_packet_ref(&packet) {
-                    error!("Failed to send block update packet: {:?}", err);
-                }
             }
         }
     }

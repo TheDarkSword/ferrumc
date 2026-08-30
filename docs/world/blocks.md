@@ -101,6 +101,36 @@ sneaking is not tracked yet.
 Not carried across yet: block sounds, game events, and the scheduled tick a waterlogged trapdoor
 asks for. Random and scheduled ticks have hooks and nothing driving them until the tick system.
 
+## Ticking
+
+Two independent systems, as in vanilla.
+
+**Scheduled ticks** are the ones a block asks for. Their order within a game tick is observable — it
+is why redstone reads as it does — so they run by priority, then by which was asked for first,
+across the whole world rather than per chunk. Grouping by chunk first would make the order depend
+on a hash map's iteration.
+
+A block has at most one pending tick per kind, whatever tick a second one would be due on. That is
+vanilla's rule and it is what stops a block whose neighbours all update at once from queueing one
+tick per neighbour.
+
+Fluids and blocks are drained separately, as they are in vanilla, so a large fluid cascade cannot
+eat a redstone tick's budget.
+
+**Random ticks** are handed out rather than asked for: every section holding anything worth ticking
+gets `random_tick_speed` positions a tick, three by default. Positions come from the same counter
+vanilla uses — one multiply and add each — and a section with nothing that ticks is skipped without
+being sampled. 1508 of 32366 states take a random tick, and it is a property of the state rather
+than the block: a fully grown crop stops.
+
+Sugar cane grows on this path, which is vanilla's simplest complete random tick: it needs no light,
+no neighbours and no randomness of its own.
+
+**Persistence** has its saved form and its take/restore API, and is not wired to disk yet. Where a
+chunk's ticks live is decided by the chunk lifecycle work, and wiring it before that would mean
+doing it twice. What is saved is the remaining wait rather than the tick number, so a world that
+stops and starts again resumes instead of firing everything at once.
+
 ## Regenerating
 
 ```bash

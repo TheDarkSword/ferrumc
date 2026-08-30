@@ -265,6 +265,14 @@ fn build_timed_scheduler() -> Scheduler {
         register_game_systems(s); // General game logic (chunks, day cycle, etc.)
         register_gameplay_listeners(s); // Event listeners for gameplay events
         register_physics(s); // Physics systems (movement, collision, etc.)
+                             // Ticks a block asked for, then the ones the world hands out at random.
+        s.add_systems(
+            (
+                crate::systems::block_ticks::scheduled,
+                crate::systems::block_ticks::random,
+            )
+                .chain(),
+        );
         register_mob_systems(s); // Mob AI and behavior
     };
     let tick_period = Duration::from_secs(1) / get_global_config().tps;

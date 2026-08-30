@@ -13,12 +13,14 @@
 
 mod door;
 mod fence_gate;
+mod sugar_cane;
 mod trapdoor;
 
 use crate::block_state::{BlockId, Direction};
 use crate::block_state_id::BlockStateId;
 use crate::block_tag::tag;
 use crate::pos::BlockPos;
+use crate::scheduler::TickPriority;
 use std::sync::LazyLock;
 
 /// The world, as much of it as a block behaviour may touch.
@@ -28,6 +30,8 @@ use std::sync::LazyLock;
 pub trait BlockWorld {
     fn block_at(&mut self, pos: BlockPos) -> BlockStateId;
     fn set_block(&mut self, pos: BlockPos, state: BlockStateId);
+    /// Asks for this block to be given a turn `delay` ticks from now.
+    fn schedule_tick(&mut self, pos: BlockPos, delay: u64, priority: TickPriority);
 }
 
 /// What came of an interaction, which decides whether anything else gets a turn at it.
@@ -47,6 +51,12 @@ pub struct Use<'a> {
     pub player_facing: Direction,
 }
 
+/// A block taking its turn, whether one it asked for or one the world handed out at random.
+pub struct Tick<'a> {
+    pub world: &'a mut dyn BlockWorld,
+    pub pos: BlockPos,
+}
+
 /// What a block does. Every method has an answer that does nothing, so a block implements only
 /// what it has.
 pub trait BlockBehaviour: Send + Sync {
@@ -54,6 +64,12 @@ pub trait BlockBehaviour: Send + Sync {
     fn use_without_item(&self, _state: BlockStateId, _ctx: &mut Use<'_>) -> InteractionResult {
         InteractionResult::Pass
     }
+
+    /// The world gave this block a turn at random. Crops grow here, ice melts, copper weathers.
+    fn random_tick(&self, _state: BlockStateId, _ctx: &mut Tick<'_>) {}
+
+    /// A turn this block asked for has come due.
+    fn scheduled_tick(&self, _state: BlockStateId, _ctx: &mut Tick<'_>) {}
 
     /// What this block becomes when a neighbour changes, which is how a door's two halves stay in
     /// step and how a fence connects. Returning the state unchanged means nothing to do.
@@ -75,6 +91,7 @@ static BEHAVIOURS: LazyLock<Vec<Option<&'static dyn BlockBehaviour>>> = LazyLock
     register(&mut table, "minecraft:doors", &door::Door);
     register(&mut table, "minecraft:trapdoors", &trapdoor::Trapdoor);
     register(&mut table, "minecraft:fence_gates", &fence_gate::FenceGate);
+    register_block(&mut table, "minecraft:sugar_cane", &sugar_cane::SugarCane);
 
     table
 });
@@ -89,6 +106,17 @@ fn register(
         return;
     };
     for block in group.blocks() {
+        table[usize::from(block.index())] = Some(behaviour);
+    }
+}
+
+/// Registers a behaviour for one block, where no tag groups it with others.
+fn register_block(
+    table: &mut [Option<&'static dyn BlockBehaviour>],
+    name: &str,
+    behaviour: &'static dyn BlockBehaviour,
+) {
+    if let Some(block) = BlockId::from_name(name) {
         table[usize::from(block.index())] = Some(behaviour);
     }
 }
@@ -141,6 +169,8 @@ mod tests {
         fn set_block(&mut self, pos: BlockPos, state: BlockStateId) {
             self.0.insert(Self::key(pos), state);
         }
+
+        fn schedule_tick(&mut self, _pos: BlockPos, _delay: u64, _priority: TickPriority) {}
     }
 
     /// Puts both halves of a door at the origin and returns the lower one's position.
@@ -243,6 +273,63 @@ mod tests {
         let closed = world.block_at(pos);
         assert_eq!(closed.get(properties::OPEN), Some(false));
         assert_eq!(closed.get(properties::FACING), Some(Direction::South));
+    }
+
+    /// Sugar cane puts on a block once it has counted to fifteen, and stops at three tall.
+    #[test]
+    fn sugar_cane_grows_to_three_and_stops() {
+        let cane = BlockId::from_name("minecraft:sugar_cane").expect("cane exists");
+        let mut world = Blocks::default();
+        let bottom = BlockPos::of(0, 64, 0);
+        world.set_block(bottom, cane.default_state());
+
+        let behaviour = behaviour_of(cane).expect("cane grows");
+        let ripe = cane
+            .default_state()
+            .with(properties::AGE, 15)
+            .expect("cane ages");
+
+        // A stalk that is not yet ripe only counts up.
+        behaviour.random_tick(
+            cane.default_state(),
+            &mut Tick {
+                world: &mut world,
+                pos: bottom,
+            },
+        );
+        assert_eq!(world.block_at(bottom).get(properties::AGE), Some(1));
+
+        // Ripe: it grows upwards and starts counting again.
+        world.set_block(bottom, ripe);
+        behaviour.random_tick(
+            ripe,
+            &mut Tick {
+                world: &mut world,
+                pos: bottom,
+            },
+        );
+        assert_eq!(world.block_at(bottom).get(properties::AGE), Some(0));
+        assert_eq!(
+            world.block_at(bottom.relative(Direction::Up)).block(),
+            Some(cane)
+        );
+
+        // Three tall is as far as it goes, however ripe the bottom is.
+        let third = bottom.relative(Direction::Up).relative(Direction::Up);
+        world.set_block(bottom.relative(Direction::Up), cane.default_state());
+        world.set_block(third, ripe);
+        behaviour.random_tick(
+            ripe,
+            &mut Tick {
+                world: &mut world,
+                pos: third,
+            },
+        );
+        assert_eq!(
+            world.block_at(third.relative(Direction::Up)).block(),
+            BlockId::from_name("minecraft:air"),
+            "a fourth block would make the stalk too tall"
+        );
     }
 
     /// A trapdoor is one block and toggles on its own.

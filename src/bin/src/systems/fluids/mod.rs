@@ -661,7 +661,9 @@ pub fn process_fluid_ticks(
     // Bound how many fluid ticks one game tick processes so a large cascade is spread over several
     // ticks instead of freezing one. Remaining due ticks stay queued and are picked up next tick.
     let budget = get_global_config().fluids.max_ticks_per_tick as usize;
-    let due = scheduler.0.drain_due_capped(current, budget);
+    let due = scheduler
+        .0
+        .drain_due_capped(current, budget, TickKind::FluidSpread);
     if due.is_empty() {
         return;
     }
@@ -842,7 +844,7 @@ mod tests {
                 "fluid simulation ({mode:?}) did not settle within {HANG_GUARD} ticks; \
                  it is likely oscillating instead of converging"
             );
-            let due = scheduler.drain_due(tick);
+            let due = scheduler.drain_due(tick, TickKind::FluidSpread);
             if due.is_empty() {
                 if scheduler.pending_count() == 0 {
                     break;

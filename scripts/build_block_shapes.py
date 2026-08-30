@@ -47,6 +47,14 @@ def main() -> None:
         indices = [0 if state is None else state[field] for state in states]
         (OUT_BIN / f"{field}.bin").write_bytes(struct.pack(f"<{len(indices)}H", *indices))
 
+    # Which states take a random tick, as one bit each. The random tick loop asks this of thousands
+    # of positions a second, and a section that holds none of them is skipped entirely.
+    ticking = bytearray((len(states) + 7) // 8)
+    for index, state in enumerate(states):
+        if state is not None and state["randomly_ticking"]:
+            ticking[index // 8] |= 1 << (index % 8)
+    (OUT_BIN / "randomly_ticking.bin").write_bytes(ticking)
+
     lines = [
         "//! Which boxes each block state occupies.",
         "//!",
@@ -76,6 +84,10 @@ def main() -> None:
 
     OUT_RS.parent.mkdir(parents=True, exist_ok=True)
     OUT_RS.write_text("\n".join(lines))
+    randomly_ticking = sum(
+        1 for state in states if state is not None and state["randomly_ticking"]
+    )
+    print(f"{randomly_ticking} states take a random tick")
     print(
         f"{len(states)} states, {len(shapes)} shapes, {len(boxes)} boxes "
         f"-> {OUT_RS.relative_to(REPO_ROOT)} and {OUT_BIN.relative_to(REPO_ROOT)}/"

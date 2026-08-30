@@ -26,6 +26,7 @@ pub fn register_resources(
     world.insert_resource(WorldTime::default());
     world.insert_resource(TickCounter::new());
     world.insert_resource(FluidScheduler::default());
+    world.insert_resource(crate::systems::block_ticks::RandomTickPositions::default());
     world.insert_resource(ActiveDimension::default());
     world.insert_resource(FluidTickControl::default());
     world.insert_resource(FluidSettleTracker::default());
