@@ -21,6 +21,7 @@ ferrumc-text = { workspace = true }
 ferrumc-macros = { workspace = true }
 ferrumc-anvil = { workspace = true }
 ferrumc-datapack = { workspace = true }
+ferrumc-registry = { workspace = true }
 rayon = { workspace = true }
 ferrumc-general-purpose = { workspace = true }
 lazy_static = { workspace = true }

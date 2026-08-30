@@ -9,40 +9,16 @@
 //! treats every fluid tag as empty, so lava falls back to the water sprite (but stays opaque) and
 //! water applies no movement resistance.
 //!
-//! The contents come from the loaded datapacks, so a pack that changes a tag changes what the
-//! client is told as well as what the server believes. Names are turned into the numeric ids the
-//! wire carries with `assets/data/registries.json`.
-//!
-//! Only the built-in (non-datapack) registries are sent here; the dynamic registries (biomes,
-//! damage types, ...) carry their tags through the registry sync instead.
+//! The contents are the tags the server itself reads, which come from the loaded datapacks: what
+//! the client is told and what the server believes cannot disagree, and a pack that changes a tag
+//! changes both. Only the registries whose entries have a fixed numeric id are here; the
+//! datapack-driven ones (biomes, damage types, ...) carry their tags with the registry sync.
 
-use ferrumc_datapack::tag::RawTags;
-use ferrumc_datapack::ResourceManager;
 use ferrumc_macros::{packet, NetEncode};
 use ferrumc_net_codec::net_types::length_prefixed_vec::LengthPrefixedVec;
 use ferrumc_net_codec::net_types::var_int::VarInt;
-use serde_json::Value;
-use std::collections::HashMap;
+use ferrumc_registry::tags::GameTags;
 use std::sync::{Arc, LazyLock, RwLock};
-
-const REGISTRIES_JSON: &str = include_str!("../../../../../../assets/data/registries.json");
-
-/// The registries whose tags are sent here, paired with the directory a pack keeps them in.
-///
-/// These are the built-in registries whose entries have stable numeric protocol ids in
-/// `registries.json`. Datapack-driven registries (worldgen/biome, damage_type, enchantment, ...)
-/// are intentionally omitted: their tags travel with the synced registry data, not here.
-const SENT_REGISTRIES: &[(&str, &str)] = &[
-    ("tags/block", "minecraft:block"),
-    ("tags/item", "minecraft:item"),
-    ("tags/fluid", "minecraft:fluid"),
-    ("tags/entity_type", "minecraft:entity_type"),
-    ("tags/game_event", "minecraft:game_event"),
-    (
-        "tags/point_of_interest_type",
-        "minecraft:point_of_interest_type",
-    ),
-];
 
 #[derive(NetEncode)]
 #[packet(packet_id = "update_tags", state = "configuration")]
@@ -65,76 +41,37 @@ pub struct TagEntry {
     pub entries: LengthPrefixedVec<VarInt>,
 }
 
-/// Builds `entry name -> protocol id` lookups for every registry tags are sent for.
-fn registry_ids() -> HashMap<&'static str, HashMap<String, i32>> {
-    let registries: Value =
-        serde_json::from_str(REGISTRIES_JSON).expect("registries.json should be valid JSON");
-    let mut out = HashMap::new();
-
-    for (_directory, registry_id) in SENT_REGISTRIES {
-        let Some(entries) = registries
-            .get(registry_id)
-            .and_then(|r| r.get("entries"))
-            .and_then(Value::as_object)
-        else {
-            continue;
-        };
-
-        let mut id_map = HashMap::with_capacity(entries.len());
-        for (entry_name, info) in entries {
-            if let Some(id) = info.get("protocol_id").and_then(Value::as_i64) {
-                id_map.insert(entry_name.clone(), id as i32);
-            }
-        }
-        out.insert(*registry_id, id_map);
-    }
-
-    out
-}
-
-/// Builds the packet from what the loaded packs declare.
-pub fn build_packet(manager: &ResourceManager) -> UpdateTagsPacket {
-    let id_maps = registry_ids();
-    let mut registries = Vec::with_capacity(SENT_REGISTRIES.len());
-
-    for (directory, registry_id) in SENT_REGISTRIES {
-        let Some(id_map) = id_maps.get(registry_id) else {
-            continue;
-        };
-        // The ids the wire carries are the registry's own, so they are what the tags resolve to
-        // directly rather than something looked up again afterwards.
-        let element_count = id_map.values().max().map_or(0, |max| *max as usize + 1);
-        let tags = RawTags::load(manager, directory).build(element_count, |id| {
-            id_map
-                .get(id.as_str())
-                .and_then(|id| u32::try_from(*id).ok())
-        });
-
-        // Sorted so two runs of the same packs put the same bytes on the wire, which is one less
-        // thing to rule out when a client disagrees about a tag.
-        let mut names: Vec<&str> = tags.names().collect();
-        names.sort_unstable();
-        let tag_entries = names
-            .into_iter()
-            .filter_map(|name| {
-                let tag = tags.get_by_name(name)?;
-                Some(TagEntry {
-                    name: name.to_owned(),
-                    entries: LengthPrefixedVec::new(
-                        tags.elements(tag)
-                            .iter()
-                            .filter_map(|id| i32::try_from(*id).ok().map(VarInt::new))
-                            .collect(),
-                    ),
+/// Builds the packet from the tags as they stand.
+#[must_use]
+pub fn build_packet(tags: &GameTags) -> UpdateTagsPacket {
+    let registries = tags
+        .iter()
+        .map(|(registry, tags)| {
+            // Sorted so two runs of the same packs put the same bytes on the wire, which is one
+            // less thing to rule out when a client disagrees about a tag.
+            let mut names: Vec<&str> = tags.names().collect();
+            names.sort_unstable();
+            let entries = names
+                .into_iter()
+                .filter_map(|name| {
+                    let tag = tags.get_by_name(name)?;
+                    Some(TagEntry {
+                        name: name.to_owned(),
+                        entries: LengthPrefixedVec::new(
+                            tags.elements(tag)
+                                .iter()
+                                .filter_map(|id| i32::try_from(*id).ok().map(VarInt::new))
+                                .collect(),
+                        ),
+                    })
                 })
-            })
-            .collect();
-
-        registries.push(TagRegistry {
-            registry: (*registry_id).to_string(),
-            tags: LengthPrefixedVec::new(tag_entries),
-        });
-    }
+                .collect();
+            TagRegistry {
+                registry: registry.to_owned(),
+                tags: LengthPrefixedVec::new(entries),
+            }
+        })
+        .collect();
 
     UpdateTagsPacket {
         registries: LengthPrefixedVec::new(registries),
@@ -145,20 +82,8 @@ pub fn build_packet(manager: &ResourceManager) -> UpdateTagsPacket {
 ///
 /// It falls back to the pack the server ships with, so a connection that arrives before the packs
 /// are read is still told vanilla's tags rather than none.
-static CURRENT: LazyLock<RwLock<Arc<UpdateTagsPacket>>> = LazyLock::new(|| {
-    let built_in = ferrumc_datapack::vanilla_pack()
-        .map(|pack| ResourceManager::new(vec![Arc::new(pack)]))
-        .map_or_else(
-            |e| {
-                tracing::error!("could not read the built-in tags: {e}");
-                UpdateTagsPacket {
-                    registries: LengthPrefixedVec::new(Vec::new()),
-                }
-            },
-            |manager| build_packet(&manager),
-        );
-    RwLock::new(Arc::new(built_in))
-});
+static CURRENT: LazyLock<RwLock<Arc<UpdateTagsPacket>>> =
+    LazyLock::new(|| RwLock::new(Arc::new(build_packet(&ferrumc_registry::tags::current()))));
 
 /// The packet to send to a connecting client.
 #[must_use]
@@ -179,10 +104,10 @@ pub fn set(packet: Arc<UpdateTagsPacket>) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use ferrumc_registry::tags::protocol_id;
 
     fn built_in() -> UpdateTagsPacket {
-        let pack = ferrumc_datapack::vanilla_pack().expect("the built-in pack opens");
-        build_packet(&ResourceManager::new(vec![Arc::new(pack)]))
+        build_packet(&ferrumc_registry::tags::current())
     }
 
     fn find_registry<'a>(packet: &'a UpdateTagsPacket, id: &str) -> &'a TagRegistry {
@@ -209,10 +134,6 @@ mod tests {
     fn fluid_tags_carry_the_fluids_they_name() {
         let packet = built_in();
         let fluid = find_registry(&packet, "minecraft:fluid");
-        let ids = registry_ids();
-        let fluid_ids = ids
-            .get("minecraft:fluid")
-            .expect("the fluid registry is in registries.json");
 
         for (tag, members) in [
             (
@@ -231,10 +152,9 @@ mod tests {
                 .map(|v| v.0)
                 .collect();
             for member in members {
-                let id = fluid_ids
-                    .get(member)
+                let id = protocol_id("minecraft:fluid", member)
                     .unwrap_or_else(|| panic!("{member} should be a fluid"));
-                assert!(sent.contains(id), "{tag} must include {member}");
+                assert!(sent.contains(&id), "{tag} must include {member}");
             }
         }
     }
@@ -242,11 +162,11 @@ mod tests {
     #[test]
     fn every_sent_registry_has_tags() {
         let packet = built_in();
-        for (_directory, registry_id) in SENT_REGISTRIES {
-            let registry = find_registry(&packet, registry_id);
+        for (registry, _directory) in ferrumc_registry::tags::REGISTRIES {
+            let sent = find_registry(&packet, registry);
             assert!(
-                !registry.tags.data.is_empty(),
-                "registry {registry_id} should carry at least one tag"
+                !sent.tags.data.is_empty(),
+                "registry {registry} should carry at least one tag"
             );
         }
     }
@@ -261,22 +181,19 @@ mod tests {
             .expect("a writable dir");
         std::fs::write(&tag, r#"{"values":["minecraft:sponge"]}"#).expect("a writable file");
 
-        let stack = ResourceManager::new(vec![
+        let stack = ferrumc_datapack::ResourceManager::new(vec![
             Arc::new(ferrumc_datapack::vanilla_pack().expect("the built-in pack opens")),
             Arc::new(
                 ferrumc_datapack::DirPack::open("test", dir.path().to_path_buf())
                     .expect("an openable pack"),
             ),
         ]);
-        let packet = build_packet(&stack);
+        let packet = build_packet(&ferrumc_registry::tags::load(&stack));
         let logs = find_tag(find_registry(&packet, "minecraft:block"), "minecraft:logs");
 
-        let ids = registry_ids();
-        let sponge = ids
-            .get("minecraft:block")
-            .and_then(|blocks| blocks.get("minecraft:sponge"))
-            .expect("sponge should be a block");
-        assert!(logs.entries.data.iter().any(|id| id.0 == *sponge));
+        let sponge =
+            protocol_id("minecraft:block", "minecraft:sponge").expect("sponge should be a block");
+        assert!(logs.entries.data.iter().any(|id| id.0 == sponge));
     }
 
     #[test]

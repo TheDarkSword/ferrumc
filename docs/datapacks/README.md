@@ -99,3 +99,50 @@ let stacks = FileToId::json("tags/block").list_stacks(&manager);
 
 `Datapacks::rebuild` in `src/bin/src/systems/datapacks.rs` is the one place that runs on both the
 first load and a reload. A new consumer adds its line there and gets `/reload` for free.
+
+## Predicates
+
+A predicate is the condition language everything gates on: loot tables, advancements, and later
+functions. It is one language in two halves in vanilla — `advancements/predicates` describes things
+(a block, an item, a place), `loot/predicates` composes them into conditions — and one crate here,
+`ferrumc-predicates`.
+
+A condition names its type and reads whatever that type needs:
+
+```json
+{"condition": "minecraft:block_state_property", "block": "minecraft:wheat", "properties": {"age": "7"}}
+```
+
+They nest through `all_of`, `any_of` and `inverted`, and a bare list of them anywhere a condition is
+expected means all of them. `reference` names a predicate from `data/<namespace>/predicate/`, which
+vanilla ships none of — it exists for datapacks — and a reference that leads back to itself is caught
+rather than followed.
+
+### What it is asked against
+
+A **loot context**: a bag of parameters saying what is going on, a source of randomness, and a way
+to reach the world. A predicate wanting a parameter that is not there fails rather than erroring,
+which is what makes `killed_by_player` mean "there was a player" at all, and what makes a position
+that is not loaded fail a location check.
+
+The world is reached through `LootWorld`, which names only what a predicate may ask: the block at a
+position, the light there, whether it sees the sky, the dimension, the time, and the weather.
+
+### What is not answered yet
+
+Some conditions need something the server does not have. They are read, so a file carrying one still
+loads, and they do not hold:
+
+| Condition | Waiting on |
+|---|---|
+| `entity_properties`, `entity_scores` | entities, scoreboards |
+| `damage_source_properties` | damage sources |
+| `random_chance_with_enchanted_bonus` | enchantments on an entity |
+| `environment_attribute_check` | environment attributes |
+
+An item's components are the same story. `match_tool` asking whether a tool has silk touch — which
+is most of its use in vanilla's own tables — answers no, and that is the right answer for a tool
+with no enchantments, which is every tool today.
+
+An unknown condition type is refused outright rather than treated as holding: a table that silently
+stopped gating would change what it drops.

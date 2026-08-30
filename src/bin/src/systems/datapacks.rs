@@ -6,6 +6,7 @@
 use bevy_ecs::prelude::Resource;
 use ferrumc_datapack::{DatapackError, PackRepository, ResourceManager};
 use ferrumc_general_purpose::paths::get_root_path;
+use ferrumc_predicates::Predicates;
 use std::sync::Arc;
 use tracing::info;
 
@@ -17,6 +18,8 @@ pub struct Datapacks {
     pub repository: PackRepository,
     /// The selected packs in the order they override each other.
     pub resources: ResourceManager,
+    /// The predicates the packs declare, which anything gating on one names.
+    pub predicates: Arc<Predicates>,
 }
 
 impl Datapacks {
@@ -24,11 +27,13 @@ impl Datapacks {
     pub fn load() -> Result<Self, DatapackError> {
         let repository = PackRepository::discover(get_root_path().join(DATAPACK_DIR))?;
         let resources = repository.open();
-        let packs = Self {
+        let mut packs = Self {
             repository,
             resources,
+            predicates: Arc::default(),
         };
         packs.rebuild();
+        packs.predicates = Arc::new(Predicates::load(&packs.resources));
         packs.report();
         Ok(packs)
     }
@@ -38,6 +43,7 @@ impl Datapacks {
         self.repository.reload()?;
         self.resources = self.repository.open();
         self.rebuild();
+        self.predicates = Arc::new(Predicates::load(&self.resources));
         self.report();
         Ok(())
     }
@@ -45,16 +51,27 @@ impl Datapacks {
     /// Reads everything the packs define again. Each thing datapacks drive adds its line here.
     fn rebuild(&self) {
         let started = std::time::Instant::now();
-        let block_tags = ferrumc_world::block_tag::load(&self.resources);
-        let tag_count = block_tags.len();
-        ferrumc_world::block_tag::set(Arc::new(block_tags));
-        tracing::debug!("read {tag_count} block tags in {:.1?}", started.elapsed());
+        let tags = Arc::new(ferrumc_registry::tags::load(&self.resources));
+        let counts: Vec<String> = tags
+            .iter()
+            .map(|(registry, tags)| format!("{registry} {}", tags.len()))
+            .collect();
+        ferrumc_net::packets::outgoing::update_tags::set(Arc::new(
+            ferrumc_net::packets::outgoing::update_tags::build_packet(&tags),
+        ));
+        ferrumc_registry::tags::set(tags);
+        tracing::debug!(
+            "read tags in {:.1?}: {}",
+            started.elapsed(),
+            counts.join(", ")
+        );
     }
 
     fn report(&self) {
         info!(
-            "data packs loaded: {}",
-            self.repository.selected().join(", ")
+            "data packs loaded: {} ({} predicates)",
+            self.repository.selected().join(", "),
+            self.predicates.len()
         );
     }
 }

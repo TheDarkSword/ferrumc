@@ -183,6 +183,20 @@ impl BlockId {
             .map(|&(values, _)| PROPERTY_VALUES[values as usize].property)
     }
 
+    /// The values this block gives a property, in the order the ids are built from.
+    ///
+    /// The order is the property's own: `age` runs 0 upwards, a stair's `shape` runs as vanilla
+    /// declares it. Anything comparing two values of a property compares their places here.
+    #[must_use]
+    pub fn property_values(self, property: Property) -> Option<&'static [&'static str]> {
+        self.def()
+            .properties
+            .iter()
+            .map(|&(values, _)| &PROPERTY_VALUES[values as usize])
+            .find(|values| values.property == property)
+            .map(|values| values.values)
+    }
+
     /// The block of this name, if there is one.
     #[must_use]
     pub fn from_name(name: &str) -> Option<Self> {
