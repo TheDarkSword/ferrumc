@@ -92,11 +92,22 @@ for version in "${VERSIONS[@]}"; do
     port=$((port + 1))
     continue
   fi
-  (cd "$ROOT/tools/stress-bot" && timeout 12 cargo run -q -- \
-    --server "127.0.0.1:$port" --bots 1 --stats-interval-secs 3 > "$WORK/bot-$version.log" 2>&1)
-  joined=$(grep -oE 'joins=[0-9]+' "$WORK/bot-$version.log" | tail -1 | cut -d= -f2)
-  joined=${joined:-0}
+  run_bot() {
+    (cd "$ROOT/tools/stress-bot" && timeout "$1" cargo run -q -- \
+      --server "127.0.0.1:$port" --bots 1 --stats-interval-secs 3 > "$WORK/bot-$version.log" 2>&1)
+    joined=$(grep -oE 'joins=[0-9]+' "$WORK/bot-$version.log" | tail -1 | cut -d= -f2)
+    joined=${joined:-0}
+  }
+
+  run_bot 12
   errors=$(grep -c 'ERROR IN' "$WORK/proxy-$version.log")
+  # Ten proxies are running at once, each its own JVM, and a slow machine can take longer than the
+  # short run allows. A version that neither joined nor made the proxy complain is given more time
+  # before it is called a failure, so a busy machine does not read as a broken protocol.
+  if [ "$joined" -eq 0 ] && [ "$errors" -eq 0 ]; then
+    run_bot 30
+    errors=$(grep -c 'ERROR IN' "$WORK/proxy-$version.log")
+  fi
 
   if [ "$joined" -gt 0 ] && [ "$errors" -eq 0 ]; then
     printf '%-10s %-16s %s\n' "$version" "joined" "clean"
