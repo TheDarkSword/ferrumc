@@ -4,6 +4,7 @@
 //! Commands register themselves at startup via the `#[command]` macro's `#[ctor]`. [`init`] only
 //! exists to guarantee this module is linked into the final binary so those constructors run.
 
+pub mod reload;
 pub mod tick;
 
 /// Ensures the binary-local command modules are linked so their `#[ctor]` registrations fire.

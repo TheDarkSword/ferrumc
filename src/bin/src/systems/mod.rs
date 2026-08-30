@@ -6,6 +6,7 @@ pub mod chunk_levels;
 mod chunk_sending;
 pub mod chunk_unloader;
 pub mod connection_killer;
+pub mod datapacks;
 pub mod day_cycle;
 pub mod emit_player_joined;
 pub mod fluids;

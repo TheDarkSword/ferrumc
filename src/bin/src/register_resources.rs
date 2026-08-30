@@ -33,4 +33,7 @@ pub fn register_resources(
     world.insert_resource(FluidSettleTracker::default());
     world.insert_resource(ServerPerformance::new(get_global_config().tps));
     world.insert_resource(PhysicalRegistry::new());
+    world.insert_resource(
+        crate::systems::datapacks::Datapacks::load().expect("the built-in datapack should open"),
+    );
 }

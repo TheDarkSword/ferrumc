@@ -1,0 +1,23 @@
+[package]
+name = "ferrumc-datapack"
+description = "The datapack layer: packs, the stack they form, and every resource read through it."
+version = "0.1.0"
+edition = "2021"
+build = "build.rs"
+
+[dependencies]
+thiserror = { workspace = true }
+tracing = { workspace = true }
+serde_json = { workspace = true }
+zip = { workspace = true }
+ferrumc-text = { workspace = true }
+
+[build-dependencies]
+serde_json = { workspace = true }
+zip = { workspace = true }
+
+[dev-dependencies]
+tempfile = { workspace = true }
+
+[lints]
+workspace = true
