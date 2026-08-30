@@ -28,7 +28,7 @@ cleanup() {
   [ -f "$WORK/config.backup" ] && cp "$WORK/config.backup" "$CONFIG"
   rm -rf "$WORK"
 }
-trap cleanup EXIT
+trap cleanup EXIT INT TERM
 
 # A pinned seed and a world of its own, so two runs see the same chunks and one version's result
 # can be compared against another's. A world remembers its seed, so the old one has to go.
@@ -54,7 +54,10 @@ for version in "${VERSIONS[@]}"; do
   # Each proxy rewrites its own config files on startup, through a temp file and a rename, so two
   # of them sharing a working directory race and the loser dies on a file that is no longer there.
   mkdir -p "$WORK/run-$version"
-  (cd "$WORK/run-$version" && java -jar "$PROXY" cli --bind-address "127.0.0.1:$port" \
+  # `exec` so the subshell is replaced by the proxy rather than becoming its parent: without it the
+  # recorded pid is the subshell's, killing it leaves the proxy orphaned, and ten of those are a
+  # good few gigabytes of jvm left behind on every run.
+  (cd "$WORK/run-$version" && exec java -jar "$PROXY" cli --bind-address "127.0.0.1:$port" \
     --target-address 127.0.0.1:25565 --target-version "$version" --proxy-online-mode false \
     > "$WORK/proxy-$version.log" 2>&1) &
   PROXY_PIDS+=($!)
