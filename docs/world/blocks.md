@@ -180,9 +180,18 @@ level a block like any other. A column's lowest source is found by scanning down
 stops the sky: anything that dims light at all does, and so does a pair of faces that closes the gap
 between them, which is why a trapdoor lets the sky past when open and not when shut.
 
-A generated chunk lights itself, both kinds, from what is in it. What is not done yet is in
-[deferred work](../../internal_docs/deferred.md): light across a chunk border, and relighting when a
-block changes.
+A generated chunk lights itself, both kinds, from what is in it. Because lighting must not be what
+pulls a chunk's neighbours into memory, it is lit alone and the light is let across the borders both
+ways when it is about to be sent. Vanilla instead lights a chunk with its neighbours' sources to
+hand, as a stage of the chunk pipeline.
+
+A block placed or broken relights what it changed and the result is sent, since clients do not work
+light out for themselves — a torch placed after a chunk was sent would otherwise stay invisible.
+
+Whether light passes between two blocks is a question about both their faces together: two partial
+faces can cover the opening while neither covers it alone, which a top slab beside a bottom slab
+does. There are only 55 distinct faces in the game, so every pair's answer is worked out once in the
+extractor and looked up. 300 of those pairs stop light only together.
 
 ## Regenerating
 

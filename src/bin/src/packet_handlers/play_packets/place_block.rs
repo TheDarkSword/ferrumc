@@ -215,6 +215,13 @@ pub fn handle(
                         &cascade,
                         query.iter().map(|(_, conn, _, _, pos, _)| (conn, pos)),
                     );
+                    // Clients do not work light out for themselves, so what the new block did to
+                    // the light has to be sent.
+                    crate::systems::world_light::relight_and_send(
+                        &state.0,
+                        offset_pos,
+                        query.iter().map(|(_, conn, _, _, pos, _)| (conn, pos)),
+                    );
 
                     let ack_packet = BlockChangeAck {
                         sequence: event.sequence,

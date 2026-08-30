@@ -9,9 +9,12 @@ use crate::systems::block_world::WorldAccess;
 use ferrumc_net::connection::StreamWriter;
 use ferrumc_net::packets::outgoing::block_change_ack::BlockChangeAck;
 use ferrumc_net::packets::outgoing::block_update::BlockUpdate;
+use ferrumc_net::packets::outgoing::light_update::LightUpdate;
 use ferrumc_net::PlayerActionReceiver;
 use ferrumc_net_codec::net_types::network_position::NetworkPosition;
+use ferrumc_net_codec::net_types::var_int::VarInt;
 use ferrumc_state::GlobalStateResource;
+use ferrumc_world::chunk::light::network::NetworkLightData;
 use ferrumc_world::neighbour_update::NeighbourUpdater;
 use ferrumc_world::{block_state_id::BlockStateId, pos::BlockPos};
 use tracing::{error, warn};
@@ -67,6 +70,9 @@ pub fn handle(
                     );
                     let cascade = std::mem::take(&mut world.changed);
 
+                    // Breaking a block lets light through, or takes a light away.
+                    let lit = crate::systems::world_light::relight_around(&state.0, pos);
+
                     // Send block broken event for un-grounding system
                     block_break_events.write(BlockBrokenEvent { position: pos });
 
@@ -93,6 +99,22 @@ pub fn handle(
                                 block_state_id: NetworkBlockState::from(changed_state),
                             };
                             conn.send_packet_ref(&packet).map_err(BinaryError::Net)?;
+                        }
+
+                        for &chunk_pos in &lit {
+                            let Ok(chunk) = ferrumc_utils::world::load_or_generate_mut(
+                                &state.0,
+                                chunk_pos,
+                                "overworld",
+                            ) else {
+                                continue;
+                            };
+                            let light = LightUpdate {
+                                chunk_x: VarInt::new(chunk_pos.x()),
+                                chunk_z: VarInt::new(chunk_pos.z()),
+                                light: NetworkLightData::from(&*chunk),
+                            };
+                            conn.send_packet_ref(&light).map_err(BinaryError::Net)?;
                         }
 
                         if eid == trigger_eid {

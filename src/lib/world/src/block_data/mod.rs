@@ -109,24 +109,49 @@ pub fn propagates_skylight(state: BlockStateId) -> bool {
     light_bytes(state).1 & 2 != 0
 }
 
-/// Whether this face stops light on its own, rather than by the state's opacity.
-///
-/// A slab dims nothing — its opacity is zero — and still stops light through its flat side.
-/// Whether light passes between two blocks is a question about both their faces together, which is
-/// a pair and cannot be tabulated; what is tabulated is each face's own answer. That settles every
-/// case except two partial faces that only cover the opening between them, where this says light
-/// passes and vanilla may not.
-#[must_use]
-pub fn face_occludes_light(state: BlockStateId, face: Direction) -> bool {
-    let index = match face {
+/// Which face shape each of a state's six sides has.
+static FACE_SHAPES: &[u8] =
+    include_bytes!("../../../../../assets/data/block_shapes/face_shapes.bin");
+
+/// Whether light is stopped between a pair of face shapes, one bit each way round.
+static FACE_OCCLUSION: &[u8] =
+    include_bytes!("../../../../../assets/data/block_shapes/face_occlusion.bin");
+
+/// How many distinct face shapes there are, which is the matrix's side.
+const FACE_SHAPE_COUNT: usize = 55;
+const FACE_ROW: usize = FACE_SHAPE_COUNT.div_ceil(8);
+
+const fn face_index(face: Direction) -> usize {
+    match face {
         Direction::Down => 0,
         Direction::Up => 1,
         Direction::North => 2,
         Direction::South => 3,
         Direction::West => 4,
         Direction::East => 5,
-    };
-    light_bytes(state).1 & (1 << (index + 2)) != 0
+    }
+}
+
+fn face_shape(state: BlockStateId, face: Direction) -> usize {
+    FACE_SHAPES
+        .get(state.raw() as usize * 6 + face_index(face))
+        .copied()
+        .unwrap_or(0) as usize
+}
+
+/// Whether light is stopped between two blocks, `from` looking `towards` `to`.
+///
+/// A slab dims nothing — its opacity is zero — and still stops light through its flat side, so this
+/// is not a question about opacity. Nor is it a question about either face alone: two partial faces
+/// can cover the opening between them while neither covers it by itself. There are only 55 distinct
+/// faces, so every pair's answer is worked out once and looked up here.
+#[must_use]
+pub fn shape_occludes_between(from: BlockStateId, to: BlockStateId, towards: Direction) -> bool {
+    let a = face_shape(from, towards);
+    let b = face_shape(to, towards.opposite());
+    FACE_OCCLUSION
+        .get(a * FACE_ROW + b / 8)
+        .is_some_and(|byte| byte & (1 << (b % 8)) != 0)
 }
 
 #[cfg(test)]
@@ -222,21 +247,65 @@ mod tests {
         assert!(!propagates_skylight(state("minecraft:stone")));
     }
 
-    /// A slab dims nothing and still stops light through its flat side. Stone stops light by being
-    /// opaque rather than by its shape, so none of its faces occlude on their own.
+    /// A slab dims nothing and still stops light through its flat side, so this is not a question
+    /// about opacity. Which way matters: a bottom slab's underside is full and its top is not
+    /// there at all.
     #[test]
     fn a_face_can_stop_light_on_its_own() {
-        let slab = BlockId::from_name("minecraft:oak_slab")
-            .expect("slabs exist")
-            .default_state();
+        let state = |name: &str| {
+            BlockId::from_name(name)
+                .unwrap_or_else(|| panic!("{name} exists"))
+                .default_state()
+        };
+        let slab = state("minecraft:oak_slab");
+        let air = state("minecraft:air");
         assert_eq!(light_opacity(slab), 1);
-        assert!(face_occludes_light(slab, Direction::Down));
-        assert!(!face_occludes_light(slab, Direction::Up));
 
-        let stone = BlockId::from_name("minecraft:stone")
-            .expect("stone exists")
+        // Down out of the slab, its full underside is in the way.
+        assert!(shape_occludes_between(slab, air, Direction::Down));
+        // Down into it from above, nothing is: its top is half a block below the face.
+        assert!(!shape_occludes_between(air, slab, Direction::Down));
+
+        // Stone stops light by being opaque, so nothing about its faces stops anything.
+        assert!(!shape_occludes_between(
+            state("minecraft:stone"),
+            air,
+            Direction::Down
+        ));
+    }
+
+    /// The case a table of single faces cannot answer, and the reason every pair is worked out
+    /// instead: a top slab beside a bottom slab closes the way between them, while neither side
+    /// closes it alone.
+    #[test]
+    fn two_partial_faces_stop_light_together() {
+        use crate::block_state::{properties, SlabType};
+
+        let slab = BlockId::from_name("minecraft:oak_slab").expect("slabs exist");
+        let bottom = slab
+            .default_state()
+            .with(properties::SLAB_TYPE, SlabType::Bottom)
+            .expect("slabs have a type");
+        let top = slab
+            .default_state()
+            .with(properties::SLAB_TYPE, SlabType::Top)
+            .expect("slabs have a type");
+        let air = BlockId::from_name("minecraft:air")
+            .expect("air exists")
             .default_state();
-        assert!(!face_occludes_light(stone, Direction::Down));
+
+        assert!(
+            !shape_occludes_between(top, air, Direction::North),
+            "a top slab's side does not close the way on its own"
+        );
+        assert!(
+            !shape_occludes_between(air, bottom, Direction::North),
+            "nor does a bottom slab's"
+        );
+        assert!(
+            shape_occludes_between(top, bottom, Direction::North),
+            "together they cover the whole opening"
+        );
     }
 
     /// It is a property of the state, not of the block: a fully grown crop is done growing.

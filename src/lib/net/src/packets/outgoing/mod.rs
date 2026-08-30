@@ -24,6 +24,7 @@ pub mod hurt_animation;
 pub mod initialize_border;
 pub mod keep_alive;
 pub mod level_event;
+pub mod light_update;
 pub mod login_disconnect;
 pub mod login_play;
 pub mod login_success;

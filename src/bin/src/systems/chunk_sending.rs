@@ -124,6 +124,11 @@ pub fn handle(
                     }
                 }
 
+                // A chunk is lit on its own when it is generated, since lighting must not be what
+                // pulls its neighbours into memory. By the time it is sent the neighbours may be
+                // there, so what should have crossed the border is let through now.
+                crate::systems::world_light::pull_light_across_borders(&state_arc, pos);
+
                 let Some(chunk) = state_arc.world.cached_chunk(pos, "overworld") else {
                     error!("Chunk {:?} vanished from cache after generation", coords);
                     results.push((coords, None));

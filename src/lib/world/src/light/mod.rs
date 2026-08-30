@@ -12,7 +12,7 @@
 //! Follows `BlockLightEngine` and `LightEngine` in the vanilla sources.
 
 use crate::block_data::{
-    face_occludes_light, light_dampening, light_emission, light_opacity, MAX_LIGHT,
+    light_dampening, light_emission, light_opacity, shape_occludes_between, MAX_LIGHT,
 };
 use crate::block_state::Direction;
 use crate::block_state_id::BlockStateId;
@@ -59,6 +59,8 @@ pub trait LightWorld {
     /// Whether light is kept for this position at all. A position in a chunk that is not loaded is
     /// not darkened or lit; it is left for whenever it is.
     fn stores_light(&mut self, pos: BlockPos) -> bool;
+    /// The lowest and one past the highest y the world holds.
+    fn height_range(&self) -> (i32, i32);
 }
 
 /// One position's turn at spreading light, or darkness.
@@ -118,6 +120,85 @@ impl LightEngine {
             directions: ANY & !bit(Direction::Up),
             from_emission: true,
         });
+    }
+
+    /// Spreads the light a position already has, without questioning where it came from.
+    ///
+    /// Used where light is known to be right on one side of a border and may not have reached the
+    /// other: rechecking the position instead would take its light away and put it back.
+    pub fn push_from(&mut self, pos: BlockPos, level: u8) {
+        if level <= 1 {
+            return;
+        }
+        self.increase.push_back(Entry {
+            pos,
+            level,
+            directions: ANY,
+            from_emission: false,
+        });
+    }
+
+    /// Takes a sky source away, so what it lit is darkened and then relit from whatever else
+    /// reaches it.
+    fn remove_sky_source(&mut self, pos: BlockPos) {
+        self.decrease.push_back(Entry {
+            pos,
+            level: MAX_LIGHT,
+            directions: ANY & !bit(Direction::Up),
+            from_emission: false,
+        });
+    }
+
+    /// Works out what a change at this position did to the sky in its column.
+    ///
+    /// A block placed under the open sky darkens everything below it; one broken opens the column
+    /// again. Either way the column's lowest source moves, and the positions between the old and
+    /// the new have to gain or lose their source before anything spreads.
+    pub fn check_sky_column(&mut self, world: &mut dyn LightWorld, pos: BlockPos) {
+        let (bottom, top) = world.height_range();
+        let lowest = lowest_source_y(world, pos.pos.x, pos.pos.z);
+
+        // Everything from there up is a source now. Stop at the first that already was: everything
+        // above it already is too.
+        for y in lowest..top {
+            let at = BlockPos::of(pos.pos.x, y, pos.pos.z);
+            if !world.stores_light(at) || world.light_at(at, LightLayer::Sky) == MAX_LIGHT {
+                break;
+            }
+            world.set_light(at, LightLayer::Sky, MAX_LIGHT);
+            self.add_sky_source(at);
+        }
+
+        // Everything below it is not, and the same reasoning downwards.
+        for y in (bottom..lowest).rev() {
+            let at = BlockPos::of(pos.pos.x, y, pos.pos.z);
+            if !world.stores_light(at) || world.light_at(at, LightLayer::Sky) != MAX_LIGHT {
+                break;
+            }
+            world.set_light(at, LightLayer::Sky, 0);
+            self.remove_sky_source(at);
+        }
+
+        // And the block itself, if the sky no longer reaches it.
+        if pos.pos.y < lowest && world.stores_light(pos) {
+            let old = world.light_at(pos, LightLayer::Sky);
+            if old > 0 {
+                world.set_light(pos, LightLayer::Sky, 0);
+                self.decrease.push_back(Entry {
+                    pos,
+                    level: old,
+                    directions: ANY,
+                    from_emission: false,
+                });
+            } else {
+                self.decrease.push_back(Entry {
+                    pos,
+                    level: 1,
+                    directions: ANY,
+                    from_emission: false,
+                });
+            }
+        }
     }
 
     /// Says that whatever is at this position may have changed what it does to light.
@@ -214,9 +295,7 @@ impl LightEngine {
                 continue;
             }
             let from = *from_state.get_or_insert_with(|| world.block_at(entry.pos));
-            if face_occludes_light(from, direction)
-                || face_occludes_light(to_state, direction.opposite())
-            {
+            if shape_occludes_between(from, to_state, direction) {
                 continue;
             }
 
@@ -310,6 +389,12 @@ impl LightWorld for SingleChunk<'_> {
         }
     }
 
+    fn height_range(&self) -> (i32, i32) {
+        let height = self.chunk.dimensions();
+        let min = i32::from(height.min_y);
+        (min, min + i32::from(height.height))
+    }
+
     fn stores_light(&mut self, pos: BlockPos) -> bool {
         // Only this chunk, and only within its height. A position outside it would otherwise be
         // read and written through the chunk's own coordinates, which wrap: light would come back
@@ -361,14 +446,31 @@ pub fn relight_block_light(chunk: &mut crate::chunk::Chunk, chunk_pos: crate::po
     }
 }
 
+/// The lowest position in a column that the sky still reaches.
+fn lowest_source_y(world: &mut dyn LightWorld, x: i32, z: i32) -> i32 {
+    let (bottom, top) = world.height_range();
+    let air = crate::block_state::BlockId::from_name("minecraft:air")
+        .map(crate::block_state::BlockId::default_state)
+        .unwrap_or_else(|| BlockStateId::new(0));
+
+    let mut above = air;
+    for y in (bottom..top).rev() {
+        let at = BlockPos::of(x, y, z);
+        let here = world.block_at(at);
+        if sky_stops_between(above, here) {
+            return y + 1;
+        }
+        above = here;
+    }
+    bottom
+}
+
 /// Whether the sky stops between these two, the upper one first.
 ///
 /// Anything that dims light at all stops the sky, and so does a pair of faces that closes the gap
 /// between them: a trapdoor lets the sky past when open and not when shut.
 fn sky_stops_between(top: BlockStateId, bottom: BlockStateId) -> bool {
-    light_dampening(bottom) != 0
-        || face_occludes_light(top, Direction::Down)
-        || face_occludes_light(bottom, Direction::Up)
+    light_dampening(bottom) != 0 || shape_occludes_between(top, bottom, Direction::Down)
 }
 
 /// Works out a chunk's sky light from scratch.
@@ -512,6 +614,10 @@ mod tests {
 
         fn set_light(&mut self, pos: BlockPos, _layer: LightLayer, level: u8) {
             self.light.insert((pos.pos.x, pos.pos.y, pos.pos.z), level);
+        }
+
+        fn height_range(&self) -> (i32, i32) {
+            (0, 20)
         }
 
         fn stores_light(&mut self, pos: BlockPos) -> bool {

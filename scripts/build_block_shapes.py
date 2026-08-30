@@ -47,6 +47,26 @@ def main() -> None:
         indices = [0 if state is None else state[field] for state in states]
         (OUT_BIN / f"{field}.bin").write_bytes(struct.pack(f"<{len(indices)}H", *indices))
 
+    # Which face shape each of a state's six sides has, and whether light is stopped between any
+    # pair of them. Whether light passes between two blocks is a question about both their faces
+    # together; there are few enough distinct faces that every pair's answer fits in a table.
+    faces = bytearray(len(states) * 6)
+    for index, state in enumerate(states):
+        if state is None:
+            continue
+        for side, shape in enumerate(state["face_shapes"]):
+            faces[index * 6 + side] = shape
+    (OUT_BIN / "face_shapes.bin").write_bytes(faces)
+
+    pairs = data["face_occlusion_pairs"]
+    stride = (len(pairs) + 7) // 8
+    matrix = bytearray(len(pairs) * stride)
+    for row, answers in enumerate(pairs):
+        for column, occludes in enumerate(answers):
+            if occludes:
+                matrix[row * stride + column // 8] |= 1 << (column % 8)
+    (OUT_BIN / "face_occlusion.bin").write_bytes(matrix)
+
     # How each state deals with light: what it emits, how much it dims what passes through, and
     # the two flags the engines branch on. Two bytes a state.
     light = bytearray(len(states) * 2)
@@ -55,6 +75,7 @@ def main() -> None:
             continue
         light[index * 2] = state["light_emission"] | (state["light_dampening"] << 4)
         # One byte: two flags and one bit per face saying whether that face stops light by itself.
+        # Kept for the cheap answer; the pair table above settles the rest.
         flags = state["face_occludes_light"] << 2
         if state["shape_occludes_light"]:
             flags |= 1
@@ -112,6 +133,7 @@ def main() -> None:
         1 for state in states if state is not None and state["randomly_ticking"]
     )
     print(f"{randomly_ticking} states take a random tick")
+    print(f"{len(pairs)} distinct face shapes, {len(pairs) * len(pairs)} pair answers")
     print(
         f"{len(states)} states, {len(shapes)} shapes, {len(boxes)} boxes "
         f"-> {OUT_RS.relative_to(REPO_ROOT)} and {OUT_BIN.relative_to(REPO_ROOT)}/"

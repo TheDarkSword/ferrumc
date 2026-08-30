@@ -74,6 +74,41 @@ public final class BlockShapeExtractor {
         return SHAPES.size() - 1;
     }
 
+    /// Every distinct face occlusion shape, so a state's faces can be indices into it.
+    private static final Map<String, Integer> FACE_SHAPES = new LinkedHashMap<>();
+    private static final List<VoxelShape> FACE_SHAPE_ORDER = new ArrayList<>();
+
+    private static int faceShape(final VoxelShape shape) {
+        final StringBuilder key = new StringBuilder();
+        for (final AABB box : shape.toAabbs()) {
+            key.append(String.format(
+                "[%s %s %s %s %s %s]",
+                box.minX, box.minY, box.minZ, box.maxX, box.maxY, box.maxZ
+            ));
+        }
+        final Integer seen = FACE_SHAPES.get(key.toString());
+        if (seen != null) {
+            return seen;
+        }
+        FACE_SHAPES.put(key.toString(), FACE_SHAPES.size());
+        FACE_SHAPE_ORDER.add(shape);
+        return FACE_SHAPES.size() - 1;
+    }
+
+    /// Which face shape each of a state's sides has, one index per direction.
+    private static String faceShapeIndices(final BlockState state) {
+        final StringBuilder out = new StringBuilder("[");
+        boolean first = true;
+        for (final Direction direction : Direction.values()) {
+            if (!first) {
+                out.append(',');
+            }
+            out.append(faceShape(LightEngine.getOcclusionShape(state, direction)));
+            first = false;
+        }
+        return out.append(']').toString();
+    }
+
     /// Which faces of this block stop light on their own.
     ///
     /// Whether light passes between two blocks is really a question about both their faces
@@ -138,7 +173,7 @@ public final class BlockShapeExtractor {
             states.add(String.format(
                 "{\"collision\":%d,\"outline\":%d,\"face_sturdy\":%d,\"light_emission\":%d,"
                     + "\"light_dampening\":%d,\"shape_occludes_light\":%b,\"propagates_skylight\":%b,"
-                    + "\"face_occludes_light\":%d,"
+                    + "\"face_occludes_light\":%d,\"face_shapes\":%s,"
                     + "\"hardness\":%s,"
                     + "\"air\":%b,\"solid\":%b,\"occludes\":%b,\"randomly_ticking\":%b,"
                     + "\"needs_tool\":%b,\"push_reaction\":\"%s\"}",
@@ -150,6 +185,7 @@ public final class BlockShapeExtractor {
                 state.useShapeForLightOcclusion(),
                 state.propagatesSkylightDown(),
                 faceOccludesLight(state),
+                faceShapeIndices(state),
                 trim(state.getDestroySpeed(EmptyBlockGetter.INSTANCE, origin)),
                 state.isAir(),
                 state.isSolid(),
@@ -168,6 +204,23 @@ public final class BlockShapeExtractor {
             writer.print(String.join(",", BOX_ORDER));
             writer.print("],\"shapes\":[");
             writer.print(String.join(",", SHAPE_ORDER));
+            // Whether light is stopped between a pair of faces. Which pair a position needs is only
+            // known at run time, and there are few enough shapes that every answer fits in a table.
+            writer.print("],\"face_occlusion_pairs\":[");
+            final List<String> rows = new ArrayList<>();
+            for (final VoxelShape from : FACE_SHAPE_ORDER) {
+                final StringBuilder row = new StringBuilder("[");
+                boolean firstInRow = true;
+                for (final VoxelShape to : FACE_SHAPE_ORDER) {
+                    if (!firstInRow) {
+                        row.append(',');
+                    }
+                    row.append(Shapes.faceShapeOccludes(from, to) ? 1 : 0);
+                    firstInRow = false;
+                }
+                rows.add(row.append(']').toString());
+            }
+            writer.print(String.join(",", rows));
             writer.print("],\"states\":[");
             writer.print(String.join(",", states));
             writer.print("]}");
