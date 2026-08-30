@@ -22,15 +22,59 @@ const REGISTRY_PAYLOADS: [&[u8]; 10] = [
     include_bytes!("../../../../../assets/data/registry_packets/26.2.json"),
 ];
 
+/// What tag each field of a registry entry carries, asked of the game itself by
+/// `scripts/extract_registry_tags.py`. Only the versions whose jars carry their own names can be
+/// asked; the older ones use the oldest table there is, since not one of the 754 field paths the
+/// two share disagrees between them.
+const REGISTRY_TAGS: [&[u8]; 2] = [
+    include_bytes!("../../../../../assets/data/registry_tags/26.1.json"),
+    include_bytes!("../../../../../assets/data/registry_tags/26.2.json"),
+];
+
+/// Which table each version uses, in the order of `ProtocolVersion::ALL`.
+const TABLE_FOR_VERSION: [usize; 10] = [0, 0, 0, 0, 0, 0, 0, 0, 0, 1];
+
 pub(crate) fn build_mapping(_: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    let versions = REGISTRY_PAYLOADS.iter().map(|payload| build_one(payload));
+    let versions = REGISTRY_PAYLOADS
+        .iter()
+        .zip(TABLE_FOR_VERSION)
+        .map(|(payload, table)| build_one(payload, load_tags(REGISTRY_TAGS[table])));
     quote! {
         [#(#versions),*]
     }
     .into()
 }
 
-fn build_one(json_file: &[u8]) -> proc_macro2::TokenStream {
+/// Reads a tag table into `registry -> field path -> tag id`.
+fn load_tags(table: &[u8]) -> HashMap<String, HashMap<String, u8>> {
+    #[derive(serde::Deserialize)]
+    struct Table {
+        registries: HashMap<String, HashMap<String, Vec<u8>>>,
+    }
+    let table: Table = serde_json::from_slice(table).expect("the tag table should be valid JSON");
+    table
+        .registries
+        .into_iter()
+        .map(|(registry, fields)| {
+            let fields = fields
+                .into_iter()
+                .filter_map(|(path, tags)| {
+                    // A path may carry more than one tag where the codec accepts either a number
+                    // or a compound written in its place. Only the numeric one is of any use here:
+                    // a compound converts correctly on its own.
+                    let numeric = tags.iter().copied().find(|tag| (1..=6).contains(tag))?;
+                    Some((path, numeric))
+                })
+                .collect();
+            (registry, fields)
+        })
+        .collect()
+}
+
+fn build_one(
+    json_file: &[u8],
+    tags: HashMap<String, HashMap<String, u8>>,
+) -> proc_macro2::TokenStream {
     let val: IndexMap<String, IndexMap<String, Value>> = serde_json::from_slice(json_file).unwrap();
 
     let mut registry_entries = vec![];
@@ -39,24 +83,16 @@ fn build_one(json_file: &[u8]) -> proc_macro2::TokenStream {
         let mut packets = vec![];
         for (value_name, value) in &value_set {
             let mut nbt_data_buf = Vec::new();
-            // The registry data is sourced from JSON, which cannot express NBT's distinct numeric
-            // tags: every JSON integer would otherwise serialise as a `Long` and every real as a
-            // `Double`. The vanilla client coerces numeric tags leniently and tolerates that, but
-            // strict clients deserialise the registry into typed structs and reject a field whose
-            // tag is not exactly what the schema expects (e.g. `dimension_type.height` must be an
-            // `Int`, not a `Long`). `dimension_type` is encoded through a schema-aware converter so
-            // every field carries its correct tag; all other registries keep the byte-for-byte
-            // output of the previous generic path until they, too, need a schema.
-            //
-            // Defaulting every registry to `Int` was tried and made things worse: a strict client
-            // rejected roughly twice as many `minecraft:enchantment` entries. Each registry needs
-            // its own field tags rather than one blanket rule.
-            if reg_entry == "minecraft:dimension_type" {
-                let nbt = dimension_type_to_nbt(value);
-                craftflow_nbt::to_writer(&mut nbt_data_buf, &nbt).unwrap();
-            } else {
-                craftflow_nbt::to_writer(&mut nbt_data_buf, &value).unwrap();
-            }
+            // The payload is built from json, which has one number type where NBT has six. A
+            // lenient client coerces them; a strict one reads the payload into typed structs and
+            // refuses a field whose tag is not what its schema says. There is no rule to guess by —
+            // most numeric fields in these registries are floats, some are ints, and the same name
+            // means different things at different depths — so the tag of every field was asked of
+            // the game and is looked up here by where the field sits.
+            let empty = HashMap::new();
+            let fields = tags.get(&reg_entry).unwrap_or(&empty);
+            let nbt = json_to_nbt(value, fields, String::new());
+            craftflow_nbt::to_writer(&mut nbt_data_buf, &nbt).unwrap();
             let kv = (value_name.clone(), nbt_data_buf);
             packets.push(kv);
         }
@@ -82,63 +118,25 @@ fn build_one(json_file: &[u8]) -> proc_macro2::TokenStream {
     }
 }
 
-/// The NBT numeric tag a value must use, when it differs from the generic default (integers → Int,
-/// reals → Double). Only the tags actually needed by the current schema overrides are listed.
-#[derive(Clone, Copy)]
-enum NumTag {
-    Long,
-    Float,
-    Double,
-}
-
-/// The `dimension_type` fields whose vanilla NBT tag differs from the generic default. Every other
-/// field is an `Int` (e.g. `height`, `min_y`, `logical_height`), a `Byte` boolean, a `String`, or a
-/// nested compound, all of which the generic conversion already produces correctly.
-fn dimension_type_field_tag(field: &str) -> Option<NumTag> {
-    match field {
-        // Stored as `0`/`0.x` in JSON but a float in the dimension codec.
-        "ambient_light" => Some(NumTag::Float),
-        // A double in the dimension codec; JSON carries it as the integer `1`.
-        "coordinate_scale" => Some(NumTag::Double),
-        // A long in the dimension codec (optional; present for the Nether and the End).
-        "fixed_time" => Some(NumTag::Long),
-        _ => None,
-    }
-}
-
-/// Converts one `dimension_type` entry's JSON into correctly-typed NBT, applying the per-field tag
-/// overrides above to the entry's top-level fields. Nested values (e.g. the
-/// `monster_spawn_light_level` int-provider compound) use the generic conversion, which already
-/// yields `Int` for their integers.
-fn dimension_type_to_nbt(entry: &Value) -> DynNBT {
-    let obj = entry
-        .as_object()
-        .expect("dimension_type entry must be a JSON object");
-    let mut map = HashMap::with_capacity(obj.len());
-    for (key, value) in obj {
-        map.insert(
-            key.clone(),
-            json_to_nbt(value, dimension_type_field_tag(key)),
-        );
-    }
-    DynNBT::Compound(map)
-}
-
-/// Generic JSON → NBT conversion with Minecraft-appropriate defaults: integers become `Int` (not
-/// `Long`), reals become `Double`, and booleans become `Byte`. `force` overrides the numeric tag
-/// for a single scalar where the schema demands a non-default tag; it does not propagate into
-/// nested lists or compounds.
-fn json_to_nbt(value: &Value, force: Option<NumTag>) -> DynNBT {
+/// Converts a registry entry's JSON into NBT, giving every field the tag the game gives it.
+///
+/// `path` is where this value sits in the entry: `/effects/minecraft:damage[]/effect/value/base`.
+/// A field the table says nothing about keeps the sensible default — integers become `Int` rather
+/// than `Long`, reals `Double`, booleans `Byte` — which is what the older versions fall back on
+/// for anything their own release added.
+fn json_to_nbt(value: &Value, fields: &HashMap<String, u8>, path: String) -> DynNBT {
     match value {
         Value::Bool(b) => DynNBT::Byte(i8::from(*b)),
-        Value::Number(n) => match force {
-            Some(NumTag::Float) => DynNBT::Float(num_f64(n) as f32),
-            Some(NumTag::Double) => DynNBT::Double(num_f64(n)),
-            Some(NumTag::Long) => DynNBT::Long(num_i64(n)),
-            None => {
+        Value::Number(n) => match fields.get(&path).copied() {
+            Some(1) => DynNBT::Byte(num_i64(n) as i8),
+            Some(2) => DynNBT::Short(num_i64(n) as i16),
+            Some(3) => DynNBT::Int(num_i64(n) as i32),
+            Some(4) => DynNBT::Long(num_i64(n)),
+            Some(5) => DynNBT::Float(num_f64(n) as f32),
+            Some(6) => DynNBT::Double(num_f64(n)),
+            _ => {
                 if let Some(i) = n.as_i64() {
-                    // Default integers to Int (the common registry tag), widening to Long only when
-                    // the value genuinely does not fit in an i32.
+                    // Widen to a long only where the number genuinely does not fit.
                     match i32::try_from(i) {
                         Ok(v) => DynNBT::Int(v),
                         Err(_) => DynNBT::Long(i),
@@ -149,11 +147,22 @@ fn json_to_nbt(value: &Value, force: Option<NumTag>) -> DynNBT {
             }
         },
         Value::String(s) => DynNBT::String(s.clone()),
-        Value::Array(items) => DynNBT::List(items.iter().map(|v| json_to_nbt(v, None)).collect()),
+        Value::Array(items) => {
+            let below = format!("{path}[]");
+            DynNBT::List(
+                items
+                    .iter()
+                    .map(|item| json_to_nbt(item, fields, below.clone()))
+                    .collect(),
+            )
+        }
         Value::Object(obj) => {
             let mut map = HashMap::with_capacity(obj.len());
             for (key, value) in obj {
-                map.insert(key.clone(), json_to_nbt(value, None));
+                map.insert(
+                    key.clone(),
+                    json_to_nbt(value, fields, format!("{path}/{key}")),
+                );
             }
             DynNBT::Compound(map)
         }

@@ -20,7 +20,7 @@ fn read_all(kind: &str, parse: impl Fn(&Value) -> Option<()>) -> (usize, Vec<Str
     let manager = built_in();
     let mut failures = Vec::new();
     let mut count = 0;
-    for (id, resource) in FileToId::json(&format!("worldgen/{kind}")).list(&manager) {
+    for (id, resource) in FileToId::json(format!("worldgen/{kind}")).list(&manager) {
         count += 1;
         let value: Value = serde_json::from_slice(&resource.data).expect("worldgen data is json");
         if parse(&value).is_none() {

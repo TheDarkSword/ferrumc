@@ -286,3 +286,17 @@ dozen fields before a generator asks for them would be guessing.
 
 Noise settings, density functions and surface rules are not read here: they are the shape of the
 terrain rather than what is placed on it, and they belong with the generator that runs them.
+
+## Regenerating
+
+```bash
+scripts/extract_registry_tags.py        # what tag each field of a synced registry carries
+scripts/extract_registry_tags.py 26.1   # and for the oldest jar that carries its own names
+```
+
+The registry payload a client is sent is NBT built from json, and json has one number type where NBT
+has six. A field's tag cannot be worked out from its value — most numeric fields in these registries
+are floats, some are ints, and the same field name means different things at different depths — so
+each entry is read through the game's own codec, written back out as NBT, and the tag at every path
+recorded. A client that reads the payload into typed structs refuses a field whose tag is not what
+its schema says, so this is the difference between an entry arriving and being dropped.

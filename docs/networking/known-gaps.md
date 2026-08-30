@@ -62,15 +62,21 @@ an empty slot.
 Vanilla proxies show a placeholder carrying the original name instead, which needs the item's
 components rewritten as well.
 
-## Registry field types are not per-registry
+## Registry field types come from the game, for the two newest versions
 
-Registry entries are sent as NBT built from each version's datapack, and the tag a field gets is
-inferred from its JSON value rather than from what the client expects. Strict clients log a missing
-field for entries where the two disagree — `minecraft:enchantment` is the one that appears in
-practice.
+Registry entries are sent as NBT built from each version's datapack. Json has one number type and
+NBT has six, so a field's tag cannot be inferred from its value: most numeric fields in these
+registries are floats, some are ints, and the same field name means different things at different
+depths — an enchantment writes `base` as an `Int` in one place and a `Float` in another.
 
-Inferring by value is right for most registries. Fixing this properly means carrying the field types
-from the vanilla codecs, which is Phase 3 work.
+The tag of every field is therefore asked of the game itself: each entry is read through its own
+codec and written back out as NBT, and the tag at every path is recorded.
+`scripts/extract_registry_tags.py` does it, and only for 26.1 and newer, since older jars are
+obfuscated and the extractor cannot compile against them.
+
+Older versions use the 26.1 table. Of the 754 field paths 26.1 and 26.2 share, not one carries a
+different tag, so the table is treated as version-stable; a field an older release had and 26.1 does
+not keeps the earlier default, which is an `Int` for a whole number and a `Double` for a real.
 
 ## Tag ids are the server's own
 

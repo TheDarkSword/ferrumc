@@ -64,3 +64,139 @@ pub struct RegistryEntry {
     pub id: String,
     pub data: PrefixedOptional<Vec<u8>>,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// The tag of one field of one entry, read back out of the payload the client is sent.
+    fn tag_of(version: ProtocolVersion, registry: &str, entry: &str, field: &str) -> u8 {
+        let packet = registry_packets_for(version)
+            .iter()
+            .find(|packet| packet.registry_id == registry)
+            .unwrap_or_else(|| panic!("{registry} should be sent"));
+        let data = packet
+            .entries
+            .data
+            .iter()
+            .find(|sent| sent.id == entry)
+            .and_then(|sent| match &sent.data {
+                PrefixedOptional::Some(data) => Some(data),
+                PrefixedOptional::None => None,
+            })
+            .unwrap_or_else(|| panic!("{registry}/{entry} should carry data"));
+
+        // Network NBT: a compound with no name, so the fields start straight after its tag byte.
+        let mut at = 1;
+        loop {
+            let tag = data[at];
+            assert_ne!(tag, 0, "{registry}/{entry} has no field {field}");
+            at += 1;
+            let name_len = usize::from(u16::from_be_bytes([data[at], data[at + 1]]));
+            at += 2;
+            let name = std::str::from_utf8(&data[at..at + name_len]).expect("a field name");
+            if name == field {
+                return tag;
+            }
+            at += name_len;
+            at += skip(tag, &data[at..]);
+        }
+    }
+
+    /// How many bytes a value of this tag takes.
+    fn skip(tag: u8, data: &[u8]) -> usize {
+        match tag {
+            1 => 1,
+            2 => 2,
+            3 | 5 => 4,
+            4 | 6 => 8,
+            8 => 2 + usize::from(u16::from_be_bytes([data[0], data[1]])),
+            7 => 4 + read_len(data),
+            11 => 4 + read_len(data) * 4,
+            12 => 4 + read_len(data) * 8,
+            9 => {
+                let element = data[0];
+                let count = read_len(&data[1..]);
+                let mut at = 5;
+                for _ in 0..count {
+                    at += skip(element, &data[at..]);
+                }
+                at
+            }
+            10 => {
+                let mut at = 0;
+                loop {
+                    let inner = data[at];
+                    at += 1;
+                    if inner == 0 {
+                        return at;
+                    }
+                    let name_len = usize::from(u16::from_be_bytes([data[at], data[at + 1]]));
+                    at += 2 + name_len;
+                    at += skip(inner, &data[at..]);
+                }
+            }
+            other => panic!("unknown nbt tag {other}"),
+        }
+    }
+
+    fn read_len(data: &[u8]) -> usize {
+        usize::try_from(i32::from_be_bytes([data[0], data[1], data[2], data[3]]))
+            .expect("a length is not negative")
+    }
+
+    const BYTE: u8 = 1;
+    const INT: u8 = 3;
+    const FLOAT: u8 = 5;
+
+    /// The fields a strict client refused: a temperature is a float in the game's own codec, and
+    /// sending it as a double is what made those clients drop the entry.
+    #[test]
+    fn a_field_carries_the_tag_the_game_gives_it() {
+        for version in ProtocolVersion::ALL {
+            assert_eq!(
+                tag_of(version, "minecraft:worldgen/biome", "plains", "temperature"),
+                FLOAT,
+                "a biome's temperature on {version:?}"
+            );
+            assert_eq!(
+                tag_of(version, "minecraft:worldgen/biome", "plains", "downfall"),
+                FLOAT,
+                "a biome's downfall on {version:?}"
+            );
+            assert_eq!(
+                tag_of(
+                    version,
+                    "minecraft:worldgen/biome",
+                    "plains",
+                    "has_precipitation"
+                ),
+                BYTE,
+                "a biome's precipitation on {version:?}"
+            );
+        }
+    }
+
+    /// The dimension type was the one registry with a hand-written schema; the measured table has
+    /// to agree with what that got right.
+    #[test]
+    fn the_dimension_type_keeps_the_tags_it_had() {
+        let version = ProtocolVersion::CURRENT;
+        let of = |field| tag_of(version, "minecraft:dimension_type", "overworld", field);
+        assert_eq!(of("ambient_light"), FLOAT);
+        assert_eq!(of("height"), INT);
+        assert_eq!(of("min_y"), INT);
+        assert_eq!(of("logical_height"), INT);
+        assert_eq!(of("has_skylight"), BYTE);
+    }
+
+    /// The enchantment registry is the one a strict client was measured refusing.
+    #[test]
+    fn an_enchantment_carries_its_own_tags() {
+        let version = ProtocolVersion::CURRENT;
+        let of = |field| tag_of(version, "minecraft:enchantment", "sharpness", field);
+        assert_eq!(of("max_level"), INT);
+        assert_eq!(of("weight"), INT);
+        assert_eq!(of("anvil_cost"), INT);
+    }
+}

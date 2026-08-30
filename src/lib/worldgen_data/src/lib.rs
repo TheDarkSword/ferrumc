@@ -93,7 +93,7 @@ fn read<T>(
     parse: impl Fn(&Value) -> Option<T>,
 ) -> BTreeMap<String, T> {
     let mut by_name = BTreeMap::new();
-    for (id, resource) in FileToId::json(&format!("worldgen/{kind}")).list(manager) {
+    for (id, resource) in FileToId::json(format!("worldgen/{kind}")).list(manager) {
         let Ok(value) = serde_json::from_slice::<Value>(&resource.data) else {
             error!("{kind} {id} from data pack {} is not json", resource.source);
             continue;
