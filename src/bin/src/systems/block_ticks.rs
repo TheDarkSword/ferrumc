@@ -164,11 +164,12 @@ pub fn random(
     super::block_world::broadcast_changes(&changed, players.iter().copied());
 }
 
-/// Moves waiting turns between the chunks and the scheduler.
+/// Hands a newly loaded chunk's waiting turns to the scheduler.
 ///
 /// A loaded chunk's ticks belong in the scheduler, where they can be ordered against every other
-/// chunk's; a chunk that is not loaded holds its own, so they are written with it and come back
-/// when it does. This system carries them each way as chunks come and go.
+/// chunk's. Going the other way happens where the chunk is actually let go of, in the unloader,
+/// rather than here: vanilla registers and unregisters a chunk's tick container as it is loaded and
+/// unloaded, and doing it at those two points is what stops the two ever disagreeing.
 pub fn carry_ticks(
     state: Res<GlobalStateResource>,
     mut scheduler: ResMut<FluidScheduler>,
@@ -185,6 +186,7 @@ pub fn carry_ticks(
         .iter()
         .filter(|entry| entry.key().1 == "overworld" && !entry.value().scheduled_ticks().is_empty())
         .map(|entry| entry.key().0)
+        .filter(|&pos| levels.0.status(pos).is_loaded())
         .collect();
     for pos in waiting {
         let Ok(mut chunk) = ferrumc_utils::world::load_or_generate_mut(&state.0, pos, "overworld")
@@ -194,28 +196,5 @@ pub fn carry_ticks(
         let held = chunk.take_scheduled_ticks();
         drop(chunk);
         scheduler.0.restore_chunk(&held, current);
-    }
-
-    // Chunks that are no longer kept take theirs back, so nothing is left ticking for a chunk that
-    // is about to be written out and forgotten.
-    let leaving: Vec<ChunkPos> = state
-        .0
-        .world
-        .get_cache()
-        .iter()
-        .filter(|entry| entry.key().1 == "overworld")
-        .map(|entry| entry.key().0)
-        .filter(|&pos| !levels.0.status(pos).is_loaded())
-        .collect();
-    for pos in leaving {
-        let held = scheduler.0.take_chunk(pos, current);
-        if held.is_empty() {
-            continue;
-        }
-        if let Ok(mut chunk) =
-            ferrumc_utils::world::load_or_generate_mut(&state.0, pos, "overworld")
-        {
-            chunk.hold_scheduled_ticks(held);
-        }
     }
 }
