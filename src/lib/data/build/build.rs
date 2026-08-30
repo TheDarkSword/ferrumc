@@ -8,7 +8,6 @@ mod blocks;
 mod damage_types;
 mod effects;
 mod enchantments;
-mod entities;
 mod fluids;
 mod items;
 mod particles;
@@ -42,7 +41,6 @@ pub fn main() {
         (effects::build, "effects.rs"),
         (enchantments::build, "enchantments.rs"),
         (potions::build, "potions.rs"),
-        (entities::build, "entities.rs"),
         (biomes::build, "biomes.rs"),
         (items::build, "items.rs"),
     ];

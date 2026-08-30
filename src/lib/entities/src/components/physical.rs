@@ -1,6 +1,5 @@
 use bevy_ecs::prelude::Component;
 use bevy_math::bounding::Aabb3d;
-use ferrumc_data::generated::entities::EntityType as VanillaEntityType;
 use std::ops::{Deref, DerefMut};
 
 /// Entity bounding box (collision box).
@@ -31,22 +30,13 @@ impl BoundingBox {
     ///
     /// # Arguments
     ///
-    /// * `dimension` - Dimensions [width, height] from ferrumc-data
-    ///
-    /// # Examples
-    ///
-    /// ```ignore
-    /// use ferrumc_data::generated::entities::EntityType as VanillaEntityType;
-    ///
-    /// let bbox = BoundingBox::from_vanilla_dimension(VanillaEntityType::PIG.dimension);
-    /// assert_eq!(bbox.half_width, 0.45); // 0.9 / 2
-    /// assert_eq!(bbox.height, 0.9);
-    /// ```
-    pub const fn from_vanilla_dimension(dimension: [f32; 2]) -> Self {
+    /// * `width` - how wide it is; an entity's box is square in plan
+    /// * `height` - how tall it is
+    pub const fn of(width: f32, height: f32) -> Self {
         Self {
             aabb: Aabb3d {
-                max: bevy_math::Vec3A::new(dimension[0] / 2.0, dimension[1], dimension[0] / 2.0),
-                min: bevy_math::Vec3A::new(-(dimension[0] / 2.0), 0.0, -(dimension[0] / 2.0)),
+                max: bevy_math::Vec3A::new(width / 2.0, height, width / 2.0),
+                min: bevy_math::Vec3A::new(-(width / 2.0), 0.0, -(width / 2.0)),
             },
         }
     }
@@ -79,15 +69,12 @@ impl BoundingBox {
 ///
 /// # Examples
 ///
-/// ```ignore
-/// use ferrumc_entities::components::{EntityMetadata, PhysicalProperties};
-/// use ferrumc_data::generated::entities::EntityType as VanillaEntityType;
+/// ```
+/// use ferrumc_entities::entity_type::EntityType;
 ///
-/// let metadata = EntityMetadata::from_vanilla(&VanillaEntityType::PIG);
-/// let physical = PhysicalProperties::from_metadata(&metadata);
+/// let physical = EntityType::Pig.physical(false);
 ///
-/// assert_eq!(physical.bounding_box.height, 0.9);
-/// assert_eq!(physical.eye_height, 0.765);
+/// assert!((physical.bounding_box.height() - 0.9).abs() < 1e-6);
 /// assert!(!physical.fire_immune);
 /// ```
 #[derive(Component, Clone, Copy)]
@@ -108,41 +95,6 @@ pub struct PhysicalProperties {
 }
 
 impl PhysicalProperties {
-    /// Creates physical properties from vanilla metadata.
-    ///
-    /// Extracts dimensions, eye_height and fire_immune from vanilla data.
-    ///
-    /// # Arguments
-    ///
-    /// * `metadata` - Entity metadata
-    ///
-    /// # Examples
-    ///
-    /// ```ignore
-    /// let metadata = EntityMetadata::from_vanilla(&VanillaEntityType::PIG);
-    /// let physical = PhysicalProperties::from_metadata(&metadata);
-    /// ```
-    pub fn from_metadata(metadata: &EntityMetadata) -> Self {
-        let data = metadata.vanilla_data();
-
-        Self {
-            bounding_box: BoundingBox::from_vanilla_dimension(data.dimension),
-            eye_height: data.eye_height,
-            fire_immune: data.fire_immune,
-        }
-    }
-
-    /// Creates directly from vanilla data.
-    ///
-    /// Shortcut version that doesn't require creating EntityMetadata first.
-    pub fn from_vanilla(data: &'static VanillaEntityType) -> Self {
-        Self {
-            bounding_box: BoundingBox::from_vanilla_dimension(data.dimension),
-            eye_height: data.eye_height,
-            fire_immune: data.fire_immune,
-        }
-    }
-
     /// Applies a scale factor to dimensions (for babies for example).
     ///
     /// # Arguments
@@ -175,6 +127,3 @@ impl std::fmt::Debug for PhysicalProperties {
             .finish()
     }
 }
-
-// Import EntityMetadata for from_metadata methods
-use super::metadata::EntityMetadata;

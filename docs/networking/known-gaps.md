@@ -90,17 +90,15 @@ book group items by tag — but it is wrong for every version but the newest. Fi
 table alongside the ones the remapper already carries, and the packet built per connection rather
 than once.
 
-## Entities are spawned with a stale type id
+## A type an older version does not have is not spawned for it
 
-The entity type sent in `spawn_entity` comes from a generated table that predates the 26.2 bump.
-131 of its 151 ids disagree with the version's own registry: a type was inserted before `cat`, and
-everything from there on is shifted by one or more. A pig therefore reaches the client as whatever
-now sits at the old index.
+The entity type is an enum whose variants carry the registry's own numbers, taken from 26.2, so what
+goes on the wire is the variant itself. A test holds all 158 of them against `registries.json`, and
+`spawn_entity` translates the number for the client's own version on the way out.
 
-The player is right, because that packet reads its id from `registries.json` rather than the table.
-
-Fixing it means regenerating the table, which needs the extractor rather than the vanilla reports:
-it carries health, dimensions and spawn rules that the reports do not have.
+What that translation cannot do is invent a type an older version does not have. Seven of 26.2's 158
+are newer than 1.21, and spawning one for a client that old is refused and the packet dropped for
+that recipient — which is the right answer: a wrong entity is worse than none.
 
 ## An advancement's icon is not translated for 26.1
 

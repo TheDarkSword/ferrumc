@@ -1,27 +1,12 @@
+//! What an entity carries into a fight.
+
 use bevy_ecs::prelude::Component;
-use ferrumc_data::generated::entities::EntityType as VanillaEntityType;
 
-use super::metadata::EntityMetadata;
-
-/// Combat properties for an entity.
+/// The part of a fight that is state rather than kind.
 ///
-/// # Examples
-///
-/// ```ignore
-/// use ferrumc_entities::components::{EntityMetadata, CombatProperties};
-/// use ferrumc_data::generated::entities::EntityType as VanillaEntityType;
-///
-/// let metadata = EntityMetadata::from_vanilla(&VanillaEntityType::PIG);
-/// let mut combat = CombatProperties::from_metadata(&metadata);
-///
-/// assert!(combat.attackable);
-/// assert_eq!(combat.invulnerability_ticks, 0);
-///
-/// // After a hit
-/// combat.set_invulnerable(10); // 10 ticks of invulnerability
-/// assert!(!combat.can_be_damaged());
-/// ```
-#[derive(Component, Clone, Copy)]
+/// Whether a thing may be attacked at all is decided by its class in vanilla — a marker and an
+/// area effect cloud refuse — which is Phase 7's to write; until then everything may be.
+#[derive(Component, Clone, Copy, Debug)]
 pub struct CombatProperties {
     /// True if an entity is attackable
     ///
@@ -40,35 +25,20 @@ pub struct CombatProperties {
     pub invulnerability_ticks: u32,
 }
 
+impl Default for CombatProperties {
+    fn default() -> Self {
+        Self {
+            attackable: true,
+            invulnerability_ticks: 0,
+        }
+    }
+}
+
 impl CombatProperties {
     /// Standard invulnerability duration after a hit in ticks.
     ///
     /// In vanilla Minecraft, it's 10 ticks (0.5 seconds).
     pub const DEFAULT_INVULNERABILITY_TICKS: u32 = 10;
-
-    /// Creates combat properties from vanilla metadatas.
-    ///
-    /// # Examples
-    ///
-    /// ```ignore
-    /// let metadata = EntityMetadata::from_vanilla(&VanillaEntityType::PIG);
-    /// let combat = CombatProperties::from_metadata(&metadata);
-    /// assert!(combat.attackable);
-    /// ```
-    pub fn from_metadata(metadata: &EntityMetadata) -> Self {
-        Self {
-            attackable: metadata.vanilla_data().attackable.unwrap_or(false),
-            invulnerability_ticks: 0,
-        }
-    }
-
-    /// Create directly from vanilla datas.
-    pub fn from_vanilla(data: &'static VanillaEntityType) -> Self {
-        Self {
-            attackable: data.attackable.unwrap_or(false),
-            invulnerability_ticks: 0,
-        }
-    }
 
     /// Return true if the entity can't be damaged.
     pub const fn can_be_damaged(&self) -> bool {
@@ -110,15 +80,5 @@ impl CombatProperties {
     /// Remove immediatly invulnerability
     pub fn clear_invulnerability(&mut self) {
         self.invulnerability_ticks = 0;
-    }
-}
-
-impl std::fmt::Debug for CombatProperties {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("CombatProperties")
-            .field("attackable", &self.attackable)
-            .field("invulnerability_ticks", &self.invulnerability_ticks)
-            .field("can_be_damaged", &self.can_be_damaged())
-            .finish()
     }
 }

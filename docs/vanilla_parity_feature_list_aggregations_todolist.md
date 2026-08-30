@@ -111,7 +111,7 @@
 - [x] **Position & Rotation** — [`src/lib/core/src/transform/position.rs`](../src/lib/core/src/transform/position.rs), [`rotation.rs`](../src/lib/core/src/transform/rotation.rs). `Position` wraps `DVec3`, `Rotation` has yaw/pitch with normalization.
 - [/] **Velocity** — Not as dedicated component. Movement handled via position deltas.
 - [x] **Hitboxes** — `BoundingBox` and `PhysicalProperties` in [`src/lib/entities/src/components/physical.rs`](../src/lib/entities/src/components/physical.rs). AABB from vanilla entity data.
-- [/] **DataTracker (Metadata)** — `EntityMetadata` in [`src/lib/entities/src/components/metadata.rs`](../src/lib/entities/src/components/metadata.rs). **Missing:** Full synced data key-value system.
+- [/] **DataTracker (Metadata)** — the wire form in [`src/lib/net/src/packets/outgoing/entity_metadata.rs`](../src/lib/net/src/packets/outgoing/entity_metadata.rs). **Missing:** the synced key-value store behind it.
 
 ### **Physics & Movement**
 - [ ] **Gravity simulation** — Not implemented.

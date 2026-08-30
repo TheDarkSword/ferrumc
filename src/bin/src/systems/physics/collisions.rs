@@ -15,7 +15,8 @@ use bevy_math::{DVec3, IVec3};
 use ferrumc_core::transform::grounded::OnGround;
 use ferrumc_core::transform::position::Position;
 use ferrumc_core::transform::velocity::Velocity;
-use ferrumc_entities::components::{Baby, EntityMetadata, PhysicalRegistry};
+use ferrumc_entities::components::Baby;
+use ferrumc_entities::entity_type::EntityType;
 use ferrumc_entities::markers::HasCollisions;
 use ferrumc_messages::entity_update::SendEntityUpdate;
 use ferrumc_state::{GlobalState, GlobalStateResource};
@@ -27,7 +28,7 @@ type CollisionQueryItem<'a> = (
     Entity,
     Mut<'a, Velocity>,
     Ref<'a, Position>,
-    &'a EntityMetadata,
+    &'a EntityType,
     Has<Baby>,
     Mut<'a, OnGround>,
 );
@@ -36,15 +37,12 @@ pub fn handle(
     query: Query<CollisionQueryItem, With<HasCollisions>>,
     mut writer: MessageWriter<SendEntityUpdate>,
     state: Res<GlobalStateResource>,
-    registry: Res<PhysicalRegistry>,
 ) {
-    for (eid, mut vel, pos, metadata, is_baby, mut grounded) in query {
+    for (eid, mut vel, pos, kind, is_baby, mut grounded) in query {
         if !pos.is_changed() && !vel.is_changed() {
             continue;
         }
-        let Some(physical) = registry.get(metadata.protocol_id(), is_baby) else {
-            continue;
-        };
+        let physical = kind.physical(is_baby);
 
         let movement = vel.as_dvec3();
         if movement == DVec3::ZERO {

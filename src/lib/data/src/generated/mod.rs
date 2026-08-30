@@ -6,7 +6,6 @@ pub mod biomes;
 pub mod damage_types;
 pub mod effects;
 pub mod enchantments;
-pub mod entities;
 pub mod fluids;
 pub mod items;
 pub mod particles;

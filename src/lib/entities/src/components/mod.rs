@@ -1,18 +1,16 @@
-// Core entity components based on ferrumc-data
+//! What an entity carries beyond its type.
+//!
+//! Everything the game says about a *type* lives on the type itself; these are the things that
+//! differ between two entities of the same kind.
+
 pub mod combat;
 pub mod last_synced_position;
-pub mod metadata;
 pub mod physical;
-pub mod physical_registry;
-pub mod spawn;
 
 // Re-exports
 pub use combat::CombatProperties;
 pub use last_synced_position::LastSyncedPosition;
-pub use metadata::EntityMetadata;
 pub use physical::{BoundingBox, PhysicalProperties};
-pub use physical_registry::PhysicalRegistry;
-pub use spawn::SpawnProperties;
 
 // Marker component for baby entities
 use bevy_ecs::prelude::Component;

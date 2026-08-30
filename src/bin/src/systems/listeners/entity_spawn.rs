@@ -1,57 +1,17 @@
 use bevy_ecs::prelude::*;
 use ferrumc_core::identity::entity_identity::EntityIdentity;
+use ferrumc_core::transform::grounded::OnGround;
 use ferrumc_core::transform::position::Position;
 use ferrumc_core::transform::rotation::Rotation;
-use ferrumc_entities::bundles::*;
-use ferrumc_entities::components::EntityMetadata;
+use ferrumc_core::transform::velocity::Velocity;
+use ferrumc_entities::components::{CombatProperties, LastSyncedPosition};
+use ferrumc_entities::entity_type::{EntityType, SpawnPlacement};
 use ferrumc_entities::markers::entity_types::*;
 use ferrumc_entities::markers::{HasCollisions, HasGravity, HasWaterDrag};
-use ferrumc_messages::{EntityType, SpawnEntityCommand, SpawnEntityEvent};
+use ferrumc_messages::{SpawnEntityCommand, SpawnEntityEvent};
 use ferrumc_net::connection::StreamWriter;
 use ferrumc_net::packets::outgoing::spawn_entity::SpawnEntityPacket;
 use tracing::{error, warn};
-
-/// Macro for spawning ground entities (gravity + collisions + water drag)
-macro_rules! spawn_ground_entity {
-    ($commands:expr, $position:expr, $Bundle:ident, $Marker:ident) => {{
-        let entity = $commands
-            .spawn((
-                $Bundle::new($position),
-                $Marker,
-                HasGravity,
-                HasCollisions,
-                HasWaterDrag,
-            ))
-            .id();
-        $commands.queue(move |world: &mut World| {
-            broadcast_entity_spawn(world, entity);
-        });
-    }};
-}
-
-/// Macro for spawning flying/swimming entities (collisions only)
-macro_rules! spawn_flying_entity {
-    ($commands:expr, $position:expr, $Bundle:ident, $Marker:ident) => {{
-        let entity = $commands
-            .spawn(($Bundle::new($position), $Marker, HasCollisions))
-            .id();
-        $commands.queue(move |world: &mut World| {
-            broadcast_entity_spawn(world, entity);
-        });
-    }};
-}
-
-/// Macro for spawning entities with gravity but no water drag (lava/amphibian creatures)
-macro_rules! spawn_gravity_entity {
-    ($commands:expr, $position:expr, $Bundle:ident, $Marker:ident) => {{
-        let entity = $commands
-            .spawn(($Bundle::new($position), $Marker, HasGravity, HasCollisions))
-            .id();
-        $commands.queue(move |world: &mut World| {
-            broadcast_entity_spawn(world, entity);
-        });
-    }};
-}
 
 /// Helper function to broadcast entity spawn packets to all connected players.
 ///
@@ -64,14 +24,14 @@ macro_rules! spawn_gravity_entity {
 /// * `entity` - The entity to broadcast
 fn broadcast_entity_spawn(world: &mut World, entity: Entity) {
     // Get entity components
-    let metadata = match world.get::<EntityMetadata>(entity) {
+    let kind = match world.get::<EntityType>(entity) {
         Some(m) => m,
         None => {
-            error!("Failed to get entity metadata for {:?}", entity);
+            error!("Failed to get the entity type of {:?}", entity);
             return;
         }
     };
-    let protocol_id = metadata.protocol_id();
+    let protocol_id = kind.protocol_id();
 
     let identity = match world.get::<EntityIdentity>(entity) {
         Some(i) => i,
@@ -145,144 +105,115 @@ pub fn spawn_command_processor(
 /// then broadcasts the spawn packet.
 pub fn handle_spawn_entity(mut events: MessageReader<SpawnEntityEvent>, mut commands: Commands) {
     for event in events.read() {
-        let pos = event.position;
-        match event.entity_type {
-            // Ground entities (gravity + collisions + water drag)
-            EntityType::Pig => spawn_ground_entity!(commands, pos, PigBundle, Pig),
-            EntityType::Cow => spawn_ground_entity!(commands, pos, CowBundle, Cow),
-            EntityType::Armadillo => {
-                spawn_ground_entity!(commands, pos, ArmadilloBundle, Armadillo)
-            }
-            EntityType::Camel => spawn_ground_entity!(commands, pos, CamelBundle, Camel),
-            EntityType::Cat => spawn_ground_entity!(commands, pos, CatBundle, Cat),
-            EntityType::CaveSpider => {
-                spawn_ground_entity!(commands, pos, CaveSpiderBundle, CaveSpider)
-            }
-            EntityType::Chicken => spawn_ground_entity!(commands, pos, ChickenBundle, Chicken),
-            EntityType::Donkey => spawn_ground_entity!(commands, pos, DonkeyBundle, Donkey),
-            EntityType::Enderman => spawn_ground_entity!(commands, pos, EndermanBundle, Enderman),
-            EntityType::Fox => spawn_ground_entity!(commands, pos, FoxBundle, Fox),
-            EntityType::Frog => spawn_ground_entity!(commands, pos, FrogBundle, Frog),
-            EntityType::Goat => spawn_ground_entity!(commands, pos, GoatBundle, Goat),
-            EntityType::Horse => spawn_ground_entity!(commands, pos, HorseBundle, Horse),
-            EntityType::IronGolem => {
-                spawn_ground_entity!(commands, pos, IronGolemBundle, IronGolem)
-            }
-            EntityType::Llama => spawn_ground_entity!(commands, pos, LlamaBundle, Llama),
-            EntityType::Mooshroom => {
-                spawn_ground_entity!(commands, pos, MooshroomBundle, Mooshroom)
-            }
-            EntityType::Mule => spawn_ground_entity!(commands, pos, MuleBundle, Mule),
-            EntityType::Ocelot => spawn_ground_entity!(commands, pos, OcelotBundle, Ocelot),
-            EntityType::Panda => spawn_ground_entity!(commands, pos, PandaBundle, Panda),
-            EntityType::Piglin => spawn_ground_entity!(commands, pos, PiglinBundle, Piglin),
-            EntityType::PolarBear => {
-                spawn_ground_entity!(commands, pos, PolarBearBundle, PolarBear)
-            }
-            EntityType::Rabbit => spawn_ground_entity!(commands, pos, RabbitBundle, Rabbit),
-            EntityType::Sheep => spawn_ground_entity!(commands, pos, SheepBundle, Sheep),
-            EntityType::SkeletonHorse => {
-                spawn_ground_entity!(commands, pos, SkeletonHorseBundle, SkeletonHorse)
-            }
-            EntityType::Sniffer => spawn_ground_entity!(commands, pos, SnifferBundle, Sniffer),
-            EntityType::Spider => spawn_ground_entity!(commands, pos, SpiderBundle, Spider),
-            EntityType::SnowGolem => {
-                spawn_ground_entity!(commands, pos, SnowGolemBundle, SnowGolem)
-            }
-            EntityType::TraderLlama => {
-                spawn_ground_entity!(commands, pos, TraderLlamaBundle, TraderLlama)
-            }
-            EntityType::Turtle => spawn_ground_entity!(commands, pos, TurtleBundle, Turtle),
-            EntityType::Villager => spawn_ground_entity!(commands, pos, VillagerBundle, Villager),
-            EntityType::WanderingTrader => {
-                spawn_ground_entity!(commands, pos, WanderingTraderBundle, WanderingTrader)
-            }
-            EntityType::Wolf => spawn_ground_entity!(commands, pos, WolfBundle, Wolf),
-            EntityType::ZombieHorse => {
-                spawn_ground_entity!(commands, pos, ZombieHorseBundle, ZombieHorse)
-            }
-            EntityType::ZombifiedPiglin => {
-                spawn_ground_entity!(commands, pos, ZombifiedPiglinBundle, ZombifiedPiglin)
-            }
+        let kind = event.entity_type;
+        let mut entity = commands.spawn((
+            EntityIdentity::new(),
+            kind,
+            CombatProperties::default(),
+            event.position,
+            Rotation::default(),
+            Velocity::zero(),
+            OnGround(false),
+            LastSyncedPosition::from_position(&event.position),
+            HasCollisions,
+        ));
 
-            // Flying entities (collisions only)
-            EntityType::Allay => spawn_flying_entity!(commands, pos, AllayBundle, Allay),
-            EntityType::Bat => spawn_flying_entity!(commands, pos, BatBundle, Bat),
-            EntityType::Bee => spawn_flying_entity!(commands, pos, BeeBundle, Bee),
-            EntityType::Parrot => spawn_flying_entity!(commands, pos, ParrotBundle, Parrot),
+        // Which physics apply is what the game says about where the kind may stand: a thing that
+        // belongs on the ground falls and is slowed by water, one that swims or flies does not
+        // fall, and one that lives in lava falls without the water drag.
+        match kind.def().placement {
+            SpawnPlacement::OnGround => entity.insert((HasGravity, HasWaterDrag)),
+            SpawnPlacement::InLava => entity.insert(HasGravity),
+            SpawnPlacement::InWater | SpawnPlacement::NoRestrictions => entity.insert(()),
+        };
 
-            // Water creatures (collisions only, no gravity/water drag)
-            EntityType::Cod => spawn_flying_entity!(commands, pos, CodBundle, Cod),
-            EntityType::Dolphin => spawn_flying_entity!(commands, pos, DolphinBundle, Dolphin),
-            EntityType::Drowned => spawn_flying_entity!(commands, pos, DrownedBundle, Drowned),
-            EntityType::GlowSquid => {
-                spawn_flying_entity!(commands, pos, GlowSquidBundle, GlowSquid)
-            }
-            EntityType::Pufferfish => {
-                spawn_flying_entity!(commands, pos, PufferfishBundle, Pufferfish)
-            }
-            EntityType::Salmon => spawn_flying_entity!(commands, pos, SalmonBundle, Salmon),
-            EntityType::Squid => spawn_flying_entity!(commands, pos, SquidBundle, Squid),
-            EntityType::Tadpole => spawn_flying_entity!(commands, pos, TadpoleBundle, Tadpole),
-            EntityType::TropicalFish => {
-                spawn_flying_entity!(commands, pos, TropicalFishBundle, TropicalFish)
-            }
+        // The marker a system may filter an archetype on, for the kinds that have one.
+        match kind {
+            EntityType::Allay => entity.insert(Allay),
+            EntityType::Armadillo => entity.insert(Armadillo),
+            EntityType::Axolotl => entity.insert(Axolotl),
+            EntityType::Bat => entity.insert(Bat),
+            EntityType::Bee => entity.insert(Bee),
+            EntityType::Blaze => entity.insert(Blaze),
+            EntityType::Bogged => entity.insert(Bogged),
+            EntityType::Breeze => entity.insert(Breeze),
+            EntityType::Camel => entity.insert(Camel),
+            EntityType::Cat => entity.insert(Cat),
+            EntityType::CaveSpider => entity.insert(CaveSpider),
+            EntityType::Chicken => entity.insert(Chicken),
+            EntityType::Cod => entity.insert(Cod),
+            EntityType::Cow => entity.insert(Cow),
+            EntityType::Creaking => entity.insert(Creaking),
+            EntityType::Creeper => entity.insert(Creeper),
+            EntityType::Dolphin => entity.insert(Dolphin),
+            EntityType::Donkey => entity.insert(Donkey),
+            EntityType::Drowned => entity.insert(Drowned),
+            EntityType::ElderGuardian => entity.insert(ElderGuardian),
+            EntityType::Enderman => entity.insert(Enderman),
+            EntityType::Endermite => entity.insert(Endermite),
+            EntityType::Evoker => entity.insert(Evoker),
+            EntityType::Fox => entity.insert(Fox),
+            EntityType::Frog => entity.insert(Frog),
+            EntityType::Ghast => entity.insert(Ghast),
+            EntityType::GlowSquid => entity.insert(GlowSquid),
+            EntityType::Goat => entity.insert(Goat),
+            EntityType::Guardian => entity.insert(Guardian),
+            EntityType::Hoglin => entity.insert(Hoglin),
+            EntityType::Horse => entity.insert(Horse),
+            EntityType::Husk => entity.insert(Husk),
+            EntityType::IronGolem => entity.insert(IronGolem),
+            EntityType::Llama => entity.insert(Llama),
+            EntityType::MagmaCube => entity.insert(MagmaCube),
+            EntityType::Mooshroom => entity.insert(Mooshroom),
+            EntityType::Mule => entity.insert(Mule),
+            EntityType::Ocelot => entity.insert(Ocelot),
+            EntityType::Panda => entity.insert(Panda),
+            EntityType::Parrot => entity.insert(Parrot),
+            EntityType::Phantom => entity.insert(Phantom),
+            EntityType::Pig => entity.insert(Pig),
+            EntityType::Piglin => entity.insert(Piglin),
+            EntityType::PiglinBrute => entity.insert(PiglinBrute),
+            EntityType::Pillager => entity.insert(Pillager),
+            EntityType::PolarBear => entity.insert(PolarBear),
+            EntityType::Pufferfish => entity.insert(Pufferfish),
+            EntityType::Rabbit => entity.insert(Rabbit),
+            EntityType::Ravager => entity.insert(Ravager),
+            EntityType::Salmon => entity.insert(Salmon),
+            EntityType::Sheep => entity.insert(Sheep),
+            EntityType::Shulker => entity.insert(Shulker),
+            EntityType::Silverfish => entity.insert(Silverfish),
+            EntityType::Skeleton => entity.insert(Skeleton),
+            EntityType::SkeletonHorse => entity.insert(SkeletonHorse),
+            EntityType::Slime => entity.insert(Slime),
+            EntityType::Sniffer => entity.insert(Sniffer),
+            EntityType::SnowGolem => entity.insert(SnowGolem),
+            EntityType::Spider => entity.insert(Spider),
+            EntityType::Squid => entity.insert(Squid),
+            EntityType::Stray => entity.insert(Stray),
+            EntityType::Strider => entity.insert(Strider),
+            EntityType::Tadpole => entity.insert(Tadpole),
+            EntityType::TraderLlama => entity.insert(TraderLlama),
+            EntityType::TropicalFish => entity.insert(TropicalFish),
+            EntityType::Turtle => entity.insert(Turtle),
+            EntityType::Vex => entity.insert(Vex),
+            EntityType::Villager => entity.insert(Villager),
+            EntityType::Vindicator => entity.insert(Vindicator),
+            EntityType::WanderingTrader => entity.insert(WanderingTrader),
+            EntityType::Warden => entity.insert(Warden),
+            EntityType::Witch => entity.insert(Witch),
+            EntityType::WitherSkeleton => entity.insert(WitherSkeleton),
+            EntityType::Wolf => entity.insert(Wolf),
+            EntityType::Zoglin => entity.insert(Zoglin),
+            EntityType::Zombie => entity.insert(Zombie),
+            EntityType::ZombieHorse => entity.insert(ZombieHorse),
+            EntityType::ZombieVillager => entity.insert(ZombieVillager),
+            EntityType::ZombifiedPiglin => entity.insert(ZombifiedPiglin),
+            _ => entity.insert(()),
+        };
 
-            // Special: gravity but no water drag (amphibians, lava creatures)
-            EntityType::Axolotl => spawn_gravity_entity!(commands, pos, AxolotlBundle, Axolotl),
-            EntityType::Strider => spawn_gravity_entity!(commands, pos, StriderBundle, Strider),
-            EntityType::MagmaCube => {
-                spawn_gravity_entity!(commands, pos, MagmaCubeBundle, MagmaCube)
-            }
-            EntityType::Slime => spawn_gravity_entity!(commands, pos, SlimeBundle, Slime),
-
-            // Hostile ground entities
-            EntityType::Bogged => spawn_ground_entity!(commands, pos, BoggedBundle, Bogged),
-            EntityType::Creaking => spawn_ground_entity!(commands, pos, CreakingBundle, Creaking),
-            EntityType::Creeper => spawn_ground_entity!(commands, pos, CreeperBundle, Creeper),
-            EntityType::Endermite => {
-                spawn_ground_entity!(commands, pos, EndermiteBundle, Endermite)
-            }
-            EntityType::Evoker => spawn_ground_entity!(commands, pos, EvokerBundle, Evoker),
-            EntityType::Hoglin => spawn_ground_entity!(commands, pos, HoglinBundle, Hoglin),
-            EntityType::Husk => spawn_ground_entity!(commands, pos, HuskBundle, Husk),
-            EntityType::PiglinBrute => {
-                spawn_ground_entity!(commands, pos, PiglinBruteBundle, PiglinBrute)
-            }
-            EntityType::Pillager => spawn_ground_entity!(commands, pos, PillagerBundle, Pillager),
-            EntityType::Ravager => spawn_ground_entity!(commands, pos, RavagerBundle, Ravager),
-            EntityType::Silverfish => {
-                spawn_ground_entity!(commands, pos, SilverfishBundle, Silverfish)
-            }
-            EntityType::Skeleton => spawn_ground_entity!(commands, pos, SkeletonBundle, Skeleton),
-            EntityType::Stray => spawn_ground_entity!(commands, pos, StrayBundle, Stray),
-            EntityType::Vindicator => {
-                spawn_ground_entity!(commands, pos, VindicatorBundle, Vindicator)
-            }
-            EntityType::Warden => spawn_ground_entity!(commands, pos, WardenBundle, Warden),
-            EntityType::Witch => spawn_ground_entity!(commands, pos, WitchBundle, Witch),
-            EntityType::WitherSkeleton => {
-                spawn_ground_entity!(commands, pos, WitherSkeletonBundle, WitherSkeleton)
-            }
-            EntityType::Zoglin => spawn_ground_entity!(commands, pos, ZoglinBundle, Zoglin),
-            EntityType::Zombie => spawn_ground_entity!(commands, pos, ZombieBundle, Zombie),
-            EntityType::ZombieVillager => {
-                spawn_ground_entity!(commands, pos, ZombieVillagerBundle, ZombieVillager)
-            }
-            EntityType::Shulker => spawn_ground_entity!(commands, pos, ShulkerBundle, Shulker),
-
-            // Hostile flying entities
-            EntityType::Blaze => spawn_flying_entity!(commands, pos, BlazeBundle, Blaze),
-            EntityType::Breeze => spawn_flying_entity!(commands, pos, BreezeBundle, Breeze),
-            EntityType::Ghast => spawn_flying_entity!(commands, pos, GhastBundle, Ghast),
-            EntityType::Phantom => spawn_flying_entity!(commands, pos, PhantomBundle, Phantom),
-            EntityType::Vex => spawn_flying_entity!(commands, pos, VexBundle, Vex),
-
-            // Hostile water entities
-            EntityType::ElderGuardian => {
-                spawn_flying_entity!(commands, pos, ElderGuardianBundle, ElderGuardian)
-            }
-            EntityType::Guardian => spawn_flying_entity!(commands, pos, GuardianBundle, Guardian),
-        }
+        let id = entity.id();
+        commands.queue(move |world: &mut World| {
+            broadcast_entity_spawn(world, id);
+        });
     }
 }

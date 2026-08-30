@@ -3,7 +3,8 @@ use bevy_ecs::prelude::{Query, Res, With};
 use bevy_math::IVec3;
 use ferrumc_core::transform::grounded::OnGround;
 use ferrumc_core::transform::position::Position;
-use ferrumc_entities::components::{Baby, EntityMetadata, PhysicalRegistry};
+use ferrumc_entities::components::Baby;
+use ferrumc_entities::entity_type::EntityType;
 use ferrumc_entities::markers::HasCollisions;
 use ferrumc_messages::BlockBrokenEvent;
 use ferrumc_state::GlobalStateResource;
@@ -18,11 +19,10 @@ use super::collisions::is_solid_block;
 pub fn handle(
     mut events: MessageReader<BlockBrokenEvent>,
     mut entities: Query<
-        (&Position, &EntityMetadata, Option<&Baby>, &mut OnGround),
+        (&Position, &EntityType, Option<&Baby>, &mut OnGround),
         With<HasCollisions>,
     >,
     state: Res<GlobalStateResource>,
-    registry: Res<PhysicalRegistry>,
 ) {
     for event in events.read() {
         let broken_block_pos = event.position;
@@ -32,17 +32,14 @@ pub fn handle(
         );
 
         // Check all entities with collisions
-        for (pos, metadata, baby, mut grounded) in entities.iter_mut() {
+        for (pos, kind, baby, mut grounded) in entities.iter_mut() {
             // Skip entities that aren't grounded
             if !grounded.0 {
                 continue;
             }
 
             // Get physical properties from registry
-            let is_baby = baby.is_some();
-            let Some(physical) = registry.get(metadata.protocol_id(), is_baby) else {
-                continue;
-            };
+            let physical = kind.physical(baby.is_some());
 
             // Calculate entity's feet position
             let entity_pos = pos.coords.as_vec3a();
