@@ -11,8 +11,9 @@ pub fn register_physics(schedule: &mut bevy_ecs::schedule::Schedule) {
             unground::handle,
             gravity::handle,
             drag::handle,
-            velocity::handle,
+            // Collision shortens the movement; velocity is what then applies it.
             collisions::handle,
+            velocity::handle,
         )
             .chain(),
     );

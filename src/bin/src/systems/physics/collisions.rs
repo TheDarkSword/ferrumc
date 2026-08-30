@@ -1,23 +1,32 @@
+//! Stopping entities at the shapes blocks actually occupy.
+//!
+//! Movement is resolved one axis at a time against the boxes in the way, so an entity that walks
+//! into a wall keeps the speed it had along the wall rather than stopping dead. The vertical axis
+//! is settled first: standing on something has to be decided before sliding along it.
+//!
+//! Whether a block is in the way is its collision shape's business, not a list of names. A torch,
+//! a carpet and a flower share a block position with whoever walks through them.
+
+use bevy_ecs::change_detection::Ref;
 use bevy_ecs::message::MessageWriter;
 use bevy_ecs::prelude::{DetectChanges, Entity, Has, Query, Res, With};
 use bevy_ecs::world::Mut;
-use bevy_math::bounding::{Aabb3d, BoundingVolume};
-use bevy_math::{IVec3, Vec3A};
+use bevy_math::{DVec3, IVec3};
 use ferrumc_core::transform::grounded::OnGround;
 use ferrumc_core::transform::position::Position;
 use ferrumc_core::transform::velocity::Velocity;
 use ferrumc_entities::components::{Baby, EntityMetadata, PhysicalRegistry};
 use ferrumc_entities::markers::HasCollisions;
-use ferrumc_macros::match_block;
 use ferrumc_messages::entity_update::SendEntityUpdate;
 use ferrumc_state::{GlobalState, GlobalStateResource};
-use ferrumc_world::block_state_id::BlockStateId;
+use ferrumc_world::block_shape::{Aabb, VoxelShape};
+use ferrumc_world::block_state::Axis;
 use ferrumc_world::pos::{ChunkBlockPos, ChunkPos};
 
 type CollisionQueryItem<'a> = (
     Entity,
     Mut<'a, Velocity>,
-    Mut<'a, Position>,
+    Ref<'a, Position>,
     &'a EntityMetadata,
     Has<Baby>,
     Mut<'a, OnGround>,
@@ -29,109 +38,123 @@ pub fn handle(
     state: Res<GlobalStateResource>,
     registry: Res<PhysicalRegistry>,
 ) {
-    for (eid, mut vel, mut pos, metadata, is_baby, mut grounded) in query {
-        if pos.is_changed() || vel.is_changed() {
-            // Get physical properties from registry
-            let Some(physical) = registry.get(metadata.protocol_id(), is_baby) else {
-                continue;
-            };
-
-            // Figure out where the entity is going to be next tick
-            let next_pos = pos.coords.as_vec3a() + **vel;
-            let mut collided = false;
-            let mut hit_blocks = vec![];
-
-            // Merge the current and next bounding boxes to get the full area the entity will occupy
-            // This helps catch fast-moving entities that might skip through thin blocks
-            // At really high speeds this will create a very large bounding box, so further optimizations may be needed
-            let current_hitbox = Aabb3d {
-                min: physical.bounding_box.min + pos.coords.as_vec3a(),
-                max: physical.bounding_box.max + pos.coords.as_vec3a(),
-            };
-
-            let next_hitbox = Aabb3d {
-                min: physical.bounding_box.min + next_pos,
-                max: physical.bounding_box.max + next_pos,
-            };
-
-            let merged_hitbox = current_hitbox.merge(&next_hitbox);
-
-            // Get the block positions that the entity's bounding box will occupy
-            let min_block_pos = merged_hitbox.min;
-            let max_block_pos = merged_hitbox.max;
-
-            // Check each block in the bounding box for solidity
-            for x in min_block_pos.x.floor() as i32..=max_block_pos.x.floor() as i32 {
-                for y in min_block_pos.y.floor() as i32..=max_block_pos.y.floor() as i32 {
-                    for z in min_block_pos.z.floor() as i32..=max_block_pos.z.floor() as i32 {
-                        let block_pos = IVec3::new(x, y, z);
-                        if is_solid_block(&state.0, block_pos) {
-                            collided = true;
-                            hit_blocks.push(block_pos);
-                            if is_solid_block(&state.0, IVec3::new(x, y - 1, z)) && vel.y <= 0.0 {
-                                grounded.0 = true;
-                            }
-                        }
-                    }
-                }
-            }
-            // If a collision is detected, stop the entity's movement
-            if collided {
-                vel.vec = Vec3A::ZERO;
-                // Find the closest hit block to the entity's position
-                hit_blocks.sort_by(|a, b| {
-                    let dist_a = (a.as_dvec3() - pos.coords).length_squared();
-                    let dist_b = (b.as_dvec3() - pos.coords).length_squared();
-                    dist_a.partial_cmp(&dist_b).unwrap()
-                });
-                let first_hit = hit_blocks.first().expect("At least one hit block expected");
-
-                let block_aabb = Aabb3d {
-                    min: first_hit.as_vec3a(),
-                    max: (first_hit + IVec3::ONE).as_vec3a(),
-                };
-
-                let translated_bounding_box = Aabb3d {
-                    min: physical.bounding_box.min + pos.coords.as_vec3a(),
-                    max: physical.bounding_box.max + pos.coords.as_vec3a(),
-                };
-
-                // Get the closest point on the entity's bounding box to the block's AABB
-                let entity_collide_point = translated_bounding_box
-                    .closest_point(block_aabb.center().as_dvec3().as_vec3a());
-
-                if entity_collide_point == block_aabb.center().as_dvec3().as_vec3a() {
-                    continue;
-                }
-
-                // Then we get the closest point on the block's AABB to the entity's collide point
-                let block_collide_point = block_aabb.closest_point(entity_collide_point);
-
-                if block_collide_point == entity_collide_point {
-                    continue;
-                }
-
-                // The difference between these two points tells us how far apart the 2 colliding objects are
-                let collision_difference = entity_collide_point - block_collide_point;
-
-                // We use this to nudge the entity out of the block along the smallest axis
-                pos.coords -= collision_difference.as_dvec3();
-            }
-
-            writer.write(SendEntityUpdate(eid));
+    for (eid, mut vel, pos, metadata, is_baby, mut grounded) in query {
+        if !pos.is_changed() && !vel.is_changed() {
+            continue;
         }
+        let Some(physical) = registry.get(metadata.protocol_id(), is_baby) else {
+            continue;
+        };
+
+        let movement = vel.as_dvec3();
+        if movement == DVec3::ZERO {
+            continue;
+        }
+
+        let entity = Aabb::new(
+            pos.coords.x + f64::from(physical.bounding_box.min.x),
+            pos.coords.y + f64::from(physical.bounding_box.min.y),
+            pos.coords.z + f64::from(physical.bounding_box.min.z),
+            pos.coords.x + f64::from(physical.bounding_box.max.x),
+            pos.coords.y + f64::from(physical.bounding_box.max.y),
+            pos.coords.z + f64::from(physical.bounding_box.max.z),
+        );
+        let allowed = collide(&state.0, entity, movement);
+        if allowed == movement {
+            continue;
+        }
+
+        // An entity that was moving down and is no longer is standing on something.
+        if allowed.y != movement.y {
+            grounded.0 = movement.y < 0.0;
+            vel.y = 0.0;
+        }
+        if allowed.x != movement.x {
+            vel.x = 0.0;
+        }
+        if allowed.z != movement.z {
+            vel.z = 0.0;
+        }
+
+        writer.write(SendEntityUpdate(eid));
     }
 }
 
-pub fn is_solid_block(state: &GlobalState, pos: IVec3) -> bool {
-    let chunk_coordinates = ChunkPos::from(pos.as_dvec3());
-    let block_state =
-        ferrumc_utils::world::load_or_generate_mut(state, chunk_coordinates, "overworld")
-            .expect("Failed to load or generate chunk")
-            .get_block(ChunkBlockPos::from(pos));
+/// How much of `movement` the world leaves an entity of `entity` size.
+///
+/// Axes are resolved one at a time and the box carried forward between them, so a move that is
+/// blocked on one axis is still tried on the others. The vertical goes first, then the larger
+/// horizontal, which is the order that lets an entity slide along a wall it is pressed into rather
+/// than catching on the corner of every block.
+fn collide(state: &GlobalState, entity: Aabb, movement: DVec3) -> DVec3 {
+    let mut moving = entity;
+    let mut allowed = DVec3::ZERO;
 
-    !match_block!("air", block_state)
-        && !match_block!("void_air", block_state)
-        && !match_block!("water", block_state)
-        && !match_block!("air", block_state)
+    allowed.y = axis(state, &moving, Axis::Y, movement.y);
+    moving = moving.offset(0.0, allowed.y, 0.0);
+
+    if movement.x.abs() >= movement.z.abs() {
+        allowed.x = axis(state, &moving, Axis::X, movement.x);
+        moving = moving.offset(allowed.x, 0.0, 0.0);
+        allowed.z = axis(state, &moving, Axis::Z, movement.z);
+    } else {
+        allowed.z = axis(state, &moving, Axis::Z, movement.z);
+        moving = moving.offset(0.0, 0.0, allowed.z);
+        allowed.x = axis(state, &moving, Axis::X, movement.x);
+    }
+
+    allowed
+}
+
+/// How far the box may travel along one axis before a block shape stops it.
+fn axis(state: &GlobalState, moving: &Aabb, axis: Axis, movement: f64) -> f64 {
+    if movement == 0.0 {
+        return 0.0;
+    }
+
+    let swept = swept(moving, axis, movement);
+    let mut allowed = movement;
+    for x in swept.min_x.floor() as i32..=swept.max_x.floor() as i32 {
+        for y in swept.min_y.floor() as i32..=swept.max_y.floor() as i32 {
+            for z in swept.min_z.floor() as i32..=swept.max_z.floor() as i32 {
+                let block = IVec3::new(x, y, z);
+                let shape = VoxelShape::collision_of(block_at(state, block));
+                if shape.is_empty() {
+                    continue;
+                }
+                allowed = shape.collide(
+                    axis,
+                    moving,
+                    (f64::from(x), f64::from(y), f64::from(z)),
+                    allowed,
+                );
+            }
+        }
+    }
+    allowed
+}
+
+/// Everything the box passes through on its way, so a fast entity cannot step over a thin block.
+fn swept(moving: &Aabb, axis: Axis, movement: f64) -> Aabb {
+    let mut swept = *moving;
+    match axis {
+        Axis::X if movement > 0.0 => swept.max_x += movement,
+        Axis::X => swept.min_x += movement,
+        Axis::Y if movement > 0.0 => swept.max_y += movement,
+        Axis::Y => swept.min_y += movement,
+        Axis::Z if movement > 0.0 => swept.max_z += movement,
+        Axis::Z => swept.min_z += movement,
+    }
+    swept
+}
+
+fn block_at(state: &GlobalState, pos: IVec3) -> ferrumc_world::block_state_id::BlockStateId {
+    ferrumc_utils::world::load_or_generate_mut(state, ChunkPos::from(pos.as_dvec3()), "overworld")
+        .expect("Failed to load or generate chunk")
+        .get_block(ChunkBlockPos::from(pos))
+}
+
+/// Whether anything at all stops an entity at this position.
+pub fn is_solid_block(state: &GlobalState, pos: IVec3) -> bool {
+    !VoxelShape::collision_of(block_at(state, pos)).is_empty()
 }

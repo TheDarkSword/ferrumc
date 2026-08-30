@@ -7,11 +7,11 @@
 //!
 //! The tables come from the vanilla block report; see `scripts/build_block_states.py`.
 
-mod generated;
+pub mod generated;
 
 use crate::block_state_id::BlockStateId;
-pub use generated::{properties, Property};
-use generated::{BLOCKS, PROPERTY_VALUES};
+pub use generated::*;
+
 use std::marker::PhantomData;
 
 /// A value a property can hold.
