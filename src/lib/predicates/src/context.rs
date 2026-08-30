@@ -64,6 +64,9 @@ pub struct LootParams {
     pub enchantment_level: Option<i32>,
     /// Whether that enchantment is active.
     pub enchantment_active: Option<bool>,
+    /// How lucky whoever caused this is, which shifts the weight of a rarer entry. Nothing sets
+    /// it yet: it comes from a player's luck attribute.
+    pub luck: f32,
 }
 
 /// The world, as much of it as a predicate may ask about.
@@ -94,8 +97,8 @@ pub struct LootContext<'a> {
     pub world: Option<&'a dyn LootWorld>,
     /// The predicates a `reference` can name.
     pub predicates: Option<&'a crate::condition::Predicates>,
-    /// Which references are being followed, so a loop is caught rather than chased.
-    pub(crate) visiting: Vec<String>,
+    /// Which references and tables are being followed, so a loop is caught rather than chased.
+    pub visiting: Vec<String>,
 }
 
 impl<'a> LootContext<'a> {
@@ -130,13 +133,13 @@ impl<'a> LootContext<'a> {
     }
 
     /// A roll in `[0, 1)`, as vanilla's `nextFloat` gives.
-    pub(crate) fn next_float(&mut self) -> f32 {
+    pub fn next_float(&mut self) -> f32 {
         // The same construction as java's: the top 24 bits over 2^24.
         (self.random.next_u32() >> 8) as f32 / (1 << 24) as f32
     }
 
     /// A whole number in `[min, max]`, as vanilla's `Mth.nextInt` gives.
-    pub(crate) fn next_int(&mut self, min: i32, max: i32) -> i32 {
+    pub fn next_int(&mut self, min: i32, max: i32) -> i32 {
         if min >= max {
             return min;
         }

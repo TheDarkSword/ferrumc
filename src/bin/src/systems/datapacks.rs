@@ -6,6 +6,7 @@
 use bevy_ecs::prelude::Resource;
 use ferrumc_datapack::{DatapackError, PackRepository, ResourceManager};
 use ferrumc_general_purpose::paths::get_root_path;
+use ferrumc_loot::LootTables;
 use ferrumc_predicates::Predicates;
 use std::sync::Arc;
 use tracing::info;
@@ -20,6 +21,8 @@ pub struct Datapacks {
     pub resources: ResourceManager,
     /// The predicates the packs declare, which anything gating on one names.
     pub predicates: Arc<Predicates>,
+    /// Every loot table, which is where each drop in the game comes from.
+    pub loot: Arc<LootTables>,
 }
 
 impl Datapacks {
@@ -31,9 +34,11 @@ impl Datapacks {
             repository,
             resources,
             predicates: Arc::default(),
+            loot: Arc::default(),
         };
         packs.rebuild();
         packs.predicates = Arc::new(Predicates::load(&packs.resources));
+        packs.loot = Arc::new(LootTables::load(&packs.resources));
         packs.report();
         Ok(packs)
     }
@@ -44,6 +49,7 @@ impl Datapacks {
         self.resources = self.repository.open();
         self.rebuild();
         self.predicates = Arc::new(Predicates::load(&self.resources));
+        self.loot = Arc::new(LootTables::load(&self.resources));
         self.report();
         Ok(())
     }
@@ -69,8 +75,9 @@ impl Datapacks {
 
     fn report(&self) {
         info!(
-            "data packs loaded: {} ({} predicates)",
+            "data packs loaded: {} ({} loot tables, {} predicates)",
             self.repository.selected().join(", "),
+            self.loot.len(),
             self.predicates.len()
         );
     }

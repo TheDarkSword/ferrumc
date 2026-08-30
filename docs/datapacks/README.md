@@ -146,3 +146,38 @@ with no enchantments, which is every tool today.
 
 An unknown condition type is refused outright rather than treated as holding: a table that silently
 stopped gating would change what it drops.
+
+## Loot tables
+
+Every drop in the game — a broken block, a killed mob, a chest, a fished item — comes from a loot
+table. A table is a list of pools; a pool rolls a count and each roll draws one entry, weighted;
+an entry produces item stacks; functions modify them on the way out. Conditions gate at every level.
+
+```json
+{"pools": [{"rolls": 1, "entries": [
+  {"type": "minecraft:item", "name": "minecraft:redstone", "weight": 3},
+  {"type": "minecraft:item", "name": "minecraft:emerald", "weight": 1}
+]}]}
+```
+
+Functions run innermost first: the entry's own, then the pool's, then the table's, which is the
+order that lets a pool cap what its entries produced.
+
+`alternatives` takes the first child that can run and nothing after it — which is how a block says
+"silk touch gives the block itself, otherwise this". `sequence` gives up at the first child that
+cannot run; `group` takes them all. A `loot_table` entry rolls another table in place, and a table
+that leads back to itself is caught rather than followed.
+
+An entry or function type the game does not have is refused outright: a table that silently stopped
+gating would change what it gives without saying so.
+
+### What is not produced yet
+
+A stack here is an item and a count. Vanilla's carries components too, and twenty-seven of the
+game's forty-three functions set one — an enchantment, a name, a potion, damage. Those are read and
+leave the stack alone, so a table that uses one drops the plain item rather than failing.
+
+The three fortune formulas are written and correct, and read a level of nought, because nothing puts
+an enchantment on a tool yet. An ore therefore drops its base count.
+
+`slots` and `dynamic` entries read what a container or block entity holds, and produce nothing.

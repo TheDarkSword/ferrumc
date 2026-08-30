@@ -1,0 +1,21 @@
+[package]
+name = "ferrumc-loot"
+description = "Loot tables: where every drop in the game comes from."
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+thiserror = { workspace = true }
+tracing = { workspace = true }
+serde_json = { workspace = true }
+rand = { workspace = true }
+ferrumc-datapack = { workspace = true }
+ferrumc-predicates = { workspace = true }
+ferrumc-registry = { workspace = true }
+
+[dev-dependencies]
+tempfile = { workspace = true }
+ferrumc-world = { workspace = true }
+
+[lints]
+workspace = true

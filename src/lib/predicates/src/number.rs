@@ -131,6 +131,18 @@ impl IntRange {
         })
     }
 
+    /// Pulls a number into the range, which is what a limit does rather than a test.
+    pub fn clamp(&self, context: &mut LootContext, value: i32) -> i32 {
+        let mut value = value;
+        if let Some(min) = &self.min {
+            value = value.max(min.int(context));
+        }
+        if let Some(max) = &self.max {
+            value = value.min(max.int(context));
+        }
+        value
+    }
+
     pub fn matches(&self, context: &mut LootContext, value: i32) -> bool {
         if let Some(min) = &self.min {
             if value < min.int(context) {
