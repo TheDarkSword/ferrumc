@@ -82,6 +82,7 @@ static ITEM: [&[u8]; 10] = tables!("item");
 static ENTITY_TYPE: [&[u8]; 10] = tables!("entity_type");
 static SOUND: [&[u8]; 10] = tables!("sound_event");
 static PARTICLE: [&[u8]; 10] = tables!("particle_type");
+static MOB_EFFECT: [&[u8]; 10] = tables!("mob_effect");
 
 fn lookup(tables: &[&[u8]; 10], id: u32, version: ProtocolVersion) -> Option<u32> {
     let table = tables[version.index()];
@@ -119,6 +120,13 @@ pub fn sound_for(sound: u32, version: ProtocolVersion) -> Option<u32> {
 #[must_use]
 pub fn particle_for(particle: u32, version: ProtocolVersion) -> Option<u32> {
     lookup(&PARTICLE, particle, version)
+}
+
+/// The id `effect` has in `version`. `None` means the version has no such effect, and a packet
+/// applying it says nothing rather than applying another one.
+#[must_use]
+pub fn mob_effect_for(effect: u32, version: ProtocolVersion) -> Option<u32> {
+    lookup(&MOB_EFFECT, effect, version)
 }
 
 /// The id every version gives to air, which reads as an empty slot.
@@ -195,6 +203,12 @@ network_id!(
     particle_for,
     "particle",
     refuse("particle")
+);
+network_id!(
+    NetworkMobEffect,
+    mob_effect_for,
+    "mob effect",
+    refuse("mob effect")
 );
 
 #[cfg(test)]

@@ -193,6 +193,12 @@ impl StreamWriter {
                 trace!("Dropped a packet carrying {registry} {id}, which {version} has no id for");
                 return Ok(());
             }
+            // A feature a client's version predates. Sending nothing is the whole of the
+            // translation for those, so it is not a failure either.
+            Err(NetError::EncoderError(NetEncodeError::PacketNotInVersion { packet, version })) => {
+                debug!("Dropped `{packet}`, which does not exist in {version}");
+                return Ok(());
+            }
             Err(err) => {
                 error!("Failed to compress packet: {:?}", err);
                 return Err(NetError::CompressionError(GenericCompressionError(

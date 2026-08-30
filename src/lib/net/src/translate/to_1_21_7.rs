@@ -2,16 +2,31 @@
 
 use super::Translated;
 use crate::packets::outgoing::set_default_spawn_position::SetDefaultSpawnPositionPacket;
+use crate::packets::outgoing::set_entity_motion::SetEntityMotion;
 use crate::packets::outgoing::spawn_entity::SpawnEntityPacket;
 use ferrumc_net_codec::encode::{NetEncode, NetEncodeOpts};
+use ferrumc_net_codec::net_types::lp_vec3::LowPrecisionVec3;
 use ferrumc_net_codec::version::ProtocolVersion;
 use std::io::Write;
 
 /// The boundary this hop is about: everything below it predates 1.21.9's changes.
 const NATIVE: ProtocolVersion = ProtocolVersion::V1_21_9;
 
-/// A velocity short counts eighth-thousandths of a block a tick.
+/// A velocity short counts eight-thousandths of a block a tick.
 const VELOCITY_UNITS: f64 = 8000.0;
+
+/// The older form of a velocity: three shorts rather than one packed vector.
+fn write_velocity_shorts<W: std::io::Write>(
+    velocity: &LowPrecisionVec3,
+    writer: &mut W,
+    opts: &NetEncodeOpts,
+) -> Result<(), ferrumc_net_codec::encode::errors::NetEncodeError> {
+    for axis in [velocity.x, velocity.y, velocity.z] {
+        let ticks = (axis * VELOCITY_UNITS).clamp(f64::from(i16::MIN), f64::from(i16::MAX));
+        (ticks as i16).encode(writer, &opts.nested())?;
+    }
+    Ok(())
+}
 
 /// 1.21.9 moved an entity's spawn movement ahead of its rotations and replaced the three velocity
 /// shorts with a compressed vector. Older clients read the shorts, at the end, after the data
@@ -38,12 +53,7 @@ pub fn add_entity<W: Write>(
         packet.yaw.encode(writer, &opts.nested())?;
         packet.head_yaw.encode(writer, &opts.nested())?;
         packet.data.encode(writer, &opts.nested())?;
-        // The older form carries velocity as three shorts, in eight-thousandths of a block a tick.
-        for axis in [packet.movement.x, packet.movement.y, packet.movement.z] {
-            let ticks = (axis * VELOCITY_UNITS).clamp(f64::from(i16::MIN), f64::from(i16::MAX));
-            (ticks as i16).encode(writer, &opts.nested())?;
-        }
-        Ok(())
+        write_velocity_shorts(&packet.movement, writer, opts)
     })())
 }
 
@@ -62,6 +72,22 @@ pub fn set_default_spawn_position<W: std::io::Write>(
         packet.spawn_position.encode(writer, &opts.nested())?;
         packet.yaw.encode(writer, &opts.nested())?;
         Ok(())
+    })())
+}
+
+/// 1.21.9 packed the velocity into one vector. Older clients read three shorts.
+pub fn set_entity_motion<W: std::io::Write>(
+    packet: &SetEntityMotion,
+    writer: &mut W,
+    opts: &NetEncodeOpts,
+) -> Translated {
+    if opts.version >= NATIVE {
+        return None;
+    }
+    Some((|| {
+        super::packet_id!(writer, opts, "play", "set_entity_motion")?;
+        packet.entity_id.encode(writer, &opts.nested())?;
+        write_velocity_shorts(&packet.velocity, writer, opts)
     })())
 }
 

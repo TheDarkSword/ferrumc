@@ -12,6 +12,8 @@ pub struct ClickContainer {
     pub button: i8,
     pub mode: VarInt,
     pub changed_slots: LengthPrefixedVec<ChangedSlot>,
+    /// What the player is left holding on the pointer. Absent means an empty hand.
+    pub carried_item: PrefixedOptional<HashedItem>,
 }
 
 #[derive(NetDecode)]

@@ -3,7 +3,9 @@
 use super::{Body, Translated, Upgraded};
 use crate::packets::outgoing::entity_position_sync::TeleportEntityPacket;
 use crate::packets::outgoing::set_container_content::SetContainerContent;
+use crate::packets::outgoing::set_container_data::SetContainerData;
 use crate::packets::outgoing::set_container_slot::SetContainerSlot;
+use crate::packets::outgoing::set_cursor_item::SetCursorItem;
 use crate::packets::outgoing::set_player_inventory_slot::SetPlayerInventorySlot;
 use crate::packets::outgoing::synchronise_vehicle_position::SynchroniseVehiclePosition;
 use crate::packets::outgoing::synchronize_player_position::SynchronizePlayerPositionPacket;
@@ -341,6 +343,49 @@ pub fn player_input<R: Read>(reader: &mut R, version: ProtocolVersion) -> Upgrad
             flags |= SNEAK;
         }
         Ok(super::Upgrade::Body(vec![flags]))
+    })())
+}
+
+/// Where a client on 1.21 expects the item it is dragging, rather than a slot in a container.
+const CURSOR_WINDOW: i8 = -1;
+const CURSOR_SLOT: i16 = -1;
+
+/// 1.21.2 gave the dragged item a packet of its own. Before it, the cursor was a slot like any
+/// other, addressed by a window and slot of minus one.
+pub fn set_cursor_item<W: Write>(
+    packet: &SetCursorItem,
+    writer: &mut W,
+    opts: &NetEncodeOpts,
+) -> Translated {
+    if opts.version >= NATIVE {
+        return None;
+    }
+    Some((|| {
+        super::packet_id!(writer, opts, "play", "container_set_slot")?;
+        CURSOR_WINDOW.encode(writer, &opts.nested())?;
+        VarInt::new(NO_STATE_ID).encode(writer, &opts.nested())?;
+        CURSOR_SLOT.encode(writer, &opts.nested())?;
+        packet.item.encode(writer, &opts.nested())?;
+        Ok(())
+    })())
+}
+
+/// The same widening as the other container packets: 1.21 reads the container id as one unsigned
+/// byte.
+pub fn container_set_data<W: Write>(
+    packet: &SetContainerData,
+    writer: &mut W,
+    opts: &NetEncodeOpts,
+) -> Translated {
+    if opts.version >= NATIVE {
+        return None;
+    }
+    Some((|| {
+        super::packet_id!(writer, opts, "play", "container_set_data")?;
+        (packet.window_id.0 as u8).encode(writer, &opts.nested())?;
+        packet.property.encode(writer, &opts.nested())?;
+        packet.value.encode(writer, &opts.nested())?;
+        Ok(())
     })())
 }
 

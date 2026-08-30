@@ -77,6 +77,10 @@ for version in "${VERSIONS[@]}"; do
   port=$((port + 1))
 done
 
+# The bot is given a short run per version, so it must not spend it compiling: whichever version
+# went first would fail for that reason alone.
+(cd "$ROOT/tools/stress-bot" && cargo build -q)
+
 printf '%-10s %-16s %s\n' VERSION RESULT DETAIL
 port=25600
 for version in "${VERSIONS[@]}"; do

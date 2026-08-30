@@ -40,7 +40,9 @@ pub mod to_1_21;
 pub mod to_1_21_11;
 pub mod to_1_21_2;
 pub mod to_1_21_4;
+pub mod to_1_21_5;
 pub mod to_1_21_7;
+pub mod to_1_21_9;
 pub mod to_26_1;
 
 /// What a clientbound hop returns: `None` when the client reads the packet's native form,

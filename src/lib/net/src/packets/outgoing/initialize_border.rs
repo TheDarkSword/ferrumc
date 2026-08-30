@@ -5,6 +5,7 @@ use ferrumc_net_codec::net_types::var_int::VarInt;
 use ferrumc_net_codec::net_types::var_long::VarLong;
 
 #[derive(NetEncode)]
+#[downgrade_with(crate::translate::to_1_21_9::initialize_border)]
 #[packet(packet_id = "initialize_border", state = "play")]
 pub struct InitializeBorder {
     pub center_x: f64,

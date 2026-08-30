@@ -72,6 +72,11 @@ fn write_heightmaps_as_nbt<W: Write>(
 /// zero is what the server reads as "no checksum".
 const NO_CHECKSUM: u8 = 0;
 
+/// 1.21.5 appended the same checksum to a signed command.
+pub fn chat_command_signed<R: std::io::Read>(reader: &mut R, version: ProtocolVersion) -> Upgraded {
+    chat(reader, version)
+}
+
 /// 1.21.5 appended a checksum byte to the chat message.
 pub fn chat<R: std::io::Read>(reader: &mut R, version: ProtocolVersion) -> Upgraded {
     if version >= NATIVE {

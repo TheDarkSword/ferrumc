@@ -2,6 +2,7 @@ pub mod ack_finish_configuration;
 pub mod attack;
 pub mod change_difficulty;
 pub mod change_game_mode;
+pub mod chat_command_signed;
 pub mod chat_message;
 pub mod chunk_batch_ack;
 pub mod click_container;

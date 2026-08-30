@@ -8,10 +8,10 @@
 
 use bevy_ecs::prelude::Res;
 use ferrumc_net::{
-    AttackEntityReceiver, ChangeDifficultyReceiver, ClientCommandReceiver,
-    ClientTickEndPacketReceiver, InteractEntityReceiver, MovePlayerStatusOnlyReceiver,
-    MoveVehicleReceiver, PickItemFromEntityReceiver, PlaceRecipeReceiver,
-    RecipeBookSeenRecipeReceiver, RenameItemReceiver, UseItemReceiver,
+    AttackEntityReceiver, ChangeDifficultyReceiver, ChatCommandSignedReceiver,
+    ClientCommandReceiver, ClientTickEndPacketReceiver, InteractEntityReceiver,
+    MovePlayerStatusOnlyReceiver, MoveVehicleReceiver, PickItemFromEntityReceiver,
+    PlaceRecipeReceiver, RecipeBookSeenRecipeReceiver, RenameItemReceiver, UseItemReceiver,
 };
 
 /// Empties every channel with no reader. `try_iter` takes what is queued and returns.
@@ -19,6 +19,7 @@ use ferrumc_net::{
 pub fn handle(
     attack: Res<AttackEntityReceiver>,
     change_difficulty: Res<ChangeDifficultyReceiver>,
+    chat_command_signed: Res<ChatCommandSignedReceiver>,
     client_command: Res<ClientCommandReceiver>,
     client_tick_end: Res<ClientTickEndPacketReceiver>,
     interact: Res<InteractEntityReceiver>,
@@ -32,6 +33,7 @@ pub fn handle(
 ) {
     attack.0.try_iter().for_each(drop);
     change_difficulty.0.try_iter().for_each(drop);
+    chat_command_signed.0.try_iter().for_each(drop);
     client_command.0.try_iter().for_each(drop);
     client_tick_end.0.try_iter().for_each(drop);
     interact.0.try_iter().for_each(drop);

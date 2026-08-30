@@ -17,24 +17,32 @@ Nothing reads those components yet, so the mismatch has no effect beyond the two
 wrong. Fixing it means implementing the hashing both ways, which belongs with the inventory work in
 Phase 5.
 
+## The chunk biome packet builds its own payload
+
+`chunks_biomes` carries each chunk's biome containers as opaque bytes, and those containers changed
+shape at 1.21.5 along with the ones in a chunk packet. Whatever builds the payload has to encode it
+for the reader's version, the way the chunk packet already does; there is nothing for a hop to do
+once it has.
+
 ## A spectator's attack is an attack
 
 26.1 split the interaction packet: an attack became its own packet, and a spectator's attack became
 a request to spectate that entity. Spectator mode is not tracked on the connection, so an attack
 from an older client stays an attack.
 
-## Packets no version difference has been written for
+## Packets with no struct yet
 
-A packet is only translated once something sends or receives it. These have a difference somewhere
-in the supported range and no translator, because nothing uses them yet:
+A packet is only written once something sends or receives it. These have a difference somewhere in
+the supported range and neither a struct nor a hop, because they carry data models this server does
+not have:
 
-| Direction | Packets |
+| Packet | What it needs first |
 |---|---|
-| Clientbound | `container_set_data`, `horse_screen_open`, `open_sign_editor`, `place_ghost_recipe`, `player_rotation`, `recipe_book_add`, `recipe_book_remove`, `recipe_book_settings`, `set_cursor_item`, `set_passengers`, `update_recipes`, `chunks_biomes`, `change_difficulty`, `clear_dialog`, `server_links`, `show_dialog`, `initialize_border`, `set_border_center`, `set_border_lerp_size`, `set_entity_motion`, `mount_screen_open`, `remove_mob_effect`, `update_mob_effect` |
-| Serverbound | `move_player_status_only`, `move_vehicle`, `place_recipe`, `recipe_book_seen_recipe`, `pick_item_from_entity`, `chat_command_signed`, `change_difficulty`, `rename_item`, `debug_sample_subscription`, `spectate_entity` |
+| `update_recipes`, `recipe_book_add`, `recipe_book_remove`, `recipe_book_settings`, `place_ghost_recipe` | the recipe display tree |
+| `show_dialog` | the dialog tree |
 
-Each is one hop function in the module for the boundary that changed it, written when the packet
-itself is.
+Two more exist only in older versions and have no 26.2 counterpart to write: `spectate_entity`,
+which 26.1 folded into the attack, and `debug_sample_subscription`.
 
 ## A teleport carries no velocity to 1.21
 

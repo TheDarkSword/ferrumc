@@ -44,6 +44,7 @@ REGISTRIES = {
     "minecraft:entity_type": {"dir": "entity_type", "substitute": False},
     "minecraft:sound_event": {"dir": "sound_event", "substitute": False},
     "minecraft:particle_type": {"dir": "particle_type", "substitute": False},
+    "minecraft:mob_effect": {"dir": "mob_effect", "substitute": False},
 }
 
 
