@@ -41,6 +41,7 @@ ferrumc-datapack = { workspace = true }
 ferrumc-advancements = { workspace = true }
 ferrumc-loot = { workspace = true }
 ferrumc-recipes = { workspace = true }
+ferrumc-worldgen-data = { workspace = true }
 ferrumc-predicates = { workspace = true }
 ferrumc-entities = { workspace = true }
 ferrumc-physics = { workspace = true }

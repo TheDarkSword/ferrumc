@@ -39,6 +39,7 @@ members = [
     "src/lib/utils/profiling",
     "src/lib/world",
     "src/lib/world_gen",
+    "src/lib/worldgen_data",
     "src/lib/utils/threadpool",
     "src/lib/inventories",
     "src/lib/registry",
@@ -150,6 +151,7 @@ ferrumc-threadpool = { path = "src/lib/utils/threadpool" }
 ferrumc-utils = { path = "src/lib/utils" }
 ferrumc-world = { path = "src/lib/world" }
 ferrumc-world-gen = { path = "src/lib/world_gen" }
+ferrumc-worldgen-data = { path = "src/lib/worldgen_data" }
 ferrumc-inventories = { path = "src/lib/inventories" }
 ferrumc-data = { path = "src/lib/data" }
 ferrumc-datapack = { path = "src/lib/datapack" }

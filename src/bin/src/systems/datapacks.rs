@@ -10,6 +10,7 @@ use ferrumc_general_purpose::paths::get_root_path;
 use ferrumc_loot::LootTables;
 use ferrumc_predicates::Predicates;
 use ferrumc_recipes::RecipeBook;
+use ferrumc_worldgen_data::WorldgenData;
 use std::sync::Arc;
 use tracing::info;
 
@@ -29,6 +30,8 @@ pub struct Datapacks {
     pub recipes: Arc<RecipeBook>,
     /// The advancement trees, and where each one sits on the screen.
     pub advancements: Arc<Advancements>,
+    /// The biomes, features and structures a generator builds a world out of.
+    pub worldgen: Arc<WorldgenData>,
 }
 
 impl Datapacks {
@@ -43,12 +46,14 @@ impl Datapacks {
             loot: Arc::default(),
             recipes: Arc::default(),
             advancements: Arc::default(),
+            worldgen: Arc::default(),
         };
         packs.rebuild();
         packs.predicates = Arc::new(Predicates::load(&packs.resources));
         packs.loot = Arc::new(LootTables::load(&packs.resources));
         packs.recipes = Arc::new(RecipeBook::load(&packs.resources));
         packs.advancements = Arc::new(Advancements::load(&packs.resources));
+        packs.worldgen = Arc::new(WorldgenData::load(&packs.resources));
         packs.report();
         Ok(packs)
     }
@@ -62,6 +67,7 @@ impl Datapacks {
         self.loot = Arc::new(LootTables::load(&self.resources));
         self.recipes = Arc::new(RecipeBook::load(&self.resources));
         self.advancements = Arc::new(Advancements::load(&self.resources));
+        self.worldgen = Arc::new(WorldgenData::load(&self.resources));
         self.report();
         Ok(())
     }
@@ -87,11 +93,13 @@ impl Datapacks {
 
     fn report(&self) {
         info!(
-            "data packs loaded: {} ({} recipes, {} loot tables, {} advancements, {} predicates)",
+            "data packs loaded: {} ({} recipes, {} loot tables, {} advancements, {} worldgen \
+             definitions, {} predicates)",
             self.repository.selected().join(", "),
             self.recipes.len(),
             self.loot.len(),
             self.advancements.len(),
+            self.worldgen.len(),
             self.predicates.len()
         );
     }

@@ -252,3 +252,37 @@ let stacks = FileToId::json("tags/block").list_stacks(&manager);
 
 `Datapacks::rebuild` in `src/bin/src/systems/datapacks.rs` is the one place that runs on both the
 first load and a reload. A new consumer adds its line there and gets `/reload` for free.
+
+## Worldgen definitions
+
+Biomes, the features that go in them and the structures that are built are all datapack json, and
+all of it is read here into types a generator runs. Reading them is this layer's job; running them
+is worldgen's.
+
+### The vocabulary is where the care goes
+
+Everything is built out of a handful of shared value types, and three of them share type names while
+differing in their fields:
+
+| Written | Whole number | Real number | Height |
+|---|---|---|---|
+| `uniform` | `min_inclusive`, `max_inclusive` | `min_inclusive`, `max_exclusive` | two anchors |
+| `trapezoid` | `min`, `max`, `plateau` | `min`, `max`, `plateau` | `min_inclusive`, `max_inclusive` |
+
+So each is read where one is expected rather than guessed at from the type name. Two more that look
+like what they are not: a rule-based block provider tests a **block predicate**, not a rule test, and
+a set of ids written with one entry is a bare string rather than a list of one.
+
+A block state is `{"Name": ..., "Properties": {...}}`, and a property the block does not have makes
+the whole state unreadable rather than quietly giving the default — which would put the wrong block
+in the world.
+
+### What is read
+
+Every one of the game's 226 configured features, 262 placements, 66 biomes, 34 structures and 20
+structure sets. A feature type the game does not have is refused; twenty-seven that it does have are
+recognised and their config kept as written, because nothing runs them yet and modelling a geode's
+dozen fields before a generator asks for them would be guessing.
+
+Noise settings, density functions and surface rules are not read here: they are the shape of the
+terrain rather than what is placed on it, and they belong with the generator that runs them.
