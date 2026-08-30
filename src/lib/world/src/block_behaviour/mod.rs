@@ -21,7 +21,7 @@ use crate::block_state::{BlockId, Direction};
 use crate::block_state_id::BlockStateId;
 use crate::block_tag::tag;
 use crate::pos::BlockPos;
-use crate::scheduler::TickPriority;
+use crate::scheduler::{TickKind, TickPriority};
 use std::sync::LazyLock;
 
 /// The world, as much of it as a block behaviour may touch.
@@ -31,8 +31,8 @@ use std::sync::LazyLock;
 pub trait BlockWorld {
     fn block_at(&mut self, pos: BlockPos) -> BlockStateId;
     fn set_block(&mut self, pos: BlockPos, state: BlockStateId);
-    /// Asks for this block to be given a turn `delay` ticks from now.
-    fn schedule_tick(&mut self, pos: BlockPos, delay: u64, priority: TickPriority);
+    /// Asks for work at this block `delay` ticks from now.
+    fn schedule_tick(&mut self, pos: BlockPos, kind: TickKind, delay: u64, priority: TickPriority);
 }
 
 /// What came of an interaction, which decides whether anything else gets a turn at it.
@@ -205,7 +205,14 @@ mod tests {
             self.0.insert(Self::key(pos), state);
         }
 
-        fn schedule_tick(&mut self, _pos: BlockPos, _delay: u64, _priority: TickPriority) {}
+        fn schedule_tick(
+            &mut self,
+            _pos: BlockPos,
+            _kind: TickKind,
+            _delay: u64,
+            _priority: TickPriority,
+        ) {
+        }
     }
 
     /// Puts both halves of a door at the origin and returns the lower one's position.

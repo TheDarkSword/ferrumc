@@ -1,5 +1,6 @@
 pub mod block_behaviour;
 pub mod block_data;
+pub mod block_entity;
 pub mod block_shape;
 pub mod block_state;
 pub mod block_state_id;

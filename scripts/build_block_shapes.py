@@ -47,6 +47,21 @@ def main() -> None:
         indices = [0 if state is None else state[field] for state in states]
         (OUT_BIN / f"{field}.bin").write_bytes(struct.pack(f"<{len(indices)}H", *indices))
 
+    # Which block entity each block carries, as its registry id, or none. Keyed on block rather
+    # than state: every state of a chest is a chest.
+    entities = data["block_entities"]
+    order = {entry["block"]: entry["type"] for entry in entities}
+    blocks_json = json.loads(
+        (REPO_ROOT / "assets" / "extracted" / NATIVE / "reports" / "blocks.json").read_text()
+    )
+    by_base = sorted(
+        blocks_json, key=lambda name: min(st["id"] for st in blocks_json[name]["states"])
+    )
+    owners = [order.get(name, -1) for name in by_base]
+    (OUT_BIN / "block_entities.bin").write_bytes(
+        struct.pack(f"<{len(owners)}H", *[0xFFFF if o < 0 else o for o in owners])
+    )
+
     # Which face shape each of a state's six sides has, and whether light is stopped between any
     # pair of them. Whether light passes between two blocks is a question about both their faces
     # together; there are few enough distinct faces that every pair's answer fits in a table.
@@ -133,6 +148,7 @@ def main() -> None:
         1 for state in states if state is not None and state["randomly_ticking"]
     )
     print(f"{randomly_ticking} states take a random tick")
+    print(f"{sum(1 for o in owners if o >= 0)} blocks carry a block entity")
     print(f"{len(pairs)} distinct face shapes, {len(pairs) * len(pairs)} pair answers")
     print(
         f"{len(states)} states, {len(shapes)} shapes, {len(boxes)} boxes "

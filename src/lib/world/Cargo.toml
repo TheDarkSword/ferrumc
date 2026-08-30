@@ -17,6 +17,7 @@ bitcode_derive = { workspace = true }
 bitcode = { workspace = true }
 deepsize = { workspace = true }
 ferrumc-nbt = { workspace = true }
+ferrumc-text = { workspace = true }
 ferrumc-macros = { workspace = true }
 ferrumc-anvil = { workspace = true }
 rayon = { workspace = true }

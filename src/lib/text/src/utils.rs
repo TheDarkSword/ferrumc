@@ -61,7 +61,9 @@ impl From<NamedColor> for Color {
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone, Default, NBTSerialize)]
-#[serde(rename_all(serialize = "snake_case"))]
+// Both ways round: with only the serialising half, a colour written as "red" was not recognised
+// on the way back and fell through to the hex variant, carrying a name where a hex code belongs.
+#[serde(rename_all = "snake_case")]
 #[nbt(tag_type = 8, tag = "untagged", rename_all = "snake_case")]
 pub enum NamedColor {
     Black,

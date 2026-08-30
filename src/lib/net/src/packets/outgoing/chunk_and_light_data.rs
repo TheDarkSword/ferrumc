@@ -11,7 +11,7 @@ use ferrumc_world::pos::ChunkPos;
 #[derive(NetEncode)]
 pub struct BlockEntity {
     pub xz: u8,
-    pub y: u16,
+    pub y: i16,
     pub entity_type: VarInt,
     pub nbt: Vec<u8>,
 }
@@ -45,7 +45,19 @@ impl<'chunk> ChunkAndLightData<'chunk> {
             chunk_x: pos.x(),
             chunk_z: pos.z(),
             chunk_data: NetworkChunk::new(chunk, version)?,
-            block_entities: LengthPrefixedVec::new(Vec::new()),
+            block_entities: LengthPrefixedVec::new(
+                chunk
+                    .block_entities()
+                    .iter()
+                    .map(|entity| BlockEntity {
+                        // The two horizontal coordinates share a byte, four bits each.
+                        xz: (entity.x << 4) | (entity.z & 0x0F),
+                        y: entity.y,
+                        entity_type: VarInt::new(i32::from(entity.kind)),
+                        nbt: entity.to_nbt(),
+                    })
+                    .collect(),
+            ),
             light_data: NetworkLightData::from(chunk),
         })
     }

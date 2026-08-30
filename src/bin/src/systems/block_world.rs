@@ -61,14 +61,9 @@ impl BlockWorld for WorldAccess<'_> {
         }
     }
 
-    fn schedule_tick(&mut self, pos: BlockPos, delay: u64, priority: TickPriority) {
-        self.scheduler.schedule_with_priority(
-            pos,
-            TickKind::Block,
-            self.current_tick,
-            delay,
-            priority,
-        );
+    fn schedule_tick(&mut self, pos: BlockPos, kind: TickKind, delay: u64, priority: TickPriority) {
+        self.scheduler
+            .schedule_with_priority(pos, kind, self.current_tick, delay, priority);
     }
 }
 

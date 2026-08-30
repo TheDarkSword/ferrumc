@@ -1,6 +1,7 @@
 // --------- Movement ----------
 // -----------------------------
 pub mod block_change_ack;
+pub mod block_entity_data;
 pub mod block_update;
 pub mod change_difficulty;
 pub mod chunk_and_light_data;

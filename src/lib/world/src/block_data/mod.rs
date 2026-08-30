@@ -154,6 +154,25 @@ pub fn shape_occludes_between(from: BlockStateId, to: BlockStateId, towards: Dir
         .is_some_and(|byte| byte & (1 << (b % 8)) != 0)
 }
 
+/// Which block entity each block carries, as a registry id.
+static BLOCK_ENTITIES: &[u8] =
+    include_bytes!("../../../../../assets/data/block_shapes/block_entities.bin");
+
+/// Written where a block carries none.
+const NO_BLOCK_ENTITY: u16 = u16::MAX;
+
+/// The block entity this block carries, if it carries one.
+///
+/// Keyed on the block rather than the state: every state of a chest is a chest. 186 of 1196 blocks
+/// carry one.
+#[must_use]
+pub fn block_entity_type(block: crate::block_state::BlockId) -> Option<u16> {
+    let index = usize::from(block.index()) * 2;
+    let bytes = BLOCK_ENTITIES.get(index..index + 2)?;
+    let id = u16::from_le_bytes([bytes[0], bytes[1]]);
+    (id != NO_BLOCK_ENTITY).then_some(id)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -305,6 +324,25 @@ mod tests {
         assert!(
             shape_occludes_between(top, bottom, Direction::North),
             "together they cover the whole opening"
+        );
+    }
+
+    /// A chest holds more than its state id can say; stone does not.
+    #[test]
+    fn some_blocks_carry_a_block_entity() {
+        let block =
+            |name: &str| BlockId::from_name(name).unwrap_or_else(|| panic!("{name} exists"));
+
+        assert!(block_entity_type(block("minecraft:chest")).is_some());
+        assert!(block_entity_type(block("minecraft:oak_sign")).is_some());
+        assert!(block_entity_type(block("minecraft:furnace")).is_some());
+        assert!(block_entity_type(block("minecraft:stone")).is_none());
+        assert!(block_entity_type(block("minecraft:air")).is_none());
+
+        // Every sign is the same kind of block entity, wall ones included.
+        assert_eq!(
+            block_entity_type(block("minecraft:oak_sign")),
+            block_entity_type(block("minecraft:oak_wall_sign")),
         );
     }
 

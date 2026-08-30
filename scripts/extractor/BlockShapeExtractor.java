@@ -24,6 +24,8 @@ import net.minecraft.world.level.EmptyBlockGetter;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.core.Direction;
 import net.minecraft.world.level.block.SupportType;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.level.lighting.LightEngine;
@@ -196,6 +198,23 @@ public final class BlockShapeExtractor {
             ));
         }
 
+        // Which block entity a block carries, if any. The set of blocks a type accepts is private,
+        // but the question "does this type accept this state" is not, so it is asked directly.
+        final List<String> blockEntities = new ArrayList<>();
+        for (final Block block : BuiltInRegistries.BLOCK) {
+            int found = -1;
+            for (final BlockEntityType<?> type : BuiltInRegistries.BLOCK_ENTITY_TYPE) {
+                if (type.isValid(block.defaultBlockState())) {
+                    found = BuiltInRegistries.BLOCK_ENTITY_TYPE.getId(type);
+                    break;
+                }
+            }
+            blockEntities.add(String.format(
+                "{\"block\":\"%s\",\"type\":%d}",
+                BuiltInRegistries.BLOCK.getKey(block), found
+            ));
+        }
+
         final Path out = Path.of(args[0]);
         try (PrintWriter writer = new PrintWriter(Files.newBufferedWriter(out, StandardCharsets.UTF_8))) {
             writer.print("{\"version\":\"");
@@ -221,6 +240,8 @@ public final class BlockShapeExtractor {
                 rows.add(row.append(']').toString());
             }
             writer.print(String.join(",", rows));
+            writer.print("],\"block_entities\":[");
+            writer.print(String.join(",", blockEntities));
             writer.print("],\"states\":[");
             writer.print(String.join(",", states));
             writer.print("]}");

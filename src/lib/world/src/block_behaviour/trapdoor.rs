@@ -4,6 +4,10 @@ use super::door::opens_by_hand;
 use super::{BlockBehaviour, InteractionResult, Use};
 use crate::block_state::properties;
 use crate::block_state_id::BlockStateId;
+use crate::scheduler::{TickKind, TickPriority};
+
+/// How long water waits before spreading, from `WaterFluid.getTickDelay`.
+const WATER_TICK_DELAY: u64 = 5;
 
 pub(super) struct Trapdoor;
 
@@ -19,7 +23,17 @@ impl BlockBehaviour for Trapdoor {
             return InteractionResult::Pass;
         };
         ctx.world.set_block(ctx.pos, toggled);
-        // A waterlogged trapdoor also asks the water to tick; scheduled ticks are not built yet.
+
+        // A trapdoor that opens under water lets the water through, so the water is asked to work
+        // out where it goes.
+        if toggled.get(properties::WATERLOGGED) == Some(true) {
+            ctx.world.schedule_tick(
+                ctx.pos,
+                TickKind::FluidSpread,
+                WATER_TICK_DELAY,
+                TickPriority::Normal,
+            );
+        }
         InteractionResult::Success
     }
 }

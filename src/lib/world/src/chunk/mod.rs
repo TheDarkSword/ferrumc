@@ -22,6 +22,10 @@ pub struct Chunk {
     height: ChunkHeight,
 
     heightmaps: Option<Heightmaps>,
+
+    /// What the blocks in this chunk hold beyond their state ids. Few enough per chunk that a list
+    /// is faster to walk than a map is to hash, and it is written with the chunk.
+    block_entities: Vec<crate::block_entity::BlockEntity>,
 }
 
 impl Chunk {
@@ -51,6 +55,7 @@ impl Chunk {
                 .into_boxed_slice(),
             height,
             heightmaps: None,
+            block_entities: Vec::new(),
         }
     }
 
@@ -75,6 +80,7 @@ impl Chunk {
             sections: sections.to_vec().into_boxed_slice(),
             height,
             heightmaps: None,
+            block_entities: Vec::new(),
         }
     }
 
@@ -134,6 +140,42 @@ impl Chunk {
         }
 
         self.sections[section as usize].get_block(pos.section_block_pos())
+    }
+
+    /// Everything in this chunk that holds more than its state id.
+    #[must_use]
+    pub fn block_entities(&self) -> &[crate::block_entity::BlockEntity] {
+        &self.block_entities
+    }
+
+    /// What the block at this position holds, if anything.
+    #[must_use]
+    pub fn block_entity(&self, pos: ChunkBlockPos) -> Option<&crate::block_entity::BlockEntity> {
+        self.block_entities
+            .iter()
+            .find(|entity| entity.pos() == pos)
+    }
+
+    /// The same, to be changed: a sign being written on, a furnace burning down.
+    pub fn block_entity_mut(
+        &mut self,
+        pos: ChunkBlockPos,
+    ) -> Option<&mut crate::block_entity::BlockEntity> {
+        self.block_entities
+            .iter_mut()
+            .find(|entity| entity.pos() == pos)
+    }
+
+    /// Puts one there, replacing whatever was.
+    pub fn set_block_entity(&mut self, entity: crate::block_entity::BlockEntity) {
+        let pos = entity.pos();
+        self.block_entities.retain(|existing| existing.pos() != pos);
+        self.block_entities.push(entity);
+    }
+
+    /// Takes away whatever was there.
+    pub fn remove_block_entity(&mut self, pos: ChunkBlockPos) {
+        self.block_entities.retain(|entity| entity.pos() != pos);
     }
 
     /// The block light at a position in this chunk.
@@ -215,6 +257,19 @@ impl Chunk {
         assert!(section >= 0);
         assert!(section as usize <= self.sections.len());
 
+        // A block that holds more than its state id gains or loses that when it is placed or
+        // broken. Replacing a chest with another chest keeps what was in it, which is what happens
+        // when a chest is waterlogged or turned; replacing it with anything else does not.
+        let wanted = id
+            .block()
+            .and_then(|block| crate::block_entity::BlockEntity::for_block(block, pos));
+        match (wanted, self.block_entity(pos).map(|existing| existing.kind)) {
+            (Some(wanted), Some(kind)) if wanted.kind == kind => {}
+            (Some(wanted), _) => self.set_block_entity(wanted),
+            (None, Some(_)) => self.remove_block_entity(pos),
+            (None, None) => {}
+        }
+
         self.sections[section as usize].set_block(pos.section_block_pos(), id);
     }
 }
@@ -248,6 +303,9 @@ impl TryFrom<&VanillaChunk> for Chunk {
                 .heightmaps
                 .as_ref()
                 .and_then(|v| Heightmaps::try_from(v).ok()),
+            // An imported world's block entities are not read yet; see
+            // `internal_docs/deferred.md`.
+            block_entities: Vec::new(),
         })
     }
 }

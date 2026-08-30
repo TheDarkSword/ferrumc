@@ -332,7 +332,14 @@ mod tests {
             self.0.insert((pos.pos.x, pos.pos.y, pos.pos.z), state);
         }
 
-        fn schedule_tick(&mut self, _pos: BlockPos, _delay: u64, _priority: TickPriority) {}
+        fn schedule_tick(
+            &mut self,
+            _pos: BlockPos,
+            _kind: crate::scheduler::TickKind,
+            _delay: u64,
+            _priority: TickPriority,
+        ) {
+        }
     }
 
     /// The case the phase set out to get right: take away what a torch stands on and the torch

@@ -193,6 +193,26 @@ faces can cover the opening while neither covers it alone, which a top slab besi
 does. There are only 55 distinct faces in the game, so every pair's answer is worked out once in the
 extractor and looked up. 300 of those pairs stop light only together.
 
+## Block entities
+
+A chest's contents, a sign's text, a furnace's progress: none of it fits in a state id, so those
+blocks carry a block entity alongside. 186 of the 1196 blocks do, and which block carries which
+comes from the game itself — the set of blocks a type accepts is private, but the question "does
+this type accept this state" is not, so it is asked directly.
+
+They live in the chunk and are written with it, so what a sign says survives a restart. Placing a
+block that carries one creates it and breaking it takes it away, both from `set_block`, so nothing
+has to remember to. Replacing a chest with another chest keeps what was in it — which is what
+happens when one is waterlogged or turned — while replacing it with anything else does not.
+
+A sign's line is a **text component**, as it is in the game: it can be coloured, translated or carry
+a click event, none of which a bare string says. What is stored is the component written out, which
+is the same split vanilla has between the component it works with and the codec it saves through.
+
+A kind that is not modelled yet still exists and is still written and sent; it simply carries
+nothing. That way a client is told the block entity is there, and the day it gains fields nothing
+else has to change.
+
 ## Regenerating
 
 ```bash
