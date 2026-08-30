@@ -15,7 +15,7 @@ mod importing;
 pub mod light;
 pub mod metadata;
 pub mod neighbour_update;
-mod player;
+pub mod player;
 pub mod pos;
 pub mod scheduler;
 pub mod vanilla_chunk_format;

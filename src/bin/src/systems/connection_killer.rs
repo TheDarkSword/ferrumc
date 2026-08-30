@@ -34,6 +34,7 @@ type PlayerCacheQuery<'a> = (
     &'a Experience,
     &'a EnderChest,
     &'a ActiveEffects,
+    Option<&'a crate::systems::advancements::Advancement>,
 );
 
 // This query is a "fallback" for half-connected players
@@ -68,6 +69,7 @@ pub fn connection_killer(
             exp,
             echest,
             effects,
+            advancements,
         )) = full_player_query.get(disconnecting_entity)
         {
             // --- SUCCESS: This is a fully-joined player ---
@@ -116,6 +118,10 @@ pub fn connection_killer(
                 ender_chest: echest.clone(),
                 active_effects: effects.clone(),
             };
+            // What they have done is kept apart from the rest, as vanilla keeps it in its own file.
+            if let Some(advancements) = advancements {
+                crate::systems::advancements::save(&state, player_identity, &advancements.0);
+            }
             if let Err(err) = state
                 .0
                 .world

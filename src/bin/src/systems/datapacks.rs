@@ -4,6 +4,7 @@
 //! reads through the stack, and a reload rebuilds it from what is on disk now.
 
 use bevy_ecs::prelude::Resource;
+use ferrumc_advancements::Advancements;
 use ferrumc_datapack::{DatapackError, PackRepository, ResourceManager};
 use ferrumc_general_purpose::paths::get_root_path;
 use ferrumc_loot::LootTables;
@@ -26,6 +27,8 @@ pub struct Datapacks {
     pub loot: Arc<LootTables>,
     /// Every recipe, which is what the game can be made into.
     pub recipes: Arc<RecipeBook>,
+    /// The advancement trees, and where each one sits on the screen.
+    pub advancements: Arc<Advancements>,
 }
 
 impl Datapacks {
@@ -39,11 +42,13 @@ impl Datapacks {
             predicates: Arc::default(),
             loot: Arc::default(),
             recipes: Arc::default(),
+            advancements: Arc::default(),
         };
         packs.rebuild();
         packs.predicates = Arc::new(Predicates::load(&packs.resources));
         packs.loot = Arc::new(LootTables::load(&packs.resources));
         packs.recipes = Arc::new(RecipeBook::load(&packs.resources));
+        packs.advancements = Arc::new(Advancements::load(&packs.resources));
         packs.report();
         Ok(packs)
     }
@@ -56,6 +61,7 @@ impl Datapacks {
         self.predicates = Arc::new(Predicates::load(&self.resources));
         self.loot = Arc::new(LootTables::load(&self.resources));
         self.recipes = Arc::new(RecipeBook::load(&self.resources));
+        self.advancements = Arc::new(Advancements::load(&self.resources));
         self.report();
         Ok(())
     }
@@ -81,10 +87,11 @@ impl Datapacks {
 
     fn report(&self) {
         info!(
-            "data packs loaded: {} ({} recipes, {} loot tables, {} predicates)",
+            "data packs loaded: {} ({} recipes, {} loot tables, {} advancements, {} predicates)",
             self.repository.selected().join(", "),
             self.recipes.len(),
             self.loot.len(),
+            self.advancements.len(),
             self.predicates.len()
         );
     }

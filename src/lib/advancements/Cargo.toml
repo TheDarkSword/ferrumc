@@ -1,0 +1,24 @@
+[package]
+name = "ferrumc-advancements"
+description = "Advancements: the tree of things a player has done, and what tells it they have."
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+thiserror = { workspace = true }
+tracing = { workspace = true }
+serde = { workspace = true }
+serde_derive = { workspace = true }
+serde_json = { workspace = true }
+bitcode = { workspace = true }
+bitcode_derive = { workspace = true }
+ferrumc-datapack = { workspace = true }
+ferrumc-predicates = { workspace = true }
+ferrumc-registry = { workspace = true }
+ferrumc-text = { workspace = true }
+
+[dev-dependencies]
+tempfile = { workspace = true }
+
+[lints]
+workspace = true

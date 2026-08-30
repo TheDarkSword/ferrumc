@@ -38,6 +38,7 @@ ferrumc-threadpool = { workspace = true }
 ferrumc-inventories = { workspace = true }
 ferrumc-data = { workspace = true }
 ferrumc-datapack = { workspace = true }
+ferrumc-advancements = { workspace = true }
 ferrumc-loot = { workspace = true }
 ferrumc-recipes = { workspace = true }
 ferrumc-predicates = { workspace = true }

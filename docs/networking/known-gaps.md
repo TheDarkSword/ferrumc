@@ -95,3 +95,17 @@ The player is right, because that packet reads its id from `registries.json` rat
 
 Fixing it means regenerating the table, which needs the extractor rather than the vanilla reports:
 it carries health, dimensions and spawn rules that the reports do not have.
+
+## An advancement's icon is not translated for 26.1
+
+ViaVersion's `Protocol26_1To26_2` fails to remap `update_advancements`, in its item rewriter, and the
+packet is dropped for a client on 26.1. Nothing else in the packet is affected and the connection
+survives; the advancement screen simply has nothing in it.
+
+26.2 writes an advancement's icon as an item *template* — the item's id, then the count, then the
+component patch — where earlier versions wrote a slot, which leads with the count. The packet here
+follows 26.2's own `DisplayInfo.serializeToNetwork`, and a 26.2 client, which needs no translation,
+accepts it. The snapshot of ViaVersion the version check runs against reads it the older way.
+
+There is nothing to fix on this side unless the reading turns out to be right, which would show as
+a 26.2 client rejecting the packet too.

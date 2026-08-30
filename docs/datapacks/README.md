@@ -85,21 +85,6 @@ the same packs, so a pack that changes a tag changes what the client is told abo
 Item tags still reach the recipe matcher through a table generated at build time; that goes when the
 recipe work replaces the matcher.
 
-## Adding something datapack-driven
-
-Read it through the stack rather than from a file path, and rebuild it where the rest is rebuilt:
-
-```rust
-// Every file in a directory, keyed by the id it holds, winner only.
-let tables = FileToId::json("loot_table").list(&manager);
-
-// Every pack's copy, for the things that merge.
-let stacks = FileToId::json("tags/block").list_stacks(&manager);
-```
-
-`Datapacks::rebuild` in `src/bin/src/systems/datapacks.rs` is the one place that runs on both the
-first load and a reload. A new consumer adds its line there and gets `/reload` for free.
-
 ## Predicates
 
 A predicate is the condition language everything gates on: loot tables, advancements, and later
@@ -216,3 +201,54 @@ code rather than data. A smithing trim is the same story.
 Only the player's own two-by-two grid crafts. A crafting table, furnace, stonecutter and smithing
 table all match correctly and have no screen to match in yet, and nothing tells the client which
 recipes exist, so the recipe book stays empty.
+
+## Advancements
+
+An advancement is a set of named criteria, each a trigger with conditions, plus a rule saying which
+of them together count as done:
+
+```json
+{"criteria": {"crafting_table": {"trigger": "minecraft:inventory_changed",
+   "conditions": {"items": [{"items": "minecraft:crafting_table"}]}}},
+ "requirements": [["crafting_table"]]}
+```
+
+`requirements` is an and of ors: every group needs one of its criteria granted. With nothing said,
+each criterion is a group of its own, so all of them are needed.
+
+Most of what the game ships is not shown at all: 1561 of the 1688 are the hidden ones that unlock a
+recipe, which have no `display` and hang off a root that can never be earned.
+
+### Where they sit on the screen
+
+The client draws each advancement where the server says, so the layout is worked out when the packs
+are read — the same tree layout vanilla uses, with depth along one axis and siblings along the other,
+pushing subtrees apart where they would collide. An advancement with nothing to show takes no place,
+and whatever hangs off it hangs off its parent instead.
+
+### What a player has done
+
+Kept per player in a table of its own, as vanilla keeps it in a file of its own, so that adding a
+field to the rest of their data cannot cost them their advancements. It is read when they join and
+written when they leave, along with when each criterion was earned.
+
+### What fires
+
+Three triggers: `impossible` (never, which is what the hidden roots use), `tick`, and
+`inventory_changed`. The other fifty-two are read, so an advancement carrying one still loads and
+shows on the screen, and they never fire — each waits on the gameplay that would fire it.
+
+## Adding something datapack-driven
+
+Read it through the stack rather than from a file path, and rebuild it where the rest is rebuilt:
+
+```rust
+// Every file in a directory, keyed by the id it holds, winner only.
+let tables = FileToId::json("loot_table").list(&manager);
+
+// Every pack's copy, for the things that merge.
+let stacks = FileToId::json("tags/block").list_stacks(&manager);
+```
+
+`Datapacks::rebuild` in `src/bin/src/systems/datapacks.rs` is the one place that runs on both the
+first load and a reload. A new consumer adds its line there and gets `/reload` for free.

@@ -1,4 +1,7 @@
 use crate::errors::StorageError;
+
+/// How many named tables one world may hold.
+const MAX_TABLES: u32 = 16;
 use heed;
 use heed::byteorder::BigEndian;
 use heed::types::{Bytes, U128};
@@ -56,8 +59,11 @@ impl LmdbBackend {
             * page_size::get() as f64) as usize;
 
         let mut opts = EnvOpenOptions::new().read_txn_without_tls();
-        // Change `max_dbs` as more tables are needed.
-        opts.max_dbs(3).map_size(rounded_map_size);
+        // How many named tables the world may open. Four are used — chunks, world metadata, and a
+        // player's data and advancements — and the room above them is so that adding one does not
+        // mean adding a database migration: a table past the limit fails at the first write, which
+        // is a long way from where the table was added.
+        opts.max_dbs(MAX_TABLES).map_size(rounded_map_size);
         // SAFETY: `NO_SYNC` trades per-commit durability for throughput. Each commit is still
         // written to the OS page cache (so it is immediately visible to all readers and survives a
         // *process* crash); only an OS/power loss can drop commits made since the last

@@ -114,7 +114,7 @@ impl PackMetadata {
         let description = pack
             .get("description")
             .ok_or(MetadataError::NoDescription)
-            .map(component_from_json)?;
+            .map(ferrumc_text::from_json)?;
         Ok(Self {
             description,
             supported_formats: supported_formats(pack)?,
@@ -183,24 +183,6 @@ fn read_range(value: &Value) -> Option<(u32, u32)> {
     let min = u32::try_from(value.get("min_inclusive")?.as_u64()?).ok()?;
     let max = u32::try_from(value.get("max_inclusive")?.as_u64()?).ok()?;
     Some((min, max))
-}
-
-/// Reads the three shapes a text component takes in json: a bare string, a list whose tail is
-/// appended to its head, or the component object itself.
-///
-/// Vanilla's `ComponentSerialization.CODEC`. It lives here because pack descriptions are the only
-/// place that needs it so far; text elsewhere is built rather than read.
-fn component_from_json(value: &Value) -> TextComponent {
-    match value {
-        Value::String(text) => TextComponent::from(text.as_str()),
-        Value::Array(parts) => {
-            let mut parts = parts.iter().map(component_from_json);
-            let mut head = parts.next().unwrap_or_default();
-            head.extra.extend(parts);
-            head
-        }
-        object => serde_json::from_value(object.clone()).unwrap_or_default(),
-    }
 }
 
 #[cfg(test)]

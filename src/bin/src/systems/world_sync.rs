@@ -14,6 +14,7 @@ use ferrumc_core::transform::position::Position;
 use ferrumc_core::transform::rotation::Rotation;
 use ferrumc_inventories::inventory::Inventory;
 use ferrumc_state::GlobalStateResource;
+use tracing::warn;
 
 pub fn sync_world(
     player_query: Query<(
@@ -65,11 +66,14 @@ pub fn sync_world(
             ender_chest: ender_chest.clone(),
             active_effects: active_effects.clone(),
         };
-        state
-            .0
-            .world
-            .save_player_data(identity.uuid, &data)
-            .expect("Failed to save player data");
+        // A save that fails is worth knowing about and not worth stopping the server for: the
+        // player is still connected and the next sync will try again.
+        if let Err(err) = state.0.world.save_player_data(identity.uuid, &data) {
+            warn!(
+                "Failed to save player data for {}: {err:?}",
+                identity.username
+            );
+        }
     }
 
     last_synced.last_synced = std::time::Instant::now();

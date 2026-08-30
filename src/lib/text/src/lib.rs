@@ -6,10 +6,11 @@ mod tests;
 
 mod ansi;
 mod builders;
-mod r#impl;
+pub mod r#impl;
 mod utils;
 
 pub use builders::*;
+pub use r#impl::from_json;
 pub use utils::*;
 
 pub type JsonTextComponent = String;

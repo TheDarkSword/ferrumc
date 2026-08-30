@@ -2,6 +2,12 @@ use crate::errors::WorldError;
 use crate::World;
 use tracing::trace;
 
+/// Where a player's own state is kept: what they carry, where they are, how they are.
+pub const PLAYER_DATA: &str = "player_data";
+
+/// Where what they have done is kept, separately, so the two do not have to be read together.
+pub const PLAYER_ADVANCEMENTS: &str = "player_advancements";
+
 impl World {
     /// Loads player data from the storage backend and decodes it.
     ///
@@ -22,19 +28,25 @@ impl World {
         &self,
         uuid: uuid::Uuid,
     ) -> Result<Option<T>, WorldError> {
-        if !self
-            .storage_backend
-            .table_exists("player_data".to_string())?
-        {
-            trace!(
-                "Player data table does not exist. Returning None for player {}",
-                uuid
-            );
+        self.load_player_table(PLAYER_DATA, uuid)
+    }
+
+    /// The same, out of a named table.
+    ///
+    /// Vanilla keeps a player's advancements, statistics and recipe book in files of their own
+    /// rather than with the rest, so that adding to one cannot cost them the others.
+    pub fn load_player_table<T: bitcode::DecodeOwned>(
+        &self,
+        table: &str,
+        uuid: uuid::Uuid,
+    ) -> Result<Option<T>, WorldError> {
+        if !self.storage_backend.table_exists(table.to_string())? {
+            trace!("{table} does not exist. Returning None for player {uuid}");
             return Ok(None);
         }
         let data = self
             .storage_backend
-            .get("player_data".to_string(), uuid.as_u128())
+            .get(table.to_string(), uuid.as_u128())
             .map_err(WorldError::DatabaseError);
         data.map(|opt_bytes| opt_bytes.and_then(|bytes| bitcode::decode(&bytes).ok()))
     }
@@ -60,20 +72,23 @@ impl World {
         uuid: uuid::Uuid,
         data: &T,
     ) -> Result<bool, WorldError> {
-        if !self
-            .storage_backend
-            .table_exists("player_data".to_string())?
-        {
+        self.save_player_table(PLAYER_DATA, uuid, data)
+    }
+
+    /// The same, into a named table.
+    pub fn save_player_table<T: bitcode::Encode>(
+        &self,
+        table: &str,
+        uuid: uuid::Uuid,
+        data: &T,
+    ) -> Result<bool, WorldError> {
+        if !self.storage_backend.table_exists(table.to_string())? {
             self.storage_backend
-                .create_table("player_data".to_string())
+                .create_table(table.to_string())
                 .map_err(WorldError::DatabaseError)?;
         }
         self.storage_backend
-            .upsert(
-                "player_data".to_string(),
-                uuid.as_u128(),
-                bitcode::encode(data),
-            )
+            .upsert(table.to_string(), uuid.as_u128(), bitcode::encode(data))
             .map_err(WorldError::DatabaseError)
     }
 }

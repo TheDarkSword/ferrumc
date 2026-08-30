@@ -1,4 +1,5 @@
 use bevy_ecs::schedule::IntoScheduleConfigs;
+pub mod advancements;
 pub mod block_ticks;
 pub mod block_world;
 mod chunk_calculator;
@@ -39,6 +40,10 @@ pub fn register_game_systems(schedule: &mut bevy_ecs::schedule::Schedule) {
             .chain(),
     );
     schedule.add_systems(mq::process);
+
+    // Tell a player what they have done when they join, and again as they do more.
+    schedule.add_systems(advancements::on_join);
+    schedule.add_systems(advancements::on_inventory_change);
     schedule.add_systems(player_swimming::detect_player_swimming);
 
     // Process scheduled fluid ticks: evaluate spreading, apply, broadcast, re-schedule.

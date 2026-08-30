@@ -65,6 +65,7 @@ pub mod synchronise_vehicle_position;
 pub mod synchronize_player_position;
 pub mod system_message;
 pub mod unload_chunk;
+pub mod update_advancements;
 pub mod update_entity_position;
 pub mod update_entity_position_and_rotation;
 pub mod update_entity_rotation;

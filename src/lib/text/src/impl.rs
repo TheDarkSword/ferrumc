@@ -99,3 +99,22 @@ impl Default for TextContent {
         }
     }
 }
+
+/// Reads the three shapes a text component takes in json: a bare string, a list whose tail is
+/// appended to its head, or the component object itself.
+///
+/// Vanilla's `ComponentSerialization.CODEC`. The derived deserializer reads only the object, which
+/// is the shape components are written in on the wire; the data files use all three.
+#[must_use]
+pub fn from_json(value: &serde_json::Value) -> TextComponent {
+    match value {
+        serde_json::Value::String(text) => TextComponent::from(text.as_str()),
+        serde_json::Value::Array(parts) => {
+            let mut parts = parts.iter().map(from_json);
+            let mut head = parts.next().unwrap_or_default();
+            head.extra.extend(parts);
+            head
+        }
+        object => serde_json::from_value(object.clone()).unwrap_or_default(),
+    }
+}

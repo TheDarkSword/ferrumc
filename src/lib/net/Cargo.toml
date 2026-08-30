@@ -10,6 +10,7 @@ ferrumc-net-encryption = { workspace = true }
 ferrumc-net-codec = { workspace = true }
 ferrumc-macros = { workspace = true }
 ferrumc-config = { workspace = true }
+ferrumc-advancements = { workspace = true }
 ferrumc-datapack = { workspace = true }
 ferrumc-registry = { workspace = true }
 ferrumc-commands = { workspace = true }
