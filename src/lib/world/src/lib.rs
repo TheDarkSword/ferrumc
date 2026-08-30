@@ -11,6 +11,7 @@ pub mod errors;
 pub mod fluid;
 mod importing;
 pub mod metadata;
+pub mod neighbour_update;
 mod player;
 pub mod pos;
 pub mod scheduler;

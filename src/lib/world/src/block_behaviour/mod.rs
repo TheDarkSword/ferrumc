@@ -14,6 +14,7 @@
 mod door;
 mod fence_gate;
 mod sugar_cane;
+mod torch;
 mod trapdoor;
 
 use crate::block_state::{BlockId, Direction};
@@ -51,6 +52,15 @@ pub struct Use<'a> {
     pub player_facing: Direction,
 }
 
+/// A block being told that something beside it changed.
+pub struct NeighbourChanged<'a> {
+    pub world: &'a mut dyn BlockWorld,
+    pub pos: BlockPos,
+    /// What changed. Not where: vanilla passes the block, and blocks that care look around
+    /// themselves rather than at one direction.
+    pub source: BlockId,
+}
+
 /// A block taking its turn, whether one it asked for or one the world handed out at random.
 pub struct Tick<'a> {
     pub world: &'a mut dyn BlockWorld,
@@ -71,11 +81,27 @@ pub trait BlockBehaviour: Send + Sync {
     /// A turn this block asked for has come due.
     fn scheduled_tick(&self, _state: BlockStateId, _ctx: &mut Tick<'_>) {}
 
+    /// Something beside this block changed. A block that has to look around itself does it here;
+    /// one that only has to fix its own state does it in [`Self::update_shape`].
+    fn neighbour_changed(&self, _state: BlockStateId, _ctx: &mut NeighbourChanged<'_>) {}
+
+    /// Whether this block can stay where it is. A torch needs something under it.
+    fn can_survive(
+        &self,
+        _state: BlockStateId,
+        _world: &mut dyn BlockWorld,
+        _pos: BlockPos,
+    ) -> bool {
+        true
+    }
+
     /// What this block becomes when a neighbour changes, which is how a door's two halves stay in
     /// step and how a fence connects. Returning the state unchanged means nothing to do.
     fn update_shape(
         &self,
         state: BlockStateId,
+        _world: &mut dyn BlockWorld,
+        _pos: BlockPos,
         _towards: Direction,
         _neighbour: BlockStateId,
     ) -> BlockStateId {
@@ -92,6 +118,15 @@ static BEHAVIOURS: LazyLock<Vec<Option<&'static dyn BlockBehaviour>>> = LazyLock
     register(&mut table, "minecraft:trapdoors", &trapdoor::Trapdoor);
     register(&mut table, "minecraft:fence_gates", &fence_gate::FenceGate);
     register_block(&mut table, "minecraft:sugar_cane", &sugar_cane::SugarCane);
+    // Torches have no tag of their own; these are the ones that stand on a block rather than
+    // hanging from the side of one, which is a different block with a different rule.
+    for name in [
+        "minecraft:torch",
+        "minecraft:soul_torch",
+        "minecraft:redstone_torch",
+    ] {
+        register_block(&mut table, name, &torch::Torch);
+    }
 
     table
 });

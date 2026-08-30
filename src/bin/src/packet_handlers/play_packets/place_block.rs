@@ -24,6 +24,7 @@ use ferrumc_text::{Color, NamedColor, TextComponentBuilder};
 use ferrumc_world::block_behaviour::{behaviour_at, BlockWorld, InteractionResult, Use};
 use ferrumc_world::block_state::Direction;
 use ferrumc_world::block_state_id::BlockStateId;
+use ferrumc_world::neighbour_update::NeighbourUpdater;
 use once_cell::sync::Lazy;
 use std::collections::HashMap;
 use std::str::FromStr;
@@ -201,6 +202,19 @@ pub fn handle(
                     // the same chunk again, which would re-enter the same shard lock and deadlock
                     // the tick thread. Multi-thread is so hard :3
                     drop(chunk);
+
+                    // Whatever was leaning on this space finds out that it is taken.
+                    let mut world = WorldAccess::new(&state.0, &mut fluid_scheduler.0, tick.get());
+                    NeighbourUpdater::default().block_changed(
+                        &mut world,
+                        offset_pos,
+                        *mapped_block_state_id,
+                    );
+                    let cascade = std::mem::take(&mut world.changed);
+                    crate::systems::block_world::broadcast_changes(
+                        &cascade,
+                        query.iter().map(|(_, conn, _, _, pos, _)| (conn, pos)),
+                    );
 
                     let ack_packet = BlockChangeAck {
                         sequence: event.sequence,

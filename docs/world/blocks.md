@@ -131,6 +131,30 @@ chunk's ticks live is decided by the chunk lifecycle work, and wiring it before 
 doing it twice. What is saved is the remaining wait rather than the tick number, so a world that
 stops and starts again resumes instead of firing everything at once.
 
+## Neighbour updates
+
+Placing or breaking a block sets off a chain: its neighbours are told, they may change, and theirs
+are told in turn. The order is observable — most of redstone's character comes from it — and there
+are two of them, which are not the same:
+
+| | Order |
+|---|---|
+| Neighbours are *told* | west, east, down, up, north, south |
+| Neighbours *recompute their own state* | west, east, north, south, down, up |
+
+The chain is walked with a stack rather than by recursion. Vanilla has both and uses the queued one
+on the server, because a large contraption is deep enough to exhaust the stack.
+
+Every update counts against the chain limit, including the ones an update produces while running.
+Counting only what starts a chain would never catch the case the limit is for, which is a chain that
+feeds itself.
+
+Whether a block can stay where it is asks whether the face below holds it up. That is a question
+about a block's support shape, and the extractor answers it directly — one bit per face and support
+type — rather than carrying a fourth shape per state and the boolean algebra to slice it. A torch
+sits on a fence post, whose face is not full but holds a centre; it does not sit on a bottom slab,
+whose top is half a block below the face.
+
 ## Regenerating
 
 ```bash

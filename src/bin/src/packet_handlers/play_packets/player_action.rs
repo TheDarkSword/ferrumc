@@ -1,21 +1,26 @@
 use crate::errors::BinaryError;
-use bevy_ecs::prelude::{Entity, MessageWriter, Query, Res};
+use bevy_ecs::prelude::{Entity, MessageWriter, Query, Res, ResMut};
 use ferrumc_components::player::abilities::PlayerAbilities;
 use ferrumc_messages::player_digging::*;
 use ferrumc_messages::BlockBrokenEvent;
 use ferrumc_world::chunk::remap::NetworkBlockState;
 
+use crate::systems::block_world::WorldAccess;
 use ferrumc_net::connection::StreamWriter;
 use ferrumc_net::packets::outgoing::block_change_ack::BlockChangeAck;
 use ferrumc_net::packets::outgoing::block_update::BlockUpdate;
 use ferrumc_net::PlayerActionReceiver;
+use ferrumc_net_codec::net_types::network_position::NetworkPosition;
 use ferrumc_state::GlobalStateResource;
+use ferrumc_world::neighbour_update::NeighbourUpdater;
 use ferrumc_world::{block_state_id::BlockStateId, pos::BlockPos};
 use tracing::{error, warn};
 
 pub fn handle(
     receiver: Res<PlayerActionReceiver>,
     state: Res<GlobalStateResource>,
+    mut fluid_scheduler: ResMut<crate::systems::fluids::FluidScheduler>,
+    tick: Res<ferrumc_core::tick::TickCounter>,
     broadcast_query: Query<(Entity, &StreamWriter)>,
     player_query: Query<&PlayerAbilities>,
     (mut start_dig_events, mut cancel_dig_events, mut finish_dig_events, mut block_break_events): (
@@ -49,6 +54,18 @@ pub fn handle(
                     )
                     .expect("Failed to load or generate chunk");
                     chunk.set_block(pos.chunk_block_pos(), BlockStateId::default());
+                    // The guard has to go before the neighbours are told: they read and write
+                    // blocks of their own, and two guards on one shard deadlock the tick thread.
+                    drop(chunk);
+
+                    // What stood on this block, or leaned against it, finds out now.
+                    let mut world = WorldAccess::new(&state.0, &mut fluid_scheduler.0, tick.get());
+                    NeighbourUpdater::default().block_changed(
+                        &mut world,
+                        pos,
+                        BlockStateId::default(),
+                    );
+                    let cascade = std::mem::take(&mut world.changed);
 
                     // Send block broken event for un-grounding system
                     block_break_events.write(BlockBrokenEvent { position: pos });
@@ -65,6 +82,18 @@ pub fn handle(
                         };
                         conn.send_packet_ref(&block_update_packet)
                             .map_err(BinaryError::Net)?;
+
+                        for &(changed_pos, changed_state) in &cascade {
+                            let packet = BlockUpdate {
+                                location: NetworkPosition {
+                                    x: changed_pos.pos.x,
+                                    y: changed_pos.pos.y as i16,
+                                    z: changed_pos.pos.z,
+                                },
+                                block_state_id: NetworkBlockState::from(changed_state),
+                            };
+                            conn.send_packet_ref(&packet).map_err(BinaryError::Net)?;
+                        }
 
                         if eid == trigger_eid {
                             // Send ACK to the creative player

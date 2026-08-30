@@ -39,7 +39,7 @@ impl BlockBehaviour for Door {
         };
         let other_pos = ctx.pos.relative(towards);
         let other = ctx.world.block_at(other_pos);
-        let updated = self.update_shape(other, towards.opposite(), opened);
+        let updated = self.update_shape(other, ctx.world, other_pos, towards.opposite(), opened);
         if updated != other {
             ctx.world.set_block(other_pos, updated);
         }
@@ -50,6 +50,8 @@ impl BlockBehaviour for Door {
     fn update_shape(
         &self,
         state: BlockStateId,
+        _world: &mut dyn super::BlockWorld,
+        _pos: crate::pos::BlockPos,
         towards: Direction,
         neighbour: BlockStateId,
     ) -> BlockStateId {

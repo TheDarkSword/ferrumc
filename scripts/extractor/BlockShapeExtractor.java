@@ -22,6 +22,8 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.server.Bootstrap;
 import net.minecraft.world.level.EmptyBlockGetter;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.core.Direction;
+import net.minecraft.world.level.block.SupportType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.shapes.VoxelShape;
@@ -70,6 +72,27 @@ public final class BlockShapeExtractor {
         return SHAPES.size() - 1;
     }
 
+    /// Which faces hold something up, and how much of one they hold.
+    ///
+    /// This is what a torch asks before staying on a block and what a door asks before standing on
+    /// one. It is an answer about the block's support shape rather than the shape itself, which is
+    /// all any caller wants and saves carrying a fourth shape per state.
+    ///
+    /// One bit per direction and support type, in the game's own order.
+    private static int faceSturdy(final BlockState state, final BlockPos pos) {
+        int bits = 0;
+        int index = 0;
+        for (final Direction direction : Direction.values()) {
+            for (final SupportType support : SupportType.values()) {
+                if (state.isFaceSturdy(EmptyBlockGetter.INSTANCE, pos, direction, support)) {
+                    bits |= 1 << index;
+                }
+                index++;
+            }
+        }
+        return bits;
+    }
+
     /// Whole numbers as integers, so the output does not fill with trailing zeroes.
     private static String trim(final double value) {
         return value == Math.rint(value) ? Long.toString((long) value) : Double.toString(value);
@@ -92,11 +115,12 @@ public final class BlockShapeExtractor {
                 continue;
             }
             states.add(String.format(
-                "{\"collision\":%d,\"outline\":%d,\"light_emission\":%d,\"hardness\":%s,"
+                "{\"collision\":%d,\"outline\":%d,\"face_sturdy\":%d,\"light_emission\":%d,\"hardness\":%s,"
                     + "\"air\":%b,\"solid\":%b,\"occludes\":%b,\"randomly_ticking\":%b,"
                     + "\"needs_tool\":%b,\"push_reaction\":\"%s\"}",
                 shape(state.getCollisionShape(EmptyBlockGetter.INSTANCE, origin)),
                 shape(state.getShape(EmptyBlockGetter.INSTANCE, origin)),
+                faceSturdy(state, origin),
                 state.getLightEmission(),
                 trim(state.getDestroySpeed(EmptyBlockGetter.INSTANCE, origin)),
                 state.isAir(),

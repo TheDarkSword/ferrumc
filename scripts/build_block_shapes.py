@@ -47,6 +47,14 @@ def main() -> None:
         indices = [0 if state is None else state[field] for state in states]
         (OUT_BIN / f"{field}.bin").write_bytes(struct.pack(f"<{len(indices)}H", *indices))
 
+    # Which faces of each state hold something up: one bit per direction and support type, in the
+    # game's own order, so three bytes a state.
+    sturdy = bytearray(len(states) * 3)
+    for index, state in enumerate(states):
+        bits = 0 if state is None else state["face_sturdy"]
+        sturdy[index * 3 : index * 3 + 3] = bits.to_bytes(3, "little")
+    (OUT_BIN / "face_sturdy.bin").write_bytes(sturdy)
+
     # Which states take a random tick, as one bit each. The random tick loop asks this of thousands
     # of positions a second, and a section that holds none of them is skipped entirely.
     ticking = bytearray((len(states) + 7) // 8)
