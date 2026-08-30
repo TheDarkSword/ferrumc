@@ -423,8 +423,9 @@ impl WorldGenerator {
             }
         }
 
-        // 7. Work out the block light, so a generated chunk arrives lit rather than relying on
-        //    light data imported from somewhere else. Sky light is still the storage default.
+        // 7. Work out the light, so a generated chunk arrives lit rather than relying on light
+        //    data imported from somewhere else.
+        ferrumc_world::light::relight_sky_light(&mut chunk, pos);
         ferrumc_world::light::relight_block_light(&mut chunk, pos);
 
         Ok(chunk)
@@ -667,11 +668,29 @@ mod tests {
     /// its overhang would be clipped and this fails. Trees are probed on flat ground so the
     /// air-only placement rule (which legitimately drops leaves into solid terrain on slopes) does
     /// not confound the check.
+    /// How long one chunk takes to generate, so the cost is a number rather than an impression.
+    #[test]
+    #[ignore = "timing, not a correctness check"]
+    fn time_chunk_generation() {
+        let generator = WorldGenerator::new(0);
+        let count = 64;
+        let start = std::time::Instant::now();
+        for i in 0..count {
+            let _ = generator
+                .generate_chunk(ChunkPos::new(i % 8, i / 8))
+                .expect("generates");
+        }
+        let each = start.elapsed() / count as u32;
+        println!("{count} chunks, {each:?} each");
+    }
+
     #[test]
     fn canopy_is_complete_across_chunks() {
         let generator = WorldGenerator::new(0);
         let mut probed = 0;
         let mut failures: Vec<String> = vec![];
+        let mut chunks: std::collections::HashMap<(i32, i32), crate::Chunk> =
+            std::collections::HashMap::new();
 
         'outer: for gx in -512..512i32 {
             // Only trunks within MAX_CANOPY_RADIUS of a chunk edge produce a cross-chunk canopy.
@@ -709,9 +728,14 @@ mod tests {
                 for &(odx, odz, y) in &truth {
                     let wx = gx + odx;
                     let wz = gz + odz;
-                    let chunk = generator
-                        .generate_chunk(ChunkPos::new(wx >> 4, wz >> 4))
-                        .unwrap();
+                    // A canopy spans at most a handful of chunks, and every leaf of it used to
+                    // generate one from scratch.
+                    let key = (wx >> 4, wz >> 4);
+                    let chunk = chunks.entry(key).or_insert_with(|| {
+                        generator
+                            .generate_chunk(ChunkPos::new(key.0, key.1))
+                            .expect("generates")
+                    });
                     let b = chunk.get_block(ChunkBlockPos::new(
                         wx.rem_euclid(16) as u8,
                         y,

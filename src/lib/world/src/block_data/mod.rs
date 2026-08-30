@@ -85,6 +85,15 @@ pub fn light_emission(state: BlockStateId) -> u8 {
     light_bytes(state).0 & 0x0F
 }
 
+/// How much this state dims light, as the game states it.
+///
+/// Zero means it does not dim light at all, which is also what says skylight carries straight down
+/// through it. [`light_opacity`] is this raised to at least one, which is what the spreading needs.
+#[must_use]
+pub fn light_dampening(state: BlockStateId) -> u8 {
+    light_bytes(state).0 >> 4
+}
+
 /// How much a light level drops crossing this state.
 ///
 /// Never less than one, because light has to run out even in air: the engine subtracts this per

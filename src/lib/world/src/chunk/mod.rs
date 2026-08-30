@@ -148,6 +148,35 @@ impl Chunk {
             .block_light(pos.x(), (pos.y().rem_euclid(16)) as u8, pos.z())
     }
 
+    /// The sky light at a position in this chunk.
+    #[must_use]
+    pub fn sky_light(&self, pos: ChunkBlockPos) -> u8 {
+        let section = (pos.y() + -self.height.min_y) / 16;
+        let Some(section) = self.sections.get(section as usize) else {
+            return 0;
+        };
+        section
+            .light
+            .sky_light(pos.x(), (pos.y().rem_euclid(16)) as u8, pos.z())
+    }
+
+    /// Puts one whole section's sky light at a single level.
+    pub fn fill_section_sky_light(&mut self, section: usize, level: u8) {
+        if let Some(section) = self.sections.get_mut(section) {
+            section.light.fill_sky_light(level);
+        }
+    }
+
+    pub fn set_sky_light(&mut self, pos: ChunkBlockPos, level: u8) {
+        let section = (pos.y() + -self.height.min_y) / 16;
+        let Some(section) = self.sections.get_mut(section as usize) else {
+            return;
+        };
+        section
+            .light
+            .set_sky_light(pos.x(), (pos.y().rem_euclid(16)) as u8, pos.z(), level);
+    }
+
     pub fn set_block_light(&mut self, pos: ChunkBlockPos, level: u8) {
         let section = (pos.y() + -self.height.min_y) / 16;
         let Some(section) = self.sections.get_mut(section as usize) else {

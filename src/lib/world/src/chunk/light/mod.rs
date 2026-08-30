@@ -95,6 +95,23 @@ impl SectionLightData {
     pub fn set_sky_light(&mut self, x: u8, y: u8, z: u8, level: u8) {
         self.sky_light.set(x, y, z, level);
     }
+
+    /// Puts a whole section's sky light at one level, in its uniform form.
+    ///
+    /// A section that is entirely dark or entirely lit is most of a chunk, and saying so in one
+    /// go costs nothing where writing a nibble per block spells the section out.
+    pub fn fill_sky_light(&mut self, level: u8) {
+        self.sky_light = match level {
+            0 => LightStorage::Empty,
+            15 => LightStorage::Full,
+            _ => {
+                let byte = level | (level << 4);
+                LightStorage::Mixed {
+                    light_data: vec![byte; BYTES].into_boxed_slice(),
+                }
+            }
+        };
+    }
 }
 
 /// Light is kept as one nibble per block, in the order the chunk packet wants them.

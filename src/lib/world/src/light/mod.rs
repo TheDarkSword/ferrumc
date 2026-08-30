@@ -11,7 +11,9 @@
 //!
 //! Follows `BlockLightEngine` and `LightEngine` in the vanilla sources.
 
-use crate::block_data::{face_occludes_light, light_emission, light_opacity, MAX_LIGHT};
+use crate::block_data::{
+    face_occludes_light, light_dampening, light_emission, light_opacity, MAX_LIGHT,
+};
 use crate::block_state::Direction;
 use crate::block_state_id::BlockStateId;
 use crate::pos::BlockPos;
@@ -41,11 +43,19 @@ const fn bit(direction: Direction) -> u8 {
 /// Every direction.
 const ANY: u8 = 0b0011_1111;
 
+/// The two kinds of light, kept separately because they answer different questions: one is where
+/// the sun reaches, the other is what a player has lit.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum LightLayer {
+    Block,
+    Sky,
+}
+
 /// What a light engine needs of the world.
 pub trait LightWorld {
     fn block_at(&mut self, pos: BlockPos) -> BlockStateId;
-    fn light_at(&mut self, pos: BlockPos) -> u8;
-    fn set_light(&mut self, pos: BlockPos, level: u8);
+    fn light_at(&mut self, pos: BlockPos, layer: LightLayer) -> u8;
+    fn set_light(&mut self, pos: BlockPos, layer: LightLayer, level: u8);
     /// Whether light is kept for this position at all. A position in a chunk that is not loaded is
     /// not darkened or lit; it is left for whenever it is.
     fn stores_light(&mut self, pos: BlockPos) -> bool;
@@ -63,18 +73,51 @@ struct Entry {
     from_emission: bool,
 }
 
-/// Spreads block light, and takes it back.
-#[derive(Default)]
-pub struct BlockLightEngine {
+/// Spreads light, and takes it back.
+///
+/// The spreading is the same for both kinds; what differs is where the light starts. Block light
+/// starts at whatever gives it off, sky light at every position the sky reaches.
+pub struct LightEngine {
+    layer: LightLayer,
     to_check: Vec<BlockPos>,
     increase: VecDeque<Entry>,
     decrease: VecDeque<Entry>,
 }
 
-impl BlockLightEngine {
+/// The engine that spreads what blocks give off.
+pub type BlockLightEngine = LightEngine;
+
+impl Default for LightEngine {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl LightEngine {
     #[must_use]
     pub fn new() -> Self {
-        Self::default()
+        Self::for_layer(LightLayer::Block)
+    }
+
+    #[must_use]
+    pub fn for_layer(layer: LightLayer) -> Self {
+        Self {
+            layer,
+            to_check: Vec::new(),
+            increase: VecDeque::new(),
+            decrease: VecDeque::new(),
+        }
+    }
+
+    /// Marks a position as a source of full light that spreads everywhere but upwards, which is
+    /// what a position the sky reaches is: above it is another one.
+    pub fn add_sky_source(&mut self, pos: BlockPos) {
+        self.increase.push_back(Entry {
+            pos,
+            level: MAX_LIGHT,
+            directions: ANY & !bit(Direction::Up),
+            from_emission: true,
+        });
     }
 
     /// Says that whatever is at this position may have changed what it does to light.
@@ -108,11 +151,11 @@ impl BlockLightEngine {
         }
         let state = world.block_at(pos);
         let emission = light_emission(state);
-        let old = world.light_at(pos);
+        let old = world.light_at(pos, self.layer);
 
         if emission < old {
             // Whatever was here is gone or dimmer: take back what it gave out.
-            world.set_light(pos, 0);
+            world.set_light(pos, self.layer, 0);
             self.decrease.push_back(Entry {
                 pos,
                 level: old,
@@ -141,9 +184,9 @@ impl BlockLightEngine {
     }
 
     fn propagate_increase(&mut self, world: &mut dyn LightWorld, entry: Entry) {
-        let mut level = world.light_at(entry.pos);
+        let mut level = world.light_at(entry.pos, self.layer);
         if entry.from_emission && level < entry.level {
-            world.set_light(entry.pos, entry.level);
+            world.set_light(entry.pos, self.layer, entry.level);
             level = entry.level;
         }
         // Something brighter has been here since; that entry will do the spreading.
@@ -160,7 +203,7 @@ impl BlockLightEngine {
             if !world.stores_light(to) {
                 continue;
             }
-            let to_level = world.light_at(to);
+            let to_level = world.light_at(to, self.layer);
             // Even air takes one off, so this is the most it could possibly become.
             if level.saturating_sub(1) <= to_level {
                 continue;
@@ -177,7 +220,7 @@ impl BlockLightEngine {
                 continue;
             }
 
-            world.set_light(to, new_level);
+            world.set_light(to, self.layer, new_level);
             if new_level > 1 {
                 self.increase.push_back(Entry {
                     pos: to,
@@ -198,7 +241,7 @@ impl BlockLightEngine {
             if !world.stores_light(to) {
                 continue;
             }
-            let to_level = world.light_at(to);
+            let to_level = world.light_at(to, self.layer);
             if to_level == 0 {
                 continue;
             }
@@ -207,7 +250,7 @@ impl BlockLightEngine {
                 // Dim enough to have come from here, so it goes too.
                 let to_state = world.block_at(to);
                 let to_emission = light_emission(to_state);
-                world.set_light(to, 0);
+                world.set_light(to, self.layer, 0);
                 if to_emission < to_level {
                     self.decrease.push_back(Entry {
                         pos: to,
@@ -245,6 +288,7 @@ impl BlockLightEngine {
 /// `internal_docs/deferred.md`.
 struct SingleChunk<'a> {
     chunk: &'a mut crate::chunk::Chunk,
+    at: crate::pos::ChunkPos,
 }
 
 impl LightWorld for SingleChunk<'_> {
@@ -252,21 +296,31 @@ impl LightWorld for SingleChunk<'_> {
         self.chunk.get_block(pos.chunk_block_pos())
     }
 
-    fn light_at(&mut self, pos: BlockPos) -> u8 {
-        self.chunk.block_light(pos.chunk_block_pos())
+    fn light_at(&mut self, pos: BlockPos, layer: LightLayer) -> u8 {
+        match layer {
+            LightLayer::Block => self.chunk.block_light(pos.chunk_block_pos()),
+            LightLayer::Sky => self.chunk.sky_light(pos.chunk_block_pos()),
+        }
     }
 
-    fn set_light(&mut self, pos: BlockPos, level: u8) {
-        self.chunk.set_block_light(pos.chunk_block_pos(), level);
+    fn set_light(&mut self, pos: BlockPos, layer: LightLayer, level: u8) {
+        match layer {
+            LightLayer::Block => self.chunk.set_block_light(pos.chunk_block_pos(), level),
+            LightLayer::Sky => self.chunk.set_sky_light(pos.chunk_block_pos(), level),
+        }
     }
 
     fn stores_light(&mut self, pos: BlockPos) -> bool {
-        // Only this chunk, and only within its height.
+        // Only this chunk, and only within its height. A position outside it would otherwise be
+        // read and written through the chunk's own coordinates, which wrap: light would come back
+        // in the far side.
         let height = self.chunk.dimensions();
         let min = i32::from(height.min_y);
+        let chunk = pos.chunk();
         pos.pos.y >= min
             && pos.pos.y < min + i32::from(height.height)
-            && pos.chunk() == BlockPos::of(pos.pos.x, 0, pos.pos.z).chunk()
+            && chunk.x() == self.at.x()
+            && chunk.z() == self.at.z()
     }
 }
 
@@ -300,8 +354,103 @@ pub fn relight_block_light(chunk: &mut crate::chunk::Chunk, chunk_pos: crate::po
     }
 
     if any {
-        engine.run(&mut SingleChunk { chunk });
+        engine.run(&mut SingleChunk {
+            chunk,
+            at: chunk_pos,
+        });
     }
+}
+
+/// Whether the sky stops between these two, the upper one first.
+///
+/// Anything that dims light at all stops the sky, and so does a pair of faces that closes the gap
+/// between them: a trapdoor lets the sky past when open and not when shut.
+fn sky_stops_between(top: BlockStateId, bottom: BlockStateId) -> bool {
+    light_dampening(bottom) != 0
+        || face_occludes_light(top, Direction::Down)
+        || face_occludes_light(bottom, Direction::Up)
+}
+
+/// Works out a chunk's sky light from scratch.
+///
+/// Every position the sky reaches is a source at full strength — that is what makes an open column
+/// bright all the way down rather than dimmer with depth — and the light then spreads sideways and
+/// under overhangs from those, losing a level a block like any other.
+pub fn relight_sky_light(chunk: &mut crate::chunk::Chunk, chunk_pos: crate::pos::ChunkPos) {
+    let height = chunk.dimensions();
+    let min_y = i32::from(height.min_y);
+    let max_y = min_y + i32::from(height.height);
+
+    let air = crate::block_state::BlockId::from_name("minecraft:air")
+        .map(crate::block_state::BlockId::default_state)
+        .unwrap_or_else(|| BlockStateId::new(0));
+
+    // Where the sky stops in each column: the first position going down that it cannot reach.
+    let mut lowest_source = [[min_y; 16]; 16];
+    let mut deepest = min_y;
+    for (x, column) in lowest_source.iter_mut().enumerate() {
+        for (z, source) in column.iter_mut().enumerate() {
+            let world_x = chunk_pos.x() * 16 + x as i32;
+            let world_z = chunk_pos.z() * 16 + z as i32;
+            let mut top = air;
+            for y in (min_y..max_y).rev() {
+                let pos = BlockPos::of(world_x, y, world_z);
+                let bottom = chunk.get_block(pos.chunk_block_pos());
+                if sky_stops_between(top, bottom) {
+                    *source = y + 1;
+                    break;
+                }
+                top = bottom;
+            }
+            deepest = deepest.max(*source);
+        }
+    }
+
+    // Above the deepest of them every column is a source, so the whole band is already at full
+    // strength and there is nothing for light to spread into. Leaving those sections alone is what
+    // keeps them in their uniform form instead of spelling out a nibble per block.
+    if deepest <= min_y {
+        return;
+    }
+
+    // Below the shallowest, no column sees the sky at all, so those sections are dark as a whole
+    // and can say so in one go rather than a nibble at a time. Between the two is the only part
+    // that has to be written out position by position.
+    let shallowest = lowest_source
+        .iter()
+        .flatten()
+        .copied()
+        .min()
+        .unwrap_or(min_y);
+    for index in 0..(i32::from(height.height) / 16) {
+        let base = min_y + index * 16;
+        if base + 16 <= shallowest {
+            chunk.fill_section_sky_light(index as usize, 0);
+        }
+    }
+    let explicit_from = shallowest.max(min_y) - (shallowest.max(min_y) - min_y) % 16;
+
+    let mut engine = LightEngine::for_layer(LightLayer::Sky);
+    for (x, column) in lowest_source.iter().enumerate() {
+        for (z, &source) in column.iter().enumerate() {
+            let world_x = chunk_pos.x() * 16 + x as i32;
+            let world_z = chunk_pos.z() * 16 + z as i32;
+            for y in explicit_from..deepest {
+                let pos = BlockPos::of(world_x, y, world_z);
+                if y >= source {
+                    chunk.set_sky_light(pos.chunk_block_pos(), MAX_LIGHT);
+                    engine.add_sky_source(pos);
+                } else {
+                    chunk.set_sky_light(pos.chunk_block_pos(), 0);
+                }
+            }
+        }
+    }
+
+    engine.run(&mut SingleChunk {
+        chunk,
+        at: chunk_pos,
+    });
 }
 
 /// The brightest a block light can be.
@@ -354,14 +503,14 @@ mod tests {
                 .unwrap_or_else(Self::air)
         }
 
-        fn light_at(&mut self, pos: BlockPos) -> u8 {
+        fn light_at(&mut self, pos: BlockPos, _layer: LightLayer) -> u8 {
             self.light
                 .get(&(pos.pos.x, pos.pos.y, pos.pos.z))
                 .copied()
                 .unwrap_or(0)
         }
 
-        fn set_light(&mut self, pos: BlockPos, level: u8) {
+        fn set_light(&mut self, pos: BlockPos, _layer: LightLayer, level: u8) {
             self.light.insert((pos.pos.x, pos.pos.y, pos.pos.z), level);
         }
 
@@ -384,18 +533,18 @@ mod tests {
         world.light_everything(&[torch]);
 
         assert_eq!(
-            world.light_at(torch),
+            world.light_at(torch, LightLayer::Block),
             14,
             "the torch itself is at its own level"
         );
-        assert_eq!(world.light_at(at(1, 10, 0)), 13);
-        assert_eq!(world.light_at(at(2, 10, 0)), 12);
+        assert_eq!(world.light_at(at(1, 10, 0), LightLayer::Block), 13);
+        assert_eq!(world.light_at(at(2, 10, 0), LightLayer::Block), 12);
         // Distance is counted in blocks stepped through, not in a straight line: three steps
         // away is three levels down, whichever way they are taken.
-        assert_eq!(world.light_at(at(1, 11, 1)), 11);
-        assert_eq!(world.light_at(at(3, 10, 0)), 11);
+        assert_eq!(world.light_at(at(1, 11, 1), LightLayer::Block), 11);
+        assert_eq!(world.light_at(at(3, 10, 0), LightLayer::Block), 11);
         assert_eq!(
-            world.light_at(at(14, 10, 0)),
+            world.light_at(at(14, 10, 0), LightLayer::Block),
             0,
             "fourteen blocks out it has run out"
         );
@@ -409,14 +558,14 @@ mod tests {
         let torch = at(0, 10, 0);
         world.put(torch, "minecraft:torch");
         world.light_everything(&[torch]);
-        assert_eq!(world.light_at(at(3, 10, 0)), 11);
+        assert_eq!(world.light_at(at(3, 10, 0), LightLayer::Block), 11);
 
         world.blocks.remove(&(0, 10, 0));
         world.light_everything(&[torch]);
 
         for x in 0..6 {
             assert_eq!(
-                world.light_at(at(x, 10, 0)),
+                world.light_at(at(x, 10, 0), LightLayer::Block),
                 0,
                 "the block {x} away should be dark again"
             );
@@ -434,18 +583,22 @@ mod tests {
         world.light_everything(&[left, right]);
 
         // Halfway between them, lit by whichever is nearer.
-        assert_eq!(world.light_at(at(3, 10, 0)), 11);
+        assert_eq!(world.light_at(at(3, 10, 0), LightLayer::Block), 11);
 
         world.blocks.remove(&(0, 10, 0));
         world.light_everything(&[left]);
 
-        assert_eq!(world.light_at(left), 8, "still lit, from the far torch");
         assert_eq!(
-            world.light_at(at(3, 10, 0)),
+            world.light_at(left, LightLayer::Block),
+            8,
+            "still lit, from the far torch"
+        );
+        assert_eq!(
+            world.light_at(at(3, 10, 0), LightLayer::Block),
             11,
             "the near side of the other torch is unchanged"
         );
-        assert_eq!(world.light_at(right), 14);
+        assert_eq!(world.light_at(right, LightLayer::Block), 14);
     }
 
     /// Light does not pass through what stops it, so a wall casts a shadow.
@@ -461,9 +614,13 @@ mod tests {
         }
         world.light_everything(&[torch]);
 
-        assert_eq!(world.light_at(at(1, 10, 0)), 0, "inside the wall");
+        assert_eq!(
+            world.light_at(at(1, 10, 0), LightLayer::Block),
+            0,
+            "inside the wall"
+        );
         assert!(
-            world.light_at(at(2, 10, 0)) < 12,
+            world.light_at(at(2, 10, 0), LightLayer::Block) < 12,
             "behind the wall it should be dimmer than an open line would be"
         );
     }
@@ -493,6 +650,107 @@ mod tests {
         );
     }
 
+    /// An open column is bright all the way down: every position in it sees the sky, so every one
+    /// of them is a source rather than one source dimming with depth.
+    #[test]
+    fn the_sky_reaches_the_ground_at_full_strength() {
+        use crate::chunk::Chunk;
+        use crate::pos::{ChunkBlockPos, ChunkPos};
+
+        let mut chunk = Chunk::new_empty();
+        let stone = BlockId::from_name("minecraft:stone")
+            .expect("stone exists")
+            .default_state();
+        // A floor at y = 64, nothing above it.
+        for x in 0..16u8 {
+            for z in 0..16u8 {
+                chunk.set_block(ChunkBlockPos::new(x, 64, z), stone);
+            }
+        }
+
+        relight_sky_light(&mut chunk, ChunkPos::new(0, 0));
+
+        assert_eq!(
+            chunk.sky_light(ChunkBlockPos::new(8, 65, 8)),
+            15,
+            "just above the floor"
+        );
+        assert_eq!(
+            chunk.sky_light(ChunkBlockPos::new(8, 200, 8)),
+            15,
+            "high above it"
+        );
+        assert_eq!(
+            chunk.sky_light(ChunkBlockPos::new(8, 64, 8)),
+            0,
+            "inside the floor"
+        );
+        assert_eq!(chunk.sky_light(ChunkBlockPos::new(8, 63, 8)), 0, "under it");
+    }
+
+    /// Under an overhang the sky arrives sideways and dims with every block it crosses.
+    #[test]
+    fn the_sky_dims_under_an_overhang() {
+        use crate::chunk::Chunk;
+        use crate::pos::{ChunkBlockPos, ChunkPos};
+
+        let mut chunk = Chunk::new_empty();
+        let stone = BlockId::from_name("minecraft:stone")
+            .expect("stone exists")
+            .default_state();
+        // A floor, and a roof over half of it.
+        for x in 0..16u8 {
+            for z in 0..16u8 {
+                chunk.set_block(ChunkBlockPos::new(x, 64, z), stone);
+            }
+        }
+        for x in 0..8u8 {
+            for z in 0..16u8 {
+                chunk.set_block(ChunkBlockPos::new(x, 70, z), stone);
+            }
+        }
+
+        relight_sky_light(&mut chunk, ChunkPos::new(0, 0));
+
+        // Out in the open, full strength.
+        assert_eq!(chunk.sky_light(ChunkBlockPos::new(9, 65, 8)), 15);
+        // Just inside the overhang, one level down from the open air beside it.
+        assert_eq!(chunk.sky_light(ChunkBlockPos::new(7, 65, 8)), 14);
+        // Further in, dimmer still.
+        assert_eq!(chunk.sky_light(ChunkBlockPos::new(6, 65, 8)), 13);
+        // Eight blocks in from the open edge, so eight levels down.
+        assert_eq!(chunk.sky_light(ChunkBlockPos::new(0, 65, 8)), 7);
+    }
+
+    /// Glass dims nothing, so the sky carries straight through it.
+    #[test]
+    fn the_sky_comes_through_glass() {
+        use crate::chunk::Chunk;
+        use crate::pos::{ChunkBlockPos, ChunkPos};
+
+        let mut chunk = Chunk::new_empty();
+        let stone = BlockId::from_name("minecraft:stone")
+            .expect("stone exists")
+            .default_state();
+        let glass = BlockId::from_name("minecraft:glass")
+            .expect("glass exists")
+            .default_state();
+        for x in 0..16u8 {
+            for z in 0..16u8 {
+                chunk.set_block(ChunkBlockPos::new(x, 64, z), stone);
+                chunk.set_block(ChunkBlockPos::new(x, 70, z), glass);
+            }
+        }
+
+        relight_sky_light(&mut chunk, ChunkPos::new(0, 0));
+
+        assert_eq!(
+            chunk.sky_light(ChunkBlockPos::new(8, 65, 8)),
+            15,
+            "under a glass roof the sky still reaches the floor"
+        );
+    }
+
     /// Water dims light by one on top of the block it costs to cross, so it darkens faster than
     /// air does.
     #[test]
@@ -507,6 +765,6 @@ mod tests {
 
         // Water's opacity is one, the same as air, so this line is not dimmer - what water changes
         // is that it is not skylight-transparent, which is the sky engine's business.
-        assert_eq!(world.light_at(at(1, 10, 0)), 13);
+        assert_eq!(world.light_at(at(1, 10, 0), LightLayer::Block), 13);
     }
 }

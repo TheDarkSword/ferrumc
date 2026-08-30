@@ -173,9 +173,16 @@ question about both their faces together, which is a pair and cannot be tabulate
 own answer is, which settles every case but two partial faces that only cover the opening between
 them.
 
-A generated chunk lights itself from whatever is in it. What is not done yet is in
-[deferred work](../../internal_docs/deferred.md): sky light, light across a chunk border, and
-relighting when a block changes.
+Sky light works the other way round. Rather than one source dimming with depth, **every position
+the sky reaches is a source at full strength** — which is what makes an open column bright all the
+way to the ground — and the light then spreads sideways and under overhangs from those, losing a
+level a block like any other. A column's lowest source is found by scanning down until something
+stops the sky: anything that dims light at all does, and so does a pair of faces that closes the gap
+between them, which is why a trapdoor lets the sky past when open and not when shut.
+
+A generated chunk lights itself, both kinds, from what is in it. What is not done yet is in
+[deferred work](../../internal_docs/deferred.md): light across a chunk border, and relighting when a
+block changes.
 
 ## Regenerating
 
