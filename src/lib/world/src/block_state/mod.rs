@@ -10,8 +10,83 @@
 mod generated;
 
 use crate::block_state_id::BlockStateId;
-pub use generated::Property;
+pub use generated::{properties, Property};
 use generated::{BLOCKS, PROPERTY_VALUES};
+use std::marker::PhantomData;
+
+/// A value a property can hold.
+///
+/// Properties travel as strings in block state ids and commands, but nothing else should have to:
+/// a facing is a [`generated::Direction`], not the word "north", so a typo is a compile error
+/// rather than a state that silently fails to change.
+pub trait PropertyValue: Sized + Copy {
+    /// How the value is written in a block state id.
+    fn name(self) -> &'static str;
+    /// The value of this name, if the type has one.
+    fn from_name(name: &str) -> Option<Self>;
+}
+
+impl PropertyValue for bool {
+    fn name(self) -> &'static str {
+        if self {
+            "true"
+        } else {
+            "false"
+        }
+    }
+
+    fn from_name(name: &str) -> Option<Self> {
+        match name {
+            "true" => Some(true),
+            "false" => Some(false),
+            _ => None,
+        }
+    }
+}
+
+/// Integer properties run from zero to the largest any block uses.
+const NUMBERS: [&str; 26] = [
+    "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16",
+    "17", "18", "19", "20", "21", "22", "23", "24", "25",
+];
+
+impl PropertyValue for u8 {
+    fn name(self) -> &'static str {
+        NUMBERS.get(self as usize).copied().unwrap_or("")
+    }
+
+    fn from_name(name: &str) -> Option<Self> {
+        name.parse().ok()
+    }
+}
+
+/// A property together with what its values are.
+///
+/// The same name means different things on different blocks - a stair's `half` is its top or
+/// bottom, a door's is its upper or lower - so the constants in [`properties`] pair each name with
+/// the type it carries there. Asking a block for a property of the wrong type finds nothing, the
+/// same as asking for one it does not have.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct BlockProperty<T> {
+    property: Property,
+    values: PhantomData<T>,
+}
+
+impl<T> BlockProperty<T> {
+    #[must_use]
+    pub const fn new(property: Property) -> Self {
+        Self {
+            property,
+            values: PhantomData,
+        }
+    }
+
+    /// The name this property is written under.
+    #[must_use]
+    pub const fn property(self) -> Property {
+        self.property
+    }
+}
 
 /// A block, without a particular state of it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -100,17 +175,33 @@ impl BlockStateId {
         block_of(self)
     }
 
-    /// What this state holds for a property, or `None` where its block has no such property.
+    /// What this state holds for a property.
+    ///
+    /// `None` where the block has no property of that name, or where the one it has holds values
+    /// of another type.
     #[must_use]
-    pub fn get(self, property: Property) -> Option<&'static str> {
+    pub fn get<T: PropertyValue>(self, property: BlockProperty<T>) -> Option<T> {
+        T::from_name(self.get_raw(property.property())?)
+    }
+
+    /// The same block with one property changed, or `None` where the block has no such property or
+    /// does not take that value.
+    #[must_use]
+    pub fn with<T: PropertyValue>(self, property: BlockProperty<T>, value: T) -> Option<Self> {
+        self.with_raw(property.property(), value.name())
+    }
+
+    /// What this state holds for a property, as it is written. Prefer [`Self::get`], which names a
+    /// type; this is for the places that only have a name, such as commands.
+    #[must_use]
+    pub fn get_raw(self, property: Property) -> Option<&'static str> {
         let (_, digit) = digit(self, property)?;
         Some(digit.values[digit.index as usize])
     }
 
-    /// The same block with one property changed, or `None` where the block has no such property or
-    /// the property does not take that value.
+    /// The same block with one property changed, written as a name. Prefer [`Self::with`].
     #[must_use]
-    pub fn with(self, property: Property, value: &str) -> Option<Self> {
+    pub fn with_raw(self, property: Property, value: &str) -> Option<Self> {
         let (_, digit) = digit(self, property)?;
         let wanted = digit.values.iter().position(|&known| known == value)? as u32;
         let raw = self.raw() - digit.index * digit.stride + wanted * digit.stride;
@@ -123,12 +214,13 @@ impl BlockStateId {
         block
             .into_iter()
             .flat_map(move |block| block.properties())
-            .filter_map(move |property| Some((property, self.get(property)?)))
+            .filter_map(move |property| Some((property, self.get_raw(property)?)))
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use super::generated::{Direction, Half, SlabType};
     use super::*;
 
     /// The whole point: every id in the space resolves to a block, and reading its properties back
@@ -146,7 +238,7 @@ mod tests {
             let block = state.block().expect("every id belongs to a block");
             for (property, value) in state.properties() {
                 assert_eq!(
-                    state.with(property, value),
+                    state.with_raw(property, value),
                     Some(state),
                     "{} state {raw}: setting {} to what it already is moved it",
                     block.name(),
@@ -163,9 +255,14 @@ mod tests {
         let state = stairs.default_state();
         let def = stairs.def();
 
-        for value in ["north", "south", "east", "west"] {
-            let turned = state.with(Property::Facing, value).expect("stairs face");
-            assert_eq!(turned.get(Property::Facing), Some(value));
+        for value in [
+            Direction::North,
+            Direction::South,
+            Direction::East,
+            Direction::West,
+        ] {
+            let turned = state.with(properties::FACING, value).expect("stairs face");
+            assert_eq!(turned.get(properties::FACING), Some(value));
             assert_eq!(turned.block(), Some(stairs));
             assert!(turned.raw() >= def.base_state);
             assert!(turned.raw() < def.base_state + def.state_count);
@@ -178,11 +275,16 @@ mod tests {
     fn a_property_a_block_lacks_reads_as_nothing() {
         let stone = BlockId::from_name("minecraft:stone").expect("stone exists");
         let state = stone.default_state();
-        assert_eq!(state.get(Property::Facing), None);
-        assert_eq!(state.with(Property::Facing, "north"), None);
+        assert_eq!(state.get(properties::FACING), None);
+        assert_eq!(state.with(properties::FACING, Direction::North), None);
 
         let stairs = BlockId::from_name("minecraft:oak_stairs").expect("oak stairs exist");
-        assert_eq!(stairs.default_state().with(Property::Facing, "up"), None);
+        assert_eq!(
+            stairs
+                .default_state()
+                .with(properties::FACING, Direction::Up),
+            None
+        );
     }
 
     /// The generated tables and `blockstates.json` are two independent renderings of the same
@@ -217,7 +319,7 @@ mod tests {
                 let property =
                     Property::from_name(name).unwrap_or_else(|| panic!("unknown property {name}"));
                 assert_eq!(
-                    state.get(property),
+                    state.get_raw(property),
                     Some(value.as_str()),
                     "state {raw} of {} holds a different {name}",
                     block.name()
@@ -233,15 +335,72 @@ mod tests {
         }
     }
 
+    /// The same name carries different types on different blocks, which is the whole reason the
+    /// constants pair a name with one: a stair's half is its top or bottom, a door's is its upper
+    /// or lower, and neither reads as the other.
+    #[test]
+    fn a_property_of_the_wrong_type_reads_as_nothing() {
+        let stairs = BlockId::from_name("minecraft:oak_stairs").expect("oak stairs exist");
+        let door = BlockId::from_name("minecraft:oak_door").expect("oak doors exist");
+        let slab = BlockId::from_name("minecraft:oak_slab").expect("oak slabs exist");
+
+        assert_eq!(
+            stairs.default_state().get(properties::HALF),
+            Some(Half::Bottom)
+        );
+        assert_eq!(
+            stairs.default_state().get(properties::DOUBLE_BLOCK_HALF),
+            None
+        );
+        assert!(door
+            .default_state()
+            .get(properties::DOUBLE_BLOCK_HALF)
+            .is_some());
+        assert_eq!(door.default_state().get(properties::HALF), None);
+
+        // A slab's `type` and a chest's are both written `type` and are not the same thing.
+        assert_eq!(
+            slab.default_state().get(properties::SLAB_TYPE),
+            Some(SlabType::Bottom)
+        );
+        assert_eq!(slab.default_state().get(properties::CHEST_TYPE), None);
+    }
+
+    /// Integer and boolean properties are read as numbers and flags rather than as their spelling.
+    #[test]
+    fn numbers_and_flags_are_not_strings() {
+        let wire = BlockId::from_name("minecraft:redstone_wire").expect("redstone exists");
+        let powered = wire
+            .default_state()
+            .with(properties::POWER, 9)
+            .expect("wire carries power");
+        assert_eq!(powered.get(properties::POWER), Some(9));
+        assert_eq!(powered.get_raw(Property::Power), Some("9"));
+        // Fifteen is the most a wire carries, so sixteen is not a state it has.
+        assert_eq!(powered.with(properties::POWER, 16), None);
+
+        let slab = BlockId::from_name("minecraft:oak_slab").expect("oak slabs exist");
+        let wet = slab
+            .default_state()
+            .with(properties::WATERLOGGED, true)
+            .expect("slabs waterlog");
+        assert_eq!(wet.get(properties::WATERLOGGED), Some(true));
+    }
+
     /// A stair faces four ways and a piston six, under the same property name.
     #[test]
     fn the_same_property_can_take_different_values() {
         let stairs = BlockId::from_name("minecraft:oak_stairs").expect("oak stairs exist");
         let piston = BlockId::from_name("minecraft:piston").expect("pistons exist");
-        assert_eq!(stairs.default_state().with(Property::Facing, "up"), None);
+        assert_eq!(
+            stairs
+                .default_state()
+                .with(properties::FACING, Direction::Up),
+            None
+        );
         assert!(piston
             .default_state()
-            .with(Property::Facing, "up")
+            .with(properties::FACING, Direction::Up)
             .is_some());
     }
 }

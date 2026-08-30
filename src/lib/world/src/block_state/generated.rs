@@ -9285,3 +9285,1097 @@ pub static BLOCKS: [BlockDef; 1196] = [
         properties: &[],
     },
 ];
+
+/// The values `AttachFace` properties take.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum AttachFace {
+    Floor,
+    Wall,
+    Ceiling,
+}
+
+impl crate::block_state::PropertyValue for AttachFace {
+    fn name(self) -> &'static str {
+        match self {
+            Self::Floor => "floor",
+            Self::Wall => "wall",
+            Self::Ceiling => "ceiling",
+        }
+    }
+
+    fn from_name(name: &str) -> Option<Self> {
+        match name {
+            "floor" => Some(Self::Floor),
+            "wall" => Some(Self::Wall),
+            "ceiling" => Some(Self::Ceiling),
+            _ => None,
+        }
+    }
+}
+
+/// The values `Axis` properties take.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum Axis {
+    X,
+    Y,
+    Z,
+}
+
+impl crate::block_state::PropertyValue for Axis {
+    fn name(self) -> &'static str {
+        match self {
+            Self::X => "x",
+            Self::Y => "y",
+            Self::Z => "z",
+        }
+    }
+
+    fn from_name(name: &str) -> Option<Self> {
+        match name {
+            "x" => Some(Self::X),
+            "y" => Some(Self::Y),
+            "z" => Some(Self::Z),
+            _ => None,
+        }
+    }
+}
+
+/// The values `BambooLeaves` properties take.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum BambooLeaves {
+    None,
+    Small,
+    Large,
+}
+
+impl crate::block_state::PropertyValue for BambooLeaves {
+    fn name(self) -> &'static str {
+        match self {
+            Self::None => "none",
+            Self::Small => "small",
+            Self::Large => "large",
+        }
+    }
+
+    fn from_name(name: &str) -> Option<Self> {
+        match name {
+            "none" => Some(Self::None),
+            "small" => Some(Self::Small),
+            "large" => Some(Self::Large),
+            _ => None,
+        }
+    }
+}
+
+/// The values `BedPart` properties take.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum BedPart {
+    Head,
+    Foot,
+}
+
+impl crate::block_state::PropertyValue for BedPart {
+    fn name(self) -> &'static str {
+        match self {
+            Self::Head => "head",
+            Self::Foot => "foot",
+        }
+    }
+
+    fn from_name(name: &str) -> Option<Self> {
+        match name {
+            "head" => Some(Self::Head),
+            "foot" => Some(Self::Foot),
+            _ => None,
+        }
+    }
+}
+
+/// The values `BellAttachType` properties take.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum BellAttachType {
+    Floor,
+    Ceiling,
+    SingleWall,
+    DoubleWall,
+}
+
+impl crate::block_state::PropertyValue for BellAttachType {
+    fn name(self) -> &'static str {
+        match self {
+            Self::Floor => "floor",
+            Self::Ceiling => "ceiling",
+            Self::SingleWall => "single_wall",
+            Self::DoubleWall => "double_wall",
+        }
+    }
+
+    fn from_name(name: &str) -> Option<Self> {
+        match name {
+            "floor" => Some(Self::Floor),
+            "ceiling" => Some(Self::Ceiling),
+            "single_wall" => Some(Self::SingleWall),
+            "double_wall" => Some(Self::DoubleWall),
+            _ => None,
+        }
+    }
+}
+
+/// The values `ChestType` properties take.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum ChestType {
+    Single,
+    Left,
+    Right,
+}
+
+impl crate::block_state::PropertyValue for ChestType {
+    fn name(self) -> &'static str {
+        match self {
+            Self::Single => "single",
+            Self::Left => "left",
+            Self::Right => "right",
+        }
+    }
+
+    fn from_name(name: &str) -> Option<Self> {
+        match name {
+            "single" => Some(Self::Single),
+            "left" => Some(Self::Left),
+            "right" => Some(Self::Right),
+            _ => None,
+        }
+    }
+}
+
+/// The values `ComparatorMode` properties take.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum ComparatorMode {
+    Compare,
+    Subtract,
+}
+
+impl crate::block_state::PropertyValue for ComparatorMode {
+    fn name(self) -> &'static str {
+        match self {
+            Self::Compare => "compare",
+            Self::Subtract => "subtract",
+        }
+    }
+
+    fn from_name(name: &str) -> Option<Self> {
+        match name {
+            "compare" => Some(Self::Compare),
+            "subtract" => Some(Self::Subtract),
+            _ => None,
+        }
+    }
+}
+
+/// The values `CopperGolemPose` properties take.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum CopperGolemPose {
+    Standing,
+    Sitting,
+    Star,
+    Running,
+}
+
+impl crate::block_state::PropertyValue for CopperGolemPose {
+    fn name(self) -> &'static str {
+        match self {
+            Self::Standing => "standing",
+            Self::Sitting => "sitting",
+            Self::Star => "star",
+            Self::Running => "running",
+        }
+    }
+
+    fn from_name(name: &str) -> Option<Self> {
+        match name {
+            "standing" => Some(Self::Standing),
+            "sitting" => Some(Self::Sitting),
+            "star" => Some(Self::Star),
+            "running" => Some(Self::Running),
+            _ => None,
+        }
+    }
+}
+
+/// The values `CreakingHeartState` properties take.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum CreakingHeartState {
+    Uprooted,
+    Dormant,
+    Awake,
+}
+
+impl crate::block_state::PropertyValue for CreakingHeartState {
+    fn name(self) -> &'static str {
+        match self {
+            Self::Uprooted => "uprooted",
+            Self::Dormant => "dormant",
+            Self::Awake => "awake",
+        }
+    }
+
+    fn from_name(name: &str) -> Option<Self> {
+        match name {
+            "uprooted" => Some(Self::Uprooted),
+            "dormant" => Some(Self::Dormant),
+            "awake" => Some(Self::Awake),
+            _ => None,
+        }
+    }
+}
+
+/// The values `Direction` properties take.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum Direction {
+    Down,
+    Up,
+    North,
+    South,
+    West,
+    East,
+}
+
+impl crate::block_state::PropertyValue for Direction {
+    fn name(self) -> &'static str {
+        match self {
+            Self::Down => "down",
+            Self::Up => "up",
+            Self::North => "north",
+            Self::South => "south",
+            Self::West => "west",
+            Self::East => "east",
+        }
+    }
+
+    fn from_name(name: &str) -> Option<Self> {
+        match name {
+            "down" => Some(Self::Down),
+            "up" => Some(Self::Up),
+            "north" => Some(Self::North),
+            "south" => Some(Self::South),
+            "west" => Some(Self::West),
+            "east" => Some(Self::East),
+            _ => None,
+        }
+    }
+}
+
+/// The values `DoorHingeSide` properties take.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum DoorHingeSide {
+    Left,
+    Right,
+}
+
+impl crate::block_state::PropertyValue for DoorHingeSide {
+    fn name(self) -> &'static str {
+        match self {
+            Self::Left => "left",
+            Self::Right => "right",
+        }
+    }
+
+    fn from_name(name: &str) -> Option<Self> {
+        match name {
+            "left" => Some(Self::Left),
+            "right" => Some(Self::Right),
+            _ => None,
+        }
+    }
+}
+
+/// The values `DoubleBlockHalf` properties take.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum DoubleBlockHalf {
+    Upper,
+    Lower,
+}
+
+impl crate::block_state::PropertyValue for DoubleBlockHalf {
+    fn name(self) -> &'static str {
+        match self {
+            Self::Upper => "upper",
+            Self::Lower => "lower",
+        }
+    }
+
+    fn from_name(name: &str) -> Option<Self> {
+        match name {
+            "upper" => Some(Self::Upper),
+            "lower" => Some(Self::Lower),
+            _ => None,
+        }
+    }
+}
+
+/// The values `FrontAndTop` properties take.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum FrontAndTop {
+    DownEast,
+    DownNorth,
+    DownSouth,
+    DownWest,
+    UpEast,
+    UpNorth,
+    UpSouth,
+    UpWest,
+    WestUp,
+    EastUp,
+    NorthUp,
+    SouthUp,
+}
+
+impl crate::block_state::PropertyValue for FrontAndTop {
+    fn name(self) -> &'static str {
+        match self {
+            Self::DownEast => "down_east",
+            Self::DownNorth => "down_north",
+            Self::DownSouth => "down_south",
+            Self::DownWest => "down_west",
+            Self::UpEast => "up_east",
+            Self::UpNorth => "up_north",
+            Self::UpSouth => "up_south",
+            Self::UpWest => "up_west",
+            Self::WestUp => "west_up",
+            Self::EastUp => "east_up",
+            Self::NorthUp => "north_up",
+            Self::SouthUp => "south_up",
+        }
+    }
+
+    fn from_name(name: &str) -> Option<Self> {
+        match name {
+            "down_east" => Some(Self::DownEast),
+            "down_north" => Some(Self::DownNorth),
+            "down_south" => Some(Self::DownSouth),
+            "down_west" => Some(Self::DownWest),
+            "up_east" => Some(Self::UpEast),
+            "up_north" => Some(Self::UpNorth),
+            "up_south" => Some(Self::UpSouth),
+            "up_west" => Some(Self::UpWest),
+            "west_up" => Some(Self::WestUp),
+            "east_up" => Some(Self::EastUp),
+            "north_up" => Some(Self::NorthUp),
+            "south_up" => Some(Self::SouthUp),
+            _ => None,
+        }
+    }
+}
+
+/// The values `Half` properties take.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum Half {
+    Top,
+    Bottom,
+}
+
+impl crate::block_state::PropertyValue for Half {
+    fn name(self) -> &'static str {
+        match self {
+            Self::Top => "top",
+            Self::Bottom => "bottom",
+        }
+    }
+
+    fn from_name(name: &str) -> Option<Self> {
+        match name {
+            "top" => Some(Self::Top),
+            "bottom" => Some(Self::Bottom),
+            _ => None,
+        }
+    }
+}
+
+/// The values `NoteBlockInstrument` properties take.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum NoteBlockInstrument {
+    Harp,
+    Basedrum,
+    Snare,
+    Hat,
+    Bass,
+    Flute,
+    Bell,
+    Guitar,
+    Chime,
+    Xylophone,
+    IronXylophone,
+    CowBell,
+    Didgeridoo,
+    Bit,
+    Banjo,
+    Pling,
+    Zombie,
+    Skeleton,
+    Creeper,
+    Dragon,
+    WitherSkeleton,
+    Piglin,
+    CustomHead,
+    Trumpet,
+    TrumpetExposed,
+    TrumpetWeathered,
+    TrumpetOxidized,
+}
+
+impl crate::block_state::PropertyValue for NoteBlockInstrument {
+    fn name(self) -> &'static str {
+        match self {
+            Self::Harp => "harp",
+            Self::Basedrum => "basedrum",
+            Self::Snare => "snare",
+            Self::Hat => "hat",
+            Self::Bass => "bass",
+            Self::Flute => "flute",
+            Self::Bell => "bell",
+            Self::Guitar => "guitar",
+            Self::Chime => "chime",
+            Self::Xylophone => "xylophone",
+            Self::IronXylophone => "iron_xylophone",
+            Self::CowBell => "cow_bell",
+            Self::Didgeridoo => "didgeridoo",
+            Self::Bit => "bit",
+            Self::Banjo => "banjo",
+            Self::Pling => "pling",
+            Self::Zombie => "zombie",
+            Self::Skeleton => "skeleton",
+            Self::Creeper => "creeper",
+            Self::Dragon => "dragon",
+            Self::WitherSkeleton => "wither_skeleton",
+            Self::Piglin => "piglin",
+            Self::CustomHead => "custom_head",
+            Self::Trumpet => "trumpet",
+            Self::TrumpetExposed => "trumpet_exposed",
+            Self::TrumpetWeathered => "trumpet_weathered",
+            Self::TrumpetOxidized => "trumpet_oxidized",
+        }
+    }
+
+    fn from_name(name: &str) -> Option<Self> {
+        match name {
+            "harp" => Some(Self::Harp),
+            "basedrum" => Some(Self::Basedrum),
+            "snare" => Some(Self::Snare),
+            "hat" => Some(Self::Hat),
+            "bass" => Some(Self::Bass),
+            "flute" => Some(Self::Flute),
+            "bell" => Some(Self::Bell),
+            "guitar" => Some(Self::Guitar),
+            "chime" => Some(Self::Chime),
+            "xylophone" => Some(Self::Xylophone),
+            "iron_xylophone" => Some(Self::IronXylophone),
+            "cow_bell" => Some(Self::CowBell),
+            "didgeridoo" => Some(Self::Didgeridoo),
+            "bit" => Some(Self::Bit),
+            "banjo" => Some(Self::Banjo),
+            "pling" => Some(Self::Pling),
+            "zombie" => Some(Self::Zombie),
+            "skeleton" => Some(Self::Skeleton),
+            "creeper" => Some(Self::Creeper),
+            "dragon" => Some(Self::Dragon),
+            "wither_skeleton" => Some(Self::WitherSkeleton),
+            "piglin" => Some(Self::Piglin),
+            "custom_head" => Some(Self::CustomHead),
+            "trumpet" => Some(Self::Trumpet),
+            "trumpet_exposed" => Some(Self::TrumpetExposed),
+            "trumpet_weathered" => Some(Self::TrumpetWeathered),
+            "trumpet_oxidized" => Some(Self::TrumpetOxidized),
+            _ => None,
+        }
+    }
+}
+
+/// The values `PistonType` properties take.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum PistonType {
+    Normal,
+    Sticky,
+}
+
+impl crate::block_state::PropertyValue for PistonType {
+    fn name(self) -> &'static str {
+        match self {
+            Self::Normal => "normal",
+            Self::Sticky => "sticky",
+        }
+    }
+
+    fn from_name(name: &str) -> Option<Self> {
+        match name {
+            "normal" => Some(Self::Normal),
+            "sticky" => Some(Self::Sticky),
+            _ => None,
+        }
+    }
+}
+
+/// The values `PotentSulfurState` properties take.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum PotentSulfurState {
+    Dormant,
+    Dry,
+    Wet,
+    Continuous,
+    Erupting,
+}
+
+impl crate::block_state::PropertyValue for PotentSulfurState {
+    fn name(self) -> &'static str {
+        match self {
+            Self::Dormant => "dormant",
+            Self::Dry => "dry",
+            Self::Wet => "wet",
+            Self::Continuous => "continuous",
+            Self::Erupting => "erupting",
+        }
+    }
+
+    fn from_name(name: &str) -> Option<Self> {
+        match name {
+            "dormant" => Some(Self::Dormant),
+            "dry" => Some(Self::Dry),
+            "wet" => Some(Self::Wet),
+            "continuous" => Some(Self::Continuous),
+            "erupting" => Some(Self::Erupting),
+            _ => None,
+        }
+    }
+}
+
+/// The values `RailShape` properties take.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum RailShape {
+    NorthSouth,
+    EastWest,
+    AscendingEast,
+    AscendingWest,
+    AscendingNorth,
+    AscendingSouth,
+    SouthEast,
+    SouthWest,
+    NorthWest,
+    NorthEast,
+}
+
+impl crate::block_state::PropertyValue for RailShape {
+    fn name(self) -> &'static str {
+        match self {
+            Self::NorthSouth => "north_south",
+            Self::EastWest => "east_west",
+            Self::AscendingEast => "ascending_east",
+            Self::AscendingWest => "ascending_west",
+            Self::AscendingNorth => "ascending_north",
+            Self::AscendingSouth => "ascending_south",
+            Self::SouthEast => "south_east",
+            Self::SouthWest => "south_west",
+            Self::NorthWest => "north_west",
+            Self::NorthEast => "north_east",
+        }
+    }
+
+    fn from_name(name: &str) -> Option<Self> {
+        match name {
+            "north_south" => Some(Self::NorthSouth),
+            "east_west" => Some(Self::EastWest),
+            "ascending_east" => Some(Self::AscendingEast),
+            "ascending_west" => Some(Self::AscendingWest),
+            "ascending_north" => Some(Self::AscendingNorth),
+            "ascending_south" => Some(Self::AscendingSouth),
+            "south_east" => Some(Self::SouthEast),
+            "south_west" => Some(Self::SouthWest),
+            "north_west" => Some(Self::NorthWest),
+            "north_east" => Some(Self::NorthEast),
+            _ => None,
+        }
+    }
+}
+
+/// The values `RedstoneSide` properties take.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum RedstoneSide {
+    Up,
+    Side,
+    None,
+}
+
+impl crate::block_state::PropertyValue for RedstoneSide {
+    fn name(self) -> &'static str {
+        match self {
+            Self::Up => "up",
+            Self::Side => "side",
+            Self::None => "none",
+        }
+    }
+
+    fn from_name(name: &str) -> Option<Self> {
+        match name {
+            "up" => Some(Self::Up),
+            "side" => Some(Self::Side),
+            "none" => Some(Self::None),
+            _ => None,
+        }
+    }
+}
+
+/// The values `SculkSensorPhase` properties take.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum SculkSensorPhase {
+    Inactive,
+    Active,
+    Cooldown,
+}
+
+impl crate::block_state::PropertyValue for SculkSensorPhase {
+    fn name(self) -> &'static str {
+        match self {
+            Self::Inactive => "inactive",
+            Self::Active => "active",
+            Self::Cooldown => "cooldown",
+        }
+    }
+
+    fn from_name(name: &str) -> Option<Self> {
+        match name {
+            "inactive" => Some(Self::Inactive),
+            "active" => Some(Self::Active),
+            "cooldown" => Some(Self::Cooldown),
+            _ => None,
+        }
+    }
+}
+
+/// The values `SideChainPart` properties take.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum SideChainPart {
+    Unconnected,
+    Left,
+    Center,
+    Right,
+}
+
+impl crate::block_state::PropertyValue for SideChainPart {
+    fn name(self) -> &'static str {
+        match self {
+            Self::Unconnected => "unconnected",
+            Self::Left => "left",
+            Self::Center => "center",
+            Self::Right => "right",
+        }
+    }
+
+    fn from_name(name: &str) -> Option<Self> {
+        match name {
+            "unconnected" => Some(Self::Unconnected),
+            "left" => Some(Self::Left),
+            "center" => Some(Self::Center),
+            "right" => Some(Self::Right),
+            _ => None,
+        }
+    }
+}
+
+/// The values `SlabType` properties take.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum SlabType {
+    Top,
+    Bottom,
+    Double,
+}
+
+impl crate::block_state::PropertyValue for SlabType {
+    fn name(self) -> &'static str {
+        match self {
+            Self::Top => "top",
+            Self::Bottom => "bottom",
+            Self::Double => "double",
+        }
+    }
+
+    fn from_name(name: &str) -> Option<Self> {
+        match name {
+            "top" => Some(Self::Top),
+            "bottom" => Some(Self::Bottom),
+            "double" => Some(Self::Double),
+            _ => None,
+        }
+    }
+}
+
+/// The values `SpeleothemThickness` properties take.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum SpeleothemThickness {
+    TipMerge,
+    Tip,
+    Frustum,
+    Middle,
+    Base,
+}
+
+impl crate::block_state::PropertyValue for SpeleothemThickness {
+    fn name(self) -> &'static str {
+        match self {
+            Self::TipMerge => "tip_merge",
+            Self::Tip => "tip",
+            Self::Frustum => "frustum",
+            Self::Middle => "middle",
+            Self::Base => "base",
+        }
+    }
+
+    fn from_name(name: &str) -> Option<Self> {
+        match name {
+            "tip_merge" => Some(Self::TipMerge),
+            "tip" => Some(Self::Tip),
+            "frustum" => Some(Self::Frustum),
+            "middle" => Some(Self::Middle),
+            "base" => Some(Self::Base),
+            _ => None,
+        }
+    }
+}
+
+/// The values `StairsShape` properties take.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum StairsShape {
+    Straight,
+    InnerLeft,
+    InnerRight,
+    OuterLeft,
+    OuterRight,
+}
+
+impl crate::block_state::PropertyValue for StairsShape {
+    fn name(self) -> &'static str {
+        match self {
+            Self::Straight => "straight",
+            Self::InnerLeft => "inner_left",
+            Self::InnerRight => "inner_right",
+            Self::OuterLeft => "outer_left",
+            Self::OuterRight => "outer_right",
+        }
+    }
+
+    fn from_name(name: &str) -> Option<Self> {
+        match name {
+            "straight" => Some(Self::Straight),
+            "inner_left" => Some(Self::InnerLeft),
+            "inner_right" => Some(Self::InnerRight),
+            "outer_left" => Some(Self::OuterLeft),
+            "outer_right" => Some(Self::OuterRight),
+            _ => None,
+        }
+    }
+}
+
+/// The values `StructureMode` properties take.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum StructureMode {
+    Save,
+    Load,
+    Corner,
+    Data,
+}
+
+impl crate::block_state::PropertyValue for StructureMode {
+    fn name(self) -> &'static str {
+        match self {
+            Self::Save => "save",
+            Self::Load => "load",
+            Self::Corner => "corner",
+            Self::Data => "data",
+        }
+    }
+
+    fn from_name(name: &str) -> Option<Self> {
+        match name {
+            "save" => Some(Self::Save),
+            "load" => Some(Self::Load),
+            "corner" => Some(Self::Corner),
+            "data" => Some(Self::Data),
+            _ => None,
+        }
+    }
+}
+
+/// The values `TestBlockMode` properties take.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum TestBlockMode {
+    Start,
+    Log,
+    Fail,
+    Accept,
+}
+
+impl crate::block_state::PropertyValue for TestBlockMode {
+    fn name(self) -> &'static str {
+        match self {
+            Self::Start => "start",
+            Self::Log => "log",
+            Self::Fail => "fail",
+            Self::Accept => "accept",
+        }
+    }
+
+    fn from_name(name: &str) -> Option<Self> {
+        match name {
+            "start" => Some(Self::Start),
+            "log" => Some(Self::Log),
+            "fail" => Some(Self::Fail),
+            "accept" => Some(Self::Accept),
+            _ => None,
+        }
+    }
+}
+
+/// The values `Tilt` properties take.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum Tilt {
+    None,
+    Unstable,
+    Partial,
+    Full,
+}
+
+impl crate::block_state::PropertyValue for Tilt {
+    fn name(self) -> &'static str {
+        match self {
+            Self::None => "none",
+            Self::Unstable => "unstable",
+            Self::Partial => "partial",
+            Self::Full => "full",
+        }
+    }
+
+    fn from_name(name: &str) -> Option<Self> {
+        match name {
+            "none" => Some(Self::None),
+            "unstable" => Some(Self::Unstable),
+            "partial" => Some(Self::Partial),
+            "full" => Some(Self::Full),
+            _ => None,
+        }
+    }
+}
+
+/// The values `TrialSpawnerState` properties take.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum TrialSpawnerState {
+    Inactive,
+    WaitingForPlayers,
+    Active,
+    WaitingForRewardEjection,
+    EjectingReward,
+    Cooldown,
+}
+
+impl crate::block_state::PropertyValue for TrialSpawnerState {
+    fn name(self) -> &'static str {
+        match self {
+            Self::Inactive => "inactive",
+            Self::WaitingForPlayers => "waiting_for_players",
+            Self::Active => "active",
+            Self::WaitingForRewardEjection => "waiting_for_reward_ejection",
+            Self::EjectingReward => "ejecting_reward",
+            Self::Cooldown => "cooldown",
+        }
+    }
+
+    fn from_name(name: &str) -> Option<Self> {
+        match name {
+            "inactive" => Some(Self::Inactive),
+            "waiting_for_players" => Some(Self::WaitingForPlayers),
+            "active" => Some(Self::Active),
+            "waiting_for_reward_ejection" => Some(Self::WaitingForRewardEjection),
+            "ejecting_reward" => Some(Self::EjectingReward),
+            "cooldown" => Some(Self::Cooldown),
+            _ => None,
+        }
+    }
+}
+
+/// The values `VaultState` properties take.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum VaultState {
+    Inactive,
+    Active,
+    Unlocking,
+    Ejecting,
+}
+
+impl crate::block_state::PropertyValue for VaultState {
+    fn name(self) -> &'static str {
+        match self {
+            Self::Inactive => "inactive",
+            Self::Active => "active",
+            Self::Unlocking => "unlocking",
+            Self::Ejecting => "ejecting",
+        }
+    }
+
+    fn from_name(name: &str) -> Option<Self> {
+        match name {
+            "inactive" => Some(Self::Inactive),
+            "active" => Some(Self::Active),
+            "unlocking" => Some(Self::Unlocking),
+            "ejecting" => Some(Self::Ejecting),
+            _ => None,
+        }
+    }
+}
+
+/// The values `WallSide` properties take.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum WallSide {
+    None,
+    Low,
+    Tall,
+}
+
+impl crate::block_state::PropertyValue for WallSide {
+    fn name(self) -> &'static str {
+        match self {
+            Self::None => "none",
+            Self::Low => "low",
+            Self::Tall => "tall",
+        }
+    }
+
+    fn from_name(name: &str) -> Option<Self> {
+        match name {
+            "none" => Some(Self::None),
+            "low" => Some(Self::Low),
+            "tall" => Some(Self::Tall),
+            _ => None,
+        }
+    }
+}
+
+/// Every property, named so that reading or setting it names its type as well.
+pub mod properties {
+    use super::*;
+    use crate::block_state::BlockProperty;
+
+    pub const AGE: BlockProperty<u8> = BlockProperty::new(Property::Age);
+    pub const ATTACHED: BlockProperty<bool> = BlockProperty::new(Property::Attached);
+    pub const ATTACHMENT: BlockProperty<BellAttachType> = BlockProperty::new(Property::Attachment);
+    pub const AXIS: BlockProperty<Axis> = BlockProperty::new(Property::Axis);
+    pub const BERRIES: BlockProperty<bool> = BlockProperty::new(Property::Berries);
+    pub const BITES: BlockProperty<u8> = BlockProperty::new(Property::Bites);
+    pub const BLOOM: BlockProperty<bool> = BlockProperty::new(Property::Bloom);
+    pub const BOTTOM: BlockProperty<bool> = BlockProperty::new(Property::Bottom);
+    pub const CANDLES: BlockProperty<u8> = BlockProperty::new(Property::Candles);
+    pub const CAN_SUMMON: BlockProperty<bool> = BlockProperty::new(Property::CanSummon);
+    pub const CHARGES: BlockProperty<u8> = BlockProperty::new(Property::Charges);
+    pub const CHEST_TYPE: BlockProperty<ChestType> = BlockProperty::new(Property::Type);
+    pub const COMPARATOR_MODE: BlockProperty<ComparatorMode> = BlockProperty::new(Property::Mode);
+    pub const CONDITIONAL: BlockProperty<bool> = BlockProperty::new(Property::Conditional);
+    pub const COPPER_GOLEM_POSE: BlockProperty<CopperGolemPose> =
+        BlockProperty::new(Property::CopperGolemPose);
+    pub const CRACKED: BlockProperty<bool> = BlockProperty::new(Property::Cracked);
+    pub const CRAFTING: BlockProperty<bool> = BlockProperty::new(Property::Crafting);
+    pub const CREAKING_HEART_STATE: BlockProperty<CreakingHeartState> =
+        BlockProperty::new(Property::CreakingHeartState);
+    pub const DELAY: BlockProperty<u8> = BlockProperty::new(Property::Delay);
+    pub const DISARMED: BlockProperty<bool> = BlockProperty::new(Property::Disarmed);
+    pub const DISTANCE: BlockProperty<u8> = BlockProperty::new(Property::Distance);
+    pub const DOUBLE_BLOCK_HALF: BlockProperty<DoubleBlockHalf> =
+        BlockProperty::new(Property::Half);
+    pub const DOWN: BlockProperty<bool> = BlockProperty::new(Property::Down);
+    pub const DRAG: BlockProperty<bool> = BlockProperty::new(Property::Drag);
+    pub const DUSTED: BlockProperty<u8> = BlockProperty::new(Property::Dusted);
+    pub const EAST_BOOL: BlockProperty<bool> = BlockProperty::new(Property::East);
+    pub const EAST_REDSTONE_SIDE: BlockProperty<RedstoneSide> = BlockProperty::new(Property::East);
+    pub const EAST_WALL_SIDE: BlockProperty<WallSide> = BlockProperty::new(Property::East);
+    pub const EGGS: BlockProperty<u8> = BlockProperty::new(Property::Eggs);
+    pub const ENABLED: BlockProperty<bool> = BlockProperty::new(Property::Enabled);
+    pub const EXTENDED: BlockProperty<bool> = BlockProperty::new(Property::Extended);
+    pub const EYE: BlockProperty<bool> = BlockProperty::new(Property::Eye);
+    pub const FACE: BlockProperty<AttachFace> = BlockProperty::new(Property::Face);
+    pub const FACING: BlockProperty<Direction> = BlockProperty::new(Property::Facing);
+    pub const FLOWER_AMOUNT: BlockProperty<u8> = BlockProperty::new(Property::FlowerAmount);
+    pub const HALF: BlockProperty<Half> = BlockProperty::new(Property::Half);
+    pub const HANGING: BlockProperty<bool> = BlockProperty::new(Property::Hanging);
+    pub const HAS_BOOK: BlockProperty<bool> = BlockProperty::new(Property::HasBook);
+    pub const HAS_BOTTLE_0: BlockProperty<bool> = BlockProperty::new(Property::HasBottle0);
+    pub const HAS_BOTTLE_1: BlockProperty<bool> = BlockProperty::new(Property::HasBottle1);
+    pub const HAS_BOTTLE_2: BlockProperty<bool> = BlockProperty::new(Property::HasBottle2);
+    pub const HAS_RECORD: BlockProperty<bool> = BlockProperty::new(Property::HasRecord);
+    pub const HATCH: BlockProperty<u8> = BlockProperty::new(Property::Hatch);
+    pub const HINGE: BlockProperty<DoorHingeSide> = BlockProperty::new(Property::Hinge);
+    pub const HONEY_LEVEL: BlockProperty<u8> = BlockProperty::new(Property::HoneyLevel);
+    pub const HYDRATION: BlockProperty<u8> = BlockProperty::new(Property::Hydration);
+    pub const INSTRUMENT: BlockProperty<NoteBlockInstrument> =
+        BlockProperty::new(Property::Instrument);
+    pub const INVERTED: BlockProperty<bool> = BlockProperty::new(Property::Inverted);
+    pub const IN_WALL: BlockProperty<bool> = BlockProperty::new(Property::InWall);
+    pub const LAYERS: BlockProperty<u8> = BlockProperty::new(Property::Layers);
+    pub const LEAVES: BlockProperty<BambooLeaves> = BlockProperty::new(Property::Leaves);
+    pub const LEVEL: BlockProperty<u8> = BlockProperty::new(Property::Level);
+    pub const LIT: BlockProperty<bool> = BlockProperty::new(Property::Lit);
+    pub const LOCKED: BlockProperty<bool> = BlockProperty::new(Property::Locked);
+    pub const MOISTURE: BlockProperty<u8> = BlockProperty::new(Property::Moisture);
+    pub const NATURAL: BlockProperty<bool> = BlockProperty::new(Property::Natural);
+    pub const NORTH_BOOL: BlockProperty<bool> = BlockProperty::new(Property::North);
+    pub const NORTH_REDSTONE_SIDE: BlockProperty<RedstoneSide> =
+        BlockProperty::new(Property::North);
+    pub const NORTH_WALL_SIDE: BlockProperty<WallSide> = BlockProperty::new(Property::North);
+    pub const NOTE: BlockProperty<u8> = BlockProperty::new(Property::Note);
+    pub const OCCUPIED: BlockProperty<bool> = BlockProperty::new(Property::Occupied);
+    pub const OMINOUS: BlockProperty<bool> = BlockProperty::new(Property::Ominous);
+    pub const OPEN: BlockProperty<bool> = BlockProperty::new(Property::Open);
+    pub const ORIENTATION: BlockProperty<FrontAndTop> = BlockProperty::new(Property::Orientation);
+    pub const PART: BlockProperty<BedPart> = BlockProperty::new(Property::Part);
+    pub const PERSISTENT: BlockProperty<bool> = BlockProperty::new(Property::Persistent);
+    pub const PICKLES: BlockProperty<u8> = BlockProperty::new(Property::Pickles);
+    pub const PISTON_TYPE: BlockProperty<PistonType> = BlockProperty::new(Property::Type);
+    pub const POTENT_SULFUR_STATE: BlockProperty<PotentSulfurState> =
+        BlockProperty::new(Property::PotentSulfurState);
+    pub const POWER: BlockProperty<u8> = BlockProperty::new(Property::Power);
+    pub const POWERED: BlockProperty<bool> = BlockProperty::new(Property::Powered);
+    pub const RAIL_SHAPE: BlockProperty<RailShape> = BlockProperty::new(Property::Shape);
+    pub const ROTATION: BlockProperty<u8> = BlockProperty::new(Property::Rotation);
+    pub const SCULK_SENSOR_PHASE: BlockProperty<SculkSensorPhase> =
+        BlockProperty::new(Property::SculkSensorPhase);
+    pub const SEGMENT_AMOUNT: BlockProperty<u8> = BlockProperty::new(Property::SegmentAmount);
+    pub const SHORT: BlockProperty<bool> = BlockProperty::new(Property::Short);
+    pub const SHRIEKING: BlockProperty<bool> = BlockProperty::new(Property::Shrieking);
+    pub const SIDE_CHAIN: BlockProperty<SideChainPart> = BlockProperty::new(Property::SideChain);
+    pub const SIGNAL_FIRE: BlockProperty<bool> = BlockProperty::new(Property::SignalFire);
+    pub const SLAB_TYPE: BlockProperty<SlabType> = BlockProperty::new(Property::Type);
+    pub const SLOT_0_OCCUPIED: BlockProperty<bool> = BlockProperty::new(Property::Slot0Occupied);
+    pub const SLOT_1_OCCUPIED: BlockProperty<bool> = BlockProperty::new(Property::Slot1Occupied);
+    pub const SLOT_2_OCCUPIED: BlockProperty<bool> = BlockProperty::new(Property::Slot2Occupied);
+    pub const SLOT_3_OCCUPIED: BlockProperty<bool> = BlockProperty::new(Property::Slot3Occupied);
+    pub const SLOT_4_OCCUPIED: BlockProperty<bool> = BlockProperty::new(Property::Slot4Occupied);
+    pub const SLOT_5_OCCUPIED: BlockProperty<bool> = BlockProperty::new(Property::Slot5Occupied);
+    pub const SNOWY: BlockProperty<bool> = BlockProperty::new(Property::Snowy);
+    pub const SOUTH_BOOL: BlockProperty<bool> = BlockProperty::new(Property::South);
+    pub const SOUTH_REDSTONE_SIDE: BlockProperty<RedstoneSide> =
+        BlockProperty::new(Property::South);
+    pub const SOUTH_WALL_SIDE: BlockProperty<WallSide> = BlockProperty::new(Property::South);
+    pub const STAGE: BlockProperty<u8> = BlockProperty::new(Property::Stage);
+    pub const STAIRS_SHAPE: BlockProperty<StairsShape> = BlockProperty::new(Property::Shape);
+    pub const STRUCTURE_MODE: BlockProperty<StructureMode> = BlockProperty::new(Property::Mode);
+    pub const TEST_BLOCK_MODE: BlockProperty<TestBlockMode> = BlockProperty::new(Property::Mode);
+    pub const THICKNESS: BlockProperty<SpeleothemThickness> =
+        BlockProperty::new(Property::Thickness);
+    pub const TILT: BlockProperty<Tilt> = BlockProperty::new(Property::Tilt);
+    pub const TIP: BlockProperty<bool> = BlockProperty::new(Property::Tip);
+    pub const TRIAL_SPAWNER_STATE: BlockProperty<TrialSpawnerState> =
+        BlockProperty::new(Property::TrialSpawnerState);
+    pub const TRIGGERED: BlockProperty<bool> = BlockProperty::new(Property::Triggered);
+    pub const UNSTABLE: BlockProperty<bool> = BlockProperty::new(Property::Unstable);
+    pub const UP: BlockProperty<bool> = BlockProperty::new(Property::Up);
+    pub const VAULT_STATE: BlockProperty<VaultState> = BlockProperty::new(Property::VaultState);
+    pub const VERTICAL_DIRECTION: BlockProperty<Direction> =
+        BlockProperty::new(Property::VerticalDirection);
+    pub const WATERLOGGED: BlockProperty<bool> = BlockProperty::new(Property::Waterlogged);
+    pub const WEST_BOOL: BlockProperty<bool> = BlockProperty::new(Property::West);
+    pub const WEST_REDSTONE_SIDE: BlockProperty<RedstoneSide> = BlockProperty::new(Property::West);
+    pub const WEST_WALL_SIDE: BlockProperty<WallSide> = BlockProperty::new(Property::West);
+}
