@@ -2,6 +2,7 @@ use bevy_ecs::prelude::{Entity, Query, Res, ResMut};
 use ferrumc_core::collisions::bounds::CollisionBounds;
 use ferrumc_core::tick::TickCounter;
 use ferrumc_core::transform::position::Position;
+use ferrumc_core::transform::rotation::Rotation;
 use ferrumc_net::connection::StreamWriter;
 use ferrumc_net::packets::outgoing::block_change_ack::BlockChangeAck;
 use ferrumc_net::packets::outgoing::block_update::BlockUpdate;
@@ -19,6 +20,8 @@ use ferrumc_core::mq;
 use ferrumc_inventories::hotbar::Hotbar;
 use ferrumc_inventories::inventory::Inventory;
 use ferrumc_text::{Color, NamedColor, TextComponentBuilder};
+use ferrumc_world::block_behaviour::{behaviour_at, BlockWorld, InteractionResult, Use};
+use ferrumc_world::block_state::Direction;
 use ferrumc_world::block_state_id::BlockStateId;
 use once_cell::sync::Lazy;
 use std::collections::HashMap;
@@ -43,14 +46,21 @@ static ITEM_TO_BLOCK_MAPPING: Lazy<HashMap<i32, BlockStateId>> = Lazy::new(|| {
 pub fn handle(
     receiver: Res<PlaceBlockReceiver>,
     state: Res<GlobalStateResource>,
-    query: Query<(Entity, &StreamWriter, &Inventory, &Hotbar, &Position)>,
+    query: Query<(
+        Entity,
+        &StreamWriter,
+        &Inventory,
+        &Hotbar,
+        &Position,
+        &Rotation,
+    )>,
     pos_q: Query<(&Position, &CollisionBounds)>,
     mut fluid_scheduler: ResMut<FluidScheduler>,
     dim: Res<ActiveDimension>,
     tick: Res<TickCounter>,
 ) {
     'ev_loop: for (event, eid) in receiver.0.try_iter() {
-        let Ok((entity, conn, inventory, hotbar, _)) = query.get(eid) else {
+        let Ok((entity, conn, inventory, hotbar, _, rotation)) = query.get(eid) else {
             debug!("Could not get connection for entity {:?}", eid);
             continue;
         };
@@ -60,6 +70,32 @@ pub fn handle(
         }
         match event.hand.0 {
             0 => {
+                // Vanilla gives the block the first say: a door opens rather than a block being
+                // placed against it. Only a sneaking player with something in hand skips this, and
+                // whether a player is sneaking is not tracked yet.
+                let clicked: BlockPos = event.position.into();
+                let mut world = UsedBlocks::new(&state.0);
+                let clicked_state = world.block_at(clicked);
+                if let Some(behaviour) = behaviour_at(clicked_state) {
+                    let mut ctx = Use {
+                        world: &mut world,
+                        pos: clicked,
+                        player_facing: Direction::from_yaw(rotation.yaw),
+                    };
+                    if behaviour.use_without_item(clicked_state, &mut ctx)
+                        == InteractionResult::Success
+                    {
+                        let changed = world.changed;
+                        broadcast_changes(&changed, &query);
+                        if let Err(err) = conn.send_packet_ref(&BlockChangeAck {
+                            sequence: event.sequence,
+                        }) {
+                            error!("Failed to acknowledge block use: {:?}", err);
+                        }
+                        continue 'ev_loop;
+                    }
+                }
+
                 let Ok(slot) = hotbar.get_selected_item(inventory) else {
                     error!("Could not fetch {:?}", eid);
                     continue 'ev_loop;
@@ -78,7 +114,7 @@ pub fn handle(
                         "Placing block with item ID: {}, mapped to block state ID: {}",
                         item_id.0, mapped_block_state_id
                     );
-                    let pos: BlockPos = event.position.into();
+                    let pos: BlockPos = clicked;
                     if pos.pos.y >= 319 {
                         mq::queue(
                             TextComponentBuilder::new(
@@ -187,7 +223,7 @@ pub fn handle(
                     let offset_chunk = offset_pos.chunk();
                     let (offset_chunk_x, offset_chunk_z) = (offset_chunk.x(), offset_chunk.z());
                     let render_distance = get_global_config().chunk_render_distance as i32;
-                    for (_, conn, _, _, pos) in query.iter() {
+                    for (_, conn, _, _, pos, _) in query.iter() {
                         let chunk = pos.chunk();
                         let (chunk_x, chunk_z) = (chunk.x, chunk.y);
 
@@ -231,6 +267,82 @@ pub fn handle(
             }
             _ => {
                 debug!("Invalid hand");
+            }
+        }
+    }
+}
+
+/// The world as a block behaviour sees it, remembering what it changed so the changes can be sent.
+///
+/// Each read and write takes the chunk guard and gives it back before the next one: holding two at
+/// once on the same shard deadlocks the tick thread.
+struct UsedBlocks<'a> {
+    state: &'a ferrumc_state::GlobalState,
+    changed: Vec<(BlockPos, BlockStateId)>,
+}
+
+impl<'a> UsedBlocks<'a> {
+    fn new(state: &'a ferrumc_state::GlobalState) -> Self {
+        Self {
+            state,
+            changed: Vec::new(),
+        }
+    }
+}
+
+impl BlockWorld for UsedBlocks<'_> {
+    fn block_at(&mut self, pos: BlockPos) -> BlockStateId {
+        match ferrumc_utils::world::load_or_generate_mut(self.state, pos.chunk(), "overworld") {
+            Ok(chunk) => chunk.get_block(pos.chunk_block_pos()),
+            Err(err) => {
+                error!("Could not read the block at {}: {:?}", pos, err);
+                BlockStateId::new(0)
+            }
+        }
+    }
+
+    fn set_block(&mut self, pos: BlockPos, state: BlockStateId) {
+        match ferrumc_utils::world::load_or_generate_mut(self.state, pos.chunk(), "overworld") {
+            Ok(mut chunk) => {
+                chunk.set_block(pos.chunk_block_pos(), state);
+                self.changed.push((pos, state));
+            }
+            Err(err) => error!("Could not set the block at {}: {:?}", pos, err),
+        }
+    }
+}
+
+/// Tells everyone in range about blocks a behaviour changed.
+fn broadcast_changes(
+    changed: &[(BlockPos, BlockStateId)],
+    query: &Query<(
+        Entity,
+        &StreamWriter,
+        &Inventory,
+        &Hotbar,
+        &Position,
+        &Rotation,
+    )>,
+) {
+    let render_distance = get_global_config().chunk_render_distance as i32;
+    for &(pos, state) in changed {
+        let packet = BlockUpdate {
+            location: NetworkPosition {
+                x: pos.pos.x,
+                y: pos.pos.y as i16,
+                z: pos.pos.z,
+            },
+            block_state_id: NetworkBlockState::from(state),
+        };
+        let chunk = pos.chunk();
+        for (_, conn, _, _, player, _) in query.iter() {
+            let player_chunk = player.chunk();
+            if (chunk.x() - player_chunk.x).abs() <= render_distance
+                && (chunk.z() - player_chunk.y).abs() <= render_distance
+            {
+                if let Err(err) = conn.send_packet_ref(&packet) {
+                    error!("Failed to send block update packet: {:?}", err);
+                }
             }
         }
     }

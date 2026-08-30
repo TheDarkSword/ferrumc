@@ -69,12 +69,45 @@ Whether a block is in the way is its collision shape's business. The previous ru
 air and water by name and treated everything else as a full cube, which made torches, carpets and
 flowers solid.
 
+## Behaviour
+
+What a block *does* is a table keyed on block, holding an entry only where there is behaviour to
+hold. Vanilla dispatches this virtually across 326 block classes, most of which override nothing; a
+block with no entry here costs a bounds check.
+
+Blocks register by the vanilla tag that groups them — `#minecraft:doors`, `#minecraft:trapdoors` —
+so a new wood type gains a door without anything in the code changing. Tags come from the version's
+own data with their references to other tags resolved.
+
+Method names follow `BlockBehaviour` in the vanilla sources so the two read side by side.
+Implemented so far:
+
+| Behaviour | Blocks |
+|---|---|
+| `use_without_item` | doors, trapdoors, fence gates |
+| `update_shape` | doors |
+
+A door's two halves stay in step the way vanilla does it: the other half takes on the state of the
+one that changed and keeps only its own `half`. Setting `open` on both instead would work until
+something else — facing, hinge, powered — needed to travel with it.
+
+Iron doors and iron trapdoors do not open by hand. That is `BlockSetType.IRON` in the sources, and
+the one set with `canOpenByHand` false among doors; copper opens.
+
+Using a block comes before placing one, as in vanilla, so a door opens rather than a block being
+placed against it. Vanilla skips that for a sneaking player holding something; whether a player is
+sneaking is not tracked yet.
+
+Not carried across yet: block sounds, game events, and the scheduled tick a waterlogged trapdoor
+asks for. Random and scheduled ticks have hooks and nothing driving them until the tick system.
+
 ## Regenerating
 
 ```bash
 scripts/extract_block_shapes.py     # asks the game for shapes; needs 26.1 or newer
 scripts/build_block_states.py       # property tables and blockstates.json
 scripts/build_block_shapes.py       # shape tables
+scripts/build_block_tags.py         # block tags, references resolved
 scripts/sync_data_assets.py --check # reports anything left behind by a version bump
 ```
 

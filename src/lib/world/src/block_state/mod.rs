@@ -88,11 +88,77 @@ impl<T> BlockProperty<T> {
     }
 }
 
+impl Direction {
+    /// The way back.
+    #[must_use]
+    pub const fn opposite(self) -> Self {
+        match self {
+            Self::Down => Self::Up,
+            Self::Up => Self::Down,
+            Self::North => Self::South,
+            Self::South => Self::North,
+            Self::West => Self::East,
+            Self::East => Self::West,
+        }
+    }
+
+    /// One block this way.
+    #[must_use]
+    pub const fn offset(self) -> (i32, i32, i32) {
+        match self {
+            Self::Down => (0, -1, 0),
+            Self::Up => (0, 1, 0),
+            Self::North => (0, 0, -1),
+            Self::South => (0, 0, 1),
+            Self::West => (-1, 0, 0),
+            Self::East => (1, 0, 0),
+        }
+    }
+
+    /// Which way a player at this yaw is facing, following `Direction.fromYRot`.
+    ///
+    /// The horizontal directions are ordered south, west, north, east by the game's own 2D index,
+    /// and a yaw of zero looks south.
+    #[must_use]
+    pub fn from_yaw(yaw: f32) -> Self {
+        const HORIZONTAL: [Direction; 4] = [
+            Direction::South,
+            Direction::West,
+            Direction::North,
+            Direction::East,
+        ];
+        let index = (f64::from(yaw) / 90.0 + 0.5).floor() as i32 & 3;
+        HORIZONTAL[index as usize]
+    }
+
+    /// Which axis it runs along.
+    #[must_use]
+    pub const fn axis(self) -> Axis {
+        match self {
+            Self::Down | Self::Up => Axis::Y,
+            Self::North | Self::South => Axis::Z,
+            Self::West | Self::East => Axis::X,
+        }
+    }
+}
+
 /// A block, without a particular state of it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct BlockId(u16);
 
 impl BlockId {
+    /// Where this block sits in the block table, which the tag lists index by.
+    #[must_use]
+    pub const fn index(self) -> u16 {
+        self.0
+    }
+
+    /// The block at that index, or `None` past the end of the table.
+    #[must_use]
+    pub fn from_index(index: u16) -> Option<Self> {
+        (usize::from(index) < BLOCKS.len()).then_some(Self(index))
+    }
+
     fn def(self) -> &'static generated::BlockDef {
         &BLOCKS[self.0 as usize]
     }

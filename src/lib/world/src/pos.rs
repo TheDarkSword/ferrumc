@@ -28,6 +28,13 @@ impl BlockPos {
         }
     }
 
+    /// The block one step this way.
+    #[must_use]
+    pub fn relative(self, direction: crate::block_state::Direction) -> Self {
+        let (x, y, z) = direction.offset();
+        Self::of(self.pos.x + x, self.pos.y + y, self.pos.z + z)
+    }
+
     pub fn column(&self) -> ColumnPos {
         ColumnPos { pos: self.pos.xz() }
     }

@@ -1,6 +1,8 @@
+pub mod block_behaviour;
 pub mod block_shape;
 pub mod block_state;
 pub mod block_state_id;
+pub mod block_tag;
 pub mod chunk;
 mod db_functions;
 pub mod dimension;
