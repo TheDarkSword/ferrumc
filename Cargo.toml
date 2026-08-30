@@ -49,6 +49,7 @@ members = [
     "src/lib/datapack",
     "src/lib/loot",
     "src/lib/predicates",
+    "src/lib/recipes",
     "src/lib/entities",
     "src/lib/physics",
     "src/lib/performance",
@@ -153,6 +154,7 @@ ferrumc-data = { path = "src/lib/data" }
 ferrumc-datapack = { path = "src/lib/datapack" }
 ferrumc-loot = { path = "src/lib/loot" }
 ferrumc-predicates = { path = "src/lib/predicates" }
+ferrumc-recipes = { path = "src/lib/recipes" }
 ferrumc-components = { path = "src/lib/components" }
 ferrumc-dashboard = { path = "src/lib/dashboard" }
 ferrumc-messages = { path = "src/lib/messages" }

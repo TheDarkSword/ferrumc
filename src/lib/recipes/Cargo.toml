@@ -1,0 +1,19 @@
+[package]
+name = "ferrumc-recipes"
+description = "Recipes: what the game can be made into, read from the packs that say so."
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+thiserror = { workspace = true }
+tracing = { workspace = true }
+serde_json = { workspace = true }
+ferrumc-datapack = { workspace = true }
+ferrumc-predicates = { workspace = true }
+ferrumc-registry = { workspace = true }
+
+[dev-dependencies]
+tempfile = { workspace = true }
+
+[lints]
+workspace = true

@@ -13,9 +13,7 @@ mod fluids;
 mod items;
 mod particles;
 mod potions;
-mod recipes;
 mod sounds;
-mod tags;
 
 pub const OUT_DIR: &str = "src/generated";
 
@@ -47,8 +45,6 @@ pub fn main() {
         (entities::build, "entities.rs"),
         (biomes::build, "biomes.rs"),
         (items::build, "items.rs"),
-        (recipes::build, "recipes.rs"),
-        (tags::build, "tags.rs"),
     ];
 
     // Build other files normally

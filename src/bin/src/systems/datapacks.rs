@@ -8,6 +8,7 @@ use ferrumc_datapack::{DatapackError, PackRepository, ResourceManager};
 use ferrumc_general_purpose::paths::get_root_path;
 use ferrumc_loot::LootTables;
 use ferrumc_predicates::Predicates;
+use ferrumc_recipes::RecipeBook;
 use std::sync::Arc;
 use tracing::info;
 
@@ -23,6 +24,8 @@ pub struct Datapacks {
     pub predicates: Arc<Predicates>,
     /// Every loot table, which is where each drop in the game comes from.
     pub loot: Arc<LootTables>,
+    /// Every recipe, which is what the game can be made into.
+    pub recipes: Arc<RecipeBook>,
 }
 
 impl Datapacks {
@@ -35,10 +38,12 @@ impl Datapacks {
             resources,
             predicates: Arc::default(),
             loot: Arc::default(),
+            recipes: Arc::default(),
         };
         packs.rebuild();
         packs.predicates = Arc::new(Predicates::load(&packs.resources));
         packs.loot = Arc::new(LootTables::load(&packs.resources));
+        packs.recipes = Arc::new(RecipeBook::load(&packs.resources));
         packs.report();
         Ok(packs)
     }
@@ -50,6 +55,7 @@ impl Datapacks {
         self.rebuild();
         self.predicates = Arc::new(Predicates::load(&self.resources));
         self.loot = Arc::new(LootTables::load(&self.resources));
+        self.recipes = Arc::new(RecipeBook::load(&self.resources));
         self.report();
         Ok(())
     }
@@ -75,8 +81,9 @@ impl Datapacks {
 
     fn report(&self) {
         info!(
-            "data packs loaded: {} ({} loot tables, {} predicates)",
+            "data packs loaded: {} ({} recipes, {} loot tables, {} predicates)",
             self.repository.selected().join(", "),
+            self.recipes.len(),
             self.loot.len(),
             self.predicates.len()
         );

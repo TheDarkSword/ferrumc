@@ -9,6 +9,7 @@ use tracing::error;
 pub fn handle(
     receiver: Res<ferrumc_net::ClickContainerReceiver>,
     mut inventories: Query<&mut Inventory>,
+    datapacks: Res<crate::systems::datapacks::Datapacks>,
 ) {
     for (event, eid) in receiver.0.try_iter() {
         // TODO: actually verify that the inventory is synced, this code assumes that the ClickContainer packet is 100% truthful
@@ -39,7 +40,7 @@ pub fn handle(
                 if (defined_slots::player::CRAFT_SLOT_1..=defined_slots::player::CRAFT_SLOT_4)
                     .contains(&(slot.number as u8))
                 {
-                    update_player_crafting_grid(&mut inventory, eid);
+                    update_player_crafting_grid(&mut inventory, eid, &datapacks.recipes);
                 }
             }
         } else {

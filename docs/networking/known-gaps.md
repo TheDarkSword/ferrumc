@@ -83,3 +83,15 @@ What that costs a player is client-side and mostly cosmetic — the creative sea
 book group items by tag — but it is wrong for every version but the newest. Fixing it needs a block
 table alongside the ones the remapper already carries, and the packet built per connection rather
 than once.
+
+## Entities are spawned with a stale type id
+
+The entity type sent in `spawn_entity` comes from a generated table that predates the 26.2 bump.
+131 of its 151 ids disagree with the version's own registry: a type was inserted before `cat`, and
+everything from there on is shifted by one or more. A pig therefore reaches the client as whatever
+now sits at the old index.
+
+The player is right, because that packet reads its id from `registries.json` rather than the table.
+
+Fixing it means regenerating the table, which needs the extractor rather than the vanilla reports:
+it carries health, dimensions and spawn rules that the reports do not have.

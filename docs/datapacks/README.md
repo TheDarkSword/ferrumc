@@ -181,3 +181,38 @@ The three fortune formulas are written and correct, and read a level of nought, 
 an enchantment on a tool yet. An ore therefore drops its base count.
 
 `slots` and `dynamic` entries read what a container or block entity holds, and produce nothing.
+
+## Recipes
+
+Every recipe is a file saying what goes in and what comes out. The shapes differ by type — a grid, a
+bag of ingredients, a furnace, a stonecutter, a smithing table — and an ingredient is one item, a
+list of them, or a tag.
+
+A **shaped** recipe is a pattern of symbols with a key:
+
+```json
+{"type": "minecraft:crafting_shaped", "key": {"#": "#minecraft:planks"},
+ "pattern": ["##", "##"], "result": {"id": "minecraft:crafting_table"}}
+```
+
+The grid is trimmed to the corner the items actually occupy before it is compared, which is what
+lets a two-by-two shape be laid anywhere in a three-by-three grid. The pattern is tried as written
+and mirrored left to right — **not** rotated: a recipe laid sideways does not craft, in the game or
+here.
+
+A **shapeless** recipe takes its ingredients in any arrangement. Matching them is an assignment
+rather than a walk: two ingredients can each accept either of two items, and taking the first that
+fits would strand the other.
+
+**Cooking** recipes carry their experience and their time, and the default time depends on the
+appliance — two hundred ticks in a furnace, a hundred in a blast furnace, a smoker or on a campfire.
+
+### What does not craft yet
+
+Sixteen types read and match nothing: every one of them reads or writes an item's components — a
+firework's colours, a book's pages, a repaired tool's damage — which is why vanilla writes them as
+code rather than data. A smithing trim is the same story.
+
+Only the player's own two-by-two grid crafts. A crafting table, furnace, stonecutter and smithing
+table all match correctly and have no screen to match in yet, and nothing tells the client which
+recipes exist, so the recipe book stays empty.

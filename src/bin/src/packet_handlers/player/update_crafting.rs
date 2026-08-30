@@ -1,50 +1,50 @@
 use bevy_ecs::prelude::Entity;
-use ferrumc_data::items::Item;
-use ferrumc_inventories::crafting::get_recipes_from_2x2;
 use ferrumc_inventories::defined_slots;
 use ferrumc_inventories::inventory::Inventory;
 use ferrumc_inventories::item::ItemID;
 use ferrumc_inventories::slot::InventorySlot;
 use ferrumc_net_codec::net_types::var_int::VarInt;
+use ferrumc_recipes::crafting::CraftingInput;
+use ferrumc_recipes::{Recipe, RecipeBook};
 use tracing::error;
 
-/// Takes in a player inventory and entity id and will update the survival crafting grid output based on its inputs
-pub fn update_player_crafting_grid(inventory: &mut Inventory, eid: Entity) {
-    let recipes = get_recipes_from_2x2([
-        [
-            get_inventory_slot(inventory, defined_slots::player::CRAFT_SLOT_1),
-            get_inventory_slot(inventory, defined_slots::player::CRAFT_SLOT_2),
-        ],
-        [
-            get_inventory_slot(inventory, defined_slots::player::CRAFT_SLOT_3),
-            get_inventory_slot(inventory, defined_slots::player::CRAFT_SLOT_4),
-        ],
-    ]);
+/// Works out what the player's two-by-two grid currently makes, and puts it in the output slot.
+pub fn update_player_crafting_grid(inventory: &mut Inventory, eid: Entity, recipes: &RecipeBook) {
+    let grid = [
+        defined_slots::player::CRAFT_SLOT_1,
+        defined_slots::player::CRAFT_SLOT_2,
+        defined_slots::player::CRAFT_SLOT_3,
+        defined_slots::player::CRAFT_SLOT_4,
+    ]
+    .map(|slot| item_in(inventory, slot));
 
-    if let Some(first) = recipes.first().and_then(|recipe| recipe.result.as_ref()) {
-        let item = Item::from_registry_key(first.id)
-            .unwrap_or_else(|| panic!("Failed to get item: {:?}", first.id));
+    let tags = ferrumc_registry::tags::current().item();
+    let made = CraftingInput::new(2, 2, &grid);
+    let made = recipes.match_grid(&tags, &made).and_then(Recipe::result);
 
-        let slot = InventorySlot {
-            item_id: Some(ItemID(VarInt(item.id as _))),
-            count: VarInt(first.count as _),
-            ..Default::default()
-        };
-
-        inventory
-            .set_item_with_update(defined_slots::player::CRAFT_SLOT_OUTPUT as _, slot, eid)
-            .unwrap_or_else(|err| error!("Failed to set player crafting output slot: {}", err))
-    } else {
+    let Some(made) = made else {
         inventory
             .clear_slot_with_update(defined_slots::player::CRAFT_SLOT_OUTPUT as _, eid)
-            .unwrap_or_else(|err| error!("Failed to clear player crafting output slot: {}", err))
-    }
+            .unwrap_or_else(|err| error!("Failed to clear player crafting output slot: {}", err));
+        return;
+    };
+
+    let slot = InventorySlot {
+        item_id: Some(ItemID(VarInt(made.item))),
+        count: VarInt(made.count),
+        ..Default::default()
+    };
+    inventory
+        .set_item_with_update(defined_slots::player::CRAFT_SLOT_OUTPUT as _, slot, eid)
+        .unwrap_or_else(|err| error!("Failed to set player crafting output slot: {}", err));
 }
 
-fn get_inventory_slot(inventory: &Inventory, slot: u8) -> Option<&Item> {
+/// The registry id of whatever is in a slot.
+fn item_in(inventory: &Inventory, slot: u8) -> Option<i32> {
     inventory
         .get_item(slot as usize)
         .ok()
-        .and_then(|slot| slot.and_then(|id| id.item_id))
-        .and_then(|item_id| Item::from_id(item_id.0 .0 as u16))
+        .flatten()
+        .and_then(|slot| slot.item_id)
+        .map(|item| item.0 .0)
 }

@@ -11,6 +11,4 @@ pub mod fluids;
 pub mod items;
 pub mod particles;
 pub mod potions;
-pub mod recipes;
 pub mod sounds;
-pub mod tags;
