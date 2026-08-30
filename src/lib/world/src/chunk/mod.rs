@@ -136,6 +136,28 @@ impl Chunk {
         self.sections[section as usize].get_block(pos.section_block_pos())
     }
 
+    /// The block light at a position in this chunk.
+    #[must_use]
+    pub fn block_light(&self, pos: ChunkBlockPos) -> u8 {
+        let section = (pos.y() + -self.height.min_y) / 16;
+        let Some(section) = self.sections.get(section as usize) else {
+            return 0;
+        };
+        section
+            .light
+            .block_light(pos.x(), (pos.y().rem_euclid(16)) as u8, pos.z())
+    }
+
+    pub fn set_block_light(&mut self, pos: ChunkBlockPos, level: u8) {
+        let section = (pos.y() + -self.height.min_y) / 16;
+        let Some(section) = self.sections.get_mut(section as usize) else {
+            return;
+        };
+        section
+            .light
+            .set_block_light(pos.x(), (pos.y().rem_euclid(16)) as u8, pos.z(), level);
+    }
+
     /// Sets every section in this chunk to a single uniform biome.
     ///
     /// `BiomeData::Mixed` network encoding is not yet implemented, so all biome assignment

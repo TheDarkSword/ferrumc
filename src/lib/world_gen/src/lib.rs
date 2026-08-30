@@ -423,6 +423,10 @@ impl WorldGenerator {
             }
         }
 
+        // 7. Work out the block light, so a generated chunk arrives lit rather than relying on
+        //    light data imported from somewhere else. Sky light is still the storage default.
+        ferrumc_world::light::relight_block_light(&mut chunk, pos);
+
         Ok(chunk)
     }
 

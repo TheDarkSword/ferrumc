@@ -10,6 +10,7 @@ pub mod dimension;
 pub mod errors;
 pub mod fluid;
 mod importing;
+pub mod light;
 pub mod metadata;
 pub mod neighbour_update;
 mod player;

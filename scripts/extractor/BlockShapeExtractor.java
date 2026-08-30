@@ -26,6 +26,8 @@ import net.minecraft.core.Direction;
 import net.minecraft.world.level.block.SupportType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
+import net.minecraft.world.level.lighting.LightEngine;
+import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
 
 public final class BlockShapeExtractor {
@@ -72,6 +74,25 @@ public final class BlockShapeExtractor {
         return SHAPES.size() - 1;
     }
 
+    /// Which faces of this block stop light on their own.
+    ///
+    /// Whether light passes between two blocks is really a question about both their faces
+    /// together, which is a pair and cannot be tabulated. What is tabulated is each face's own
+    /// answer, which settles every case but two partial faces that only cover the opening between
+    /// them.
+    private static int faceOccludesLight(final BlockState state) {
+        int bits = 0;
+        int index = 0;
+        for (final Direction direction : Direction.values()) {
+            final VoxelShape face = LightEngine.getOcclusionShape(state, direction);
+            if (Shapes.faceShapeOccludes(face, Shapes.empty())) {
+                bits |= 1 << index;
+            }
+            index++;
+        }
+        return bits;
+    }
+
     /// Which faces hold something up, and how much of one they hold.
     ///
     /// This is what a torch asks before staying on a block and what a door asks before standing on
@@ -115,13 +136,20 @@ public final class BlockShapeExtractor {
                 continue;
             }
             states.add(String.format(
-                "{\"collision\":%d,\"outline\":%d,\"face_sturdy\":%d,\"light_emission\":%d,\"hardness\":%s,"
+                "{\"collision\":%d,\"outline\":%d,\"face_sturdy\":%d,\"light_emission\":%d,"
+                    + "\"light_dampening\":%d,\"shape_occludes_light\":%b,\"propagates_skylight\":%b,"
+                    + "\"face_occludes_light\":%d,"
+                    + "\"hardness\":%s,"
                     + "\"air\":%b,\"solid\":%b,\"occludes\":%b,\"randomly_ticking\":%b,"
                     + "\"needs_tool\":%b,\"push_reaction\":\"%s\"}",
                 shape(state.getCollisionShape(EmptyBlockGetter.INSTANCE, origin)),
                 shape(state.getShape(EmptyBlockGetter.INSTANCE, origin)),
                 faceSturdy(state, origin),
                 state.getLightEmission(),
+                state.getLightDampening(),
+                state.useShapeForLightOcclusion(),
+                state.propagatesSkylightDown(),
+                faceOccludesLight(state),
                 trim(state.getDestroySpeed(EmptyBlockGetter.INSTANCE, origin)),
                 state.isAir(),
                 state.isSolid(),

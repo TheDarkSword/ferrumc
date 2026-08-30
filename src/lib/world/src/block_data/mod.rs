@@ -63,6 +63,63 @@ pub fn face_sturdy(state: BlockStateId, face: Direction, support: SupportType) -
     bits & (1 << (direction * 3 + support)) != 0
 }
 
+/// Two bytes per state: what it emits and how much it dims light, then the flags the engines
+/// branch on.
+static LIGHT: &[u8] = include_bytes!("../../../../../assets/data/block_shapes/light.bin");
+
+/// The brightest light there is.
+pub const MAX_LIGHT: u8 = 15;
+
+fn light_bytes(state: BlockStateId) -> (u8, u8) {
+    let index = state.raw() as usize * 2;
+    match LIGHT.get(index..index + 2) {
+        Some([value, flags]) => (*value, *flags),
+        // An id this server does not generate. Treating it as solid darkness is safer than as air.
+        _ => (MAX_LIGHT << 4, 0),
+    }
+}
+
+/// How much light this state gives off, zero to fifteen.
+#[must_use]
+pub fn light_emission(state: BlockStateId) -> u8 {
+    light_bytes(state).0 & 0x0F
+}
+
+/// How much a light level drops crossing this state.
+///
+/// Never less than one, because light has to run out even in air: the engine subtracts this per
+/// block, and a zero would let it travel for ever.
+#[must_use]
+pub fn light_opacity(state: BlockStateId) -> u8 {
+    (light_bytes(state).0 >> 4).max(1)
+}
+
+/// Whether skylight carries straight down through this state without dimming.
+#[must_use]
+pub fn propagates_skylight(state: BlockStateId) -> bool {
+    light_bytes(state).1 & 2 != 0
+}
+
+/// Whether this face stops light on its own, rather than by the state's opacity.
+///
+/// A slab dims nothing — its opacity is zero — and still stops light through its flat side.
+/// Whether light passes between two blocks is a question about both their faces together, which is
+/// a pair and cannot be tabulated; what is tabulated is each face's own answer. That settles every
+/// case except two partial faces that only cover the opening between them, where this says light
+/// passes and vanilla may not.
+#[must_use]
+pub fn face_occludes_light(state: BlockStateId, face: Direction) -> bool {
+    let index = match face {
+        Direction::Down => 0,
+        Direction::Up => 1,
+        Direction::North => 2,
+        Direction::South => 3,
+        Direction::West => 4,
+        Direction::East => 5,
+    };
+    light_bytes(state).1 & (1 << (index + 2)) != 0
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -130,6 +187,47 @@ mod tests {
             Direction::Up,
             SupportType::Centre
         ));
+    }
+
+    /// What each block does to light. A torch gives it off, stone stops it, glass lets it by, and
+    /// leaves and water take one off it.
+    #[test]
+    fn blocks_deal_with_light_differently() {
+        let state = |name: &str| {
+            BlockId::from_name(name)
+                .unwrap_or_else(|| panic!("{name} exists"))
+                .default_state()
+        };
+
+        assert_eq!(light_emission(state("minecraft:torch")), 14);
+        assert_eq!(light_emission(state("minecraft:stone")), 0);
+
+        assert_eq!(light_opacity(state("minecraft:stone")), 15);
+        assert_eq!(light_opacity(state("minecraft:water")), 1);
+        // Air dims light by one even though it stops nothing, or light would never run out.
+        assert_eq!(light_opacity(state("minecraft:air")), 1);
+        assert_eq!(light_opacity(state("minecraft:glass")), 1);
+
+        assert!(propagates_skylight(state("minecraft:air")));
+        assert!(propagates_skylight(state("minecraft:glass")));
+        assert!(!propagates_skylight(state("minecraft:stone")));
+    }
+
+    /// A slab dims nothing and still stops light through its flat side. Stone stops light by being
+    /// opaque rather than by its shape, so none of its faces occlude on their own.
+    #[test]
+    fn a_face_can_stop_light_on_its_own() {
+        let slab = BlockId::from_name("minecraft:oak_slab")
+            .expect("slabs exist")
+            .default_state();
+        assert_eq!(light_opacity(slab), 1);
+        assert!(face_occludes_light(slab, Direction::Down));
+        assert!(!face_occludes_light(slab, Direction::Up));
+
+        let stone = BlockId::from_name("minecraft:stone")
+            .expect("stone exists")
+            .default_state();
+        assert!(!face_occludes_light(stone, Direction::Down));
     }
 
     /// It is a property of the state, not of the block: a fully grown crop is done growing.

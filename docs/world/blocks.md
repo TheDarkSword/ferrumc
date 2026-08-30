@@ -155,6 +155,28 @@ type — rather than carrying a fourth shape per state and the boolean algebra t
 sits on a fence post, whose face is not full but holds a centre; it does not sit on a bottom slab,
 whose top is half a block below the face.
 
+## Light
+
+Light spreads outwards from what gives it off, losing at least one level per block and more through
+anything that dims it. Taking a light away is the harder direction: everything it lit has to be
+darkened first and then relit from whatever else still reaches it, because a level does not say
+which of several sources it came from.
+
+Two queues do that, as in vanilla: one carries light outwards, the other carries darkness, and
+darkness is drained first. Both walk the six directions breadth-first, and an entry remembers which
+directions it may still spread in so light never travels back the way it came.
+
+What each state does to light — how much it gives off, how much it dims — comes from the extractor.
+So does the awkward part: a slab dims nothing and still stops light through its flat side, because
+some blocks occlude by shape rather than by opacity. Whether light passes between two blocks is a
+question about both their faces together, which is a pair and cannot be tabulated, so each face's
+own answer is, which settles every case but two partial faces that only cover the opening between
+them.
+
+A generated chunk lights itself from whatever is in it. What is not done yet is in
+[deferred work](../../internal_docs/deferred.md): sky light, light across a chunk border, and
+relighting when a block changes.
+
 ## Regenerating
 
 ```bash

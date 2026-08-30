@@ -47,6 +47,22 @@ def main() -> None:
         indices = [0 if state is None else state[field] for state in states]
         (OUT_BIN / f"{field}.bin").write_bytes(struct.pack(f"<{len(indices)}H", *indices))
 
+    # How each state deals with light: what it emits, how much it dims what passes through, and
+    # the two flags the engines branch on. Two bytes a state.
+    light = bytearray(len(states) * 2)
+    for index, state in enumerate(states):
+        if state is None:
+            continue
+        light[index * 2] = state["light_emission"] | (state["light_dampening"] << 4)
+        # One byte: two flags and one bit per face saying whether that face stops light by itself.
+        flags = state["face_occludes_light"] << 2
+        if state["shape_occludes_light"]:
+            flags |= 1
+        if state["propagates_skylight"]:
+            flags |= 2
+        light[index * 2 + 1] = flags
+    (OUT_BIN / "light.bin").write_bytes(light)
+
     # Which faces of each state hold something up: one bit per direction and support type, in the
     # game's own order, so three bytes a state.
     sturdy = bytearray(len(states) * 3)
