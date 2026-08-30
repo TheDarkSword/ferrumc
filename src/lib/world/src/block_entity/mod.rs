@@ -144,7 +144,7 @@ impl BlockEntity {
 
 /// Whether this block is one of the signs, which all share a block entity.
 fn is_sign(block: BlockId) -> bool {
-    crate::block_tag::tag("minecraft:all_signs").is_some_and(|tag| tag.contains(block))
+    crate::block_tag::is_in(block, "minecraft:all_signs")
 }
 
 /// A sign as the client reads it.

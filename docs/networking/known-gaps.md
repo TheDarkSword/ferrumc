@@ -71,3 +71,15 @@ practice.
 
 Inferring by value is right for most registries. Fixing this properly means carrying the field types
 from the vanilla codecs, which is Phase 3 work.
+
+## Tag ids are the server's own
+
+`update_tags` carries bare registry indices, and those shift between releases. Item, entity, sound,
+particle and effect ids sent elsewhere are translated for the client's version; this packet is built
+once and sent as-is, so a client on 1.21 is told the current version's index of every item and block
+in every tag.
+
+What that costs a player is client-side and mostly cosmetic — the creative search and the recipe
+book group items by tag — but it is wrong for every version but the newest. Fixing it needs a block
+table alongside the ones the remapper already carries, and the packet built per connection rather
+than once.

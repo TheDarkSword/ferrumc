@@ -110,3 +110,59 @@ impl ResourceManager {
         found
     }
 }
+
+/// The pairing of a directory with the extension its files carry, which is what turns a file
+/// location into the id of the thing inside it.
+///
+/// Vanilla's `FileToIdConverter`: `tags/block` plus `.json` maps
+/// `minecraft:tags/block/logs.json` to `minecraft:logs` and back.
+pub struct FileToId {
+    prefix: String,
+    extension: &'static str,
+}
+
+impl FileToId {
+    pub fn json(prefix: impl Into<String>) -> Self {
+        Self {
+            prefix: prefix.into(),
+            extension: ".json",
+        }
+    }
+
+    /// The file the thing of this id lives in.
+    pub fn id_to_file(&self, id: &Identifier) -> Option<Identifier> {
+        id.with_path(&format!("{}/{}{}", self.prefix, id.path(), self.extension))
+            .ok()
+    }
+
+    /// The id of the thing this file holds.
+    pub fn file_to_id(&self, file: &Identifier) -> Option<Identifier> {
+        file.path()
+            .strip_prefix(&self.prefix)?
+            .strip_prefix('/')?
+            .strip_suffix(self.extension)
+            .and_then(|path| file.with_path(path).ok())
+    }
+
+    /// Every file in this directory, across the stack, keyed by the id it holds.
+    pub fn list_stacks(&self, manager: &ResourceManager) -> BTreeMap<Identifier, Vec<Resource>> {
+        manager
+            .list_stacks(&self.prefix, |id| self.matches(id))
+            .into_iter()
+            .filter_map(|(file, stack)| Some((self.file_to_id(&file)?, stack)))
+            .collect()
+    }
+
+    /// The same, keeping only the pack that won each id.
+    pub fn list(&self, manager: &ResourceManager) -> BTreeMap<Identifier, Resource> {
+        manager
+            .list(&self.prefix, |id| self.matches(id))
+            .into_iter()
+            .filter_map(|(file, resource)| Some((self.file_to_id(&file)?, resource)))
+            .collect()
+    }
+
+    fn matches(&self, id: &Identifier) -> bool {
+        id.path().ends_with(self.extension)
+    }
+}

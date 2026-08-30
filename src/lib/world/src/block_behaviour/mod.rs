@@ -19,7 +19,7 @@ mod trapdoor;
 
 use crate::block_state::{BlockId, Direction};
 use crate::block_state_id::BlockStateId;
-use crate::block_tag::tag;
+use crate::block_tag::blocks;
 use crate::pos::BlockPos;
 use crate::scheduler::{TickKind, TickPriority};
 use std::sync::LazyLock;
@@ -136,11 +136,8 @@ fn register(
     name: &str,
     behaviour: &'static dyn BlockBehaviour,
 ) {
-    let Some(group) = tag(name) else {
-        // A tag the version does not have means the blocks are not there either.
-        return;
-    };
-    for block in group.blocks() {
+    // A tag the version does not have means the blocks are not there either.
+    for block in blocks(name) {
         table[usize::from(block.index())] = Some(behaviour);
     }
 }

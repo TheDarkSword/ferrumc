@@ -76,8 +76,9 @@ hold. Vanilla dispatches this virtually across 326 block classes, most of which 
 block with no entry here costs a bounds check.
 
 Blocks register by the vanilla tag that groups them — `#minecraft:doors`, `#minecraft:trapdoors` —
-so a new wood type gains a door without anything in the code changing. Tags come from the version's
-own data with their references to other tags resolved.
+so a new wood type gains a door without anything in the code changing. Tags are read from the
+loaded datapacks, so what a tag holds follows the packs rather than a table built into the binary;
+see [Datapacks](../datapacks/README.md).
 
 Method names follow `BlockBehaviour` in the vanilla sources so the two read side by side.
 Implemented so far:
@@ -219,7 +220,6 @@ else has to change.
 scripts/extract_block_shapes.py     # asks the game for shapes; needs 26.1 or newer
 scripts/build_block_states.py       # property tables and blockstates.json
 scripts/build_block_shapes.py       # shape tables
-scripts/build_block_tags.py         # block tags, references resolved
 scripts/sync_data_assets.py --check # reports anything left behind by a version bump
 ```
 

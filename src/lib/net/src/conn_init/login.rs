@@ -7,7 +7,7 @@ use crate::errors::{NetAuthenticationError, NetError, PacketError};
 use crate::packets::incoming::packet_skeleton::PacketSkeleton;
 use crate::packets::outgoing::login_success::{LoginSuccessPacket, LoginSuccessProperties};
 use crate::packets::outgoing::set_default_spawn_position::DEFAULT_SPAWN_POSITION;
-use crate::packets::outgoing::update_tags::UPDATE_TAGS_PACKET;
+use crate::packets::outgoing::update_tags;
 use crate::packets::outgoing::{commands::CommandsPacket, registry_data::registry_packets_for};
 use crate::ConnState::*;
 use ferrumc_config::server_config::{get_global_config, ServerConfig};
@@ -347,7 +347,7 @@ async fn finish_configuration(
     // Send tags. Without this the client treats every tag as empty, which (among other things)
     // breaks fluid rendering and physics: lava renders with the water sprite and water applies no
     // movement resistance, because the client reads fluid identity from the lava/water tags.
-    conn_write.send_packet_ref(&*UPDATE_TAGS_PACKET)?;
+    conn_write.send_packet_ref(&*update_tags::current())?;
 
     // Send brand
     conn_write.send_packet(ClientBoundPluginMessagePacket::brand())?;

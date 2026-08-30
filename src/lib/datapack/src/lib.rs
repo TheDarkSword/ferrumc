@@ -12,13 +12,15 @@ pub mod manager;
 pub mod meta;
 pub mod pack;
 pub mod repository;
+pub mod tag;
 
 pub use error::DatapackError;
 pub use id::Identifier;
-pub use manager::{Resource, ResourceManager};
+pub use manager::{FileToId, Resource, ResourceManager};
 pub use meta::{PackCompatibility, PackFormat, PackMetadata};
 pub use pack::{DirPack, PackResources, ZipPack};
 pub use repository::{PackRepository, VANILLA_PACK_ID};
+pub use tag::{RawTags, TagId, TagRegistry};
 
 /// The pack the server ships with, built from the extracted vanilla data.
 static VANILLA_PACK: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/vanilla.zip"));
