@@ -11,7 +11,7 @@ use tracing::{error, warn};
 
 // The number of block entries in the mappings file
 // Go to the .etc/blockstates.json file, see what the last ID is, and add 1 to it.
-const BLOCK_ENTRIES: usize = 27914;
+const BLOCK_ENTRIES: usize = 32366;
 
 const BLOCKSFILE: &str = include_str!("../../../../assets/data/blockstates.json");
 

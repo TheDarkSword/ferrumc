@@ -55,21 +55,14 @@ mod tests {
     fn test_lookup_item_protocol_id() {
         setup(); // This function is now free, but we call it for consistency
 
-        // Test "apple"
-        let apple_id = lookup_item_protocol_id("minecraft:apple");
-        assert!(
-            apple_id.is_some(),
-            "lookup_item_protocol_id(\"minecraft:apple\") failed"
-        );
-        assert_eq!(apple_id.unwrap(), 857);
-
-        // Test "cobblestone"
-        let cobble_id = lookup_item_protocol_id("minecraft:cobblestone");
-        assert!(
-            cobble_id.is_some(),
-            "lookup_item_protocol_id(\"minecraft:cobblestone\") failed"
-        );
-        // Add assert_eq! if you know the ID
+        // Which number an item has moves with every release, so the numbers are not the subject
+        // here: that a known item resolves to one at all is.
+        for name in ["minecraft:apple", "minecraft:cobblestone"] {
+            assert!(
+                lookup_item_protocol_id(name).is_some(),
+                "{name} should be in the item registry"
+            );
+        }
     }
 
     #[test]
@@ -83,10 +76,10 @@ mod tests {
     fn test_lookup_item_name() {
         setup();
 
-        // Test "apple" (ID 857)
-        let apple_name = lookup_item_name(857);
-        assert!(apple_name.is_some(), "lookup_item_name(857) failed");
-        assert_eq!(apple_name.unwrap(), "minecraft:apple");
+        // A round trip rather than a literal id, which would need editing every release and
+        // would pass against a table left behind from an older one.
+        let apple = lookup_item_protocol_id("minecraft:apple").expect("apples exist");
+        assert_eq!(lookup_item_name(apple), Some("minecraft:apple"));
     }
 
     #[test]
