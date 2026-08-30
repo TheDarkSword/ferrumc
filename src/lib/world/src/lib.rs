@@ -6,6 +6,7 @@ pub mod block_state;
 pub mod block_state_id;
 pub mod block_tag;
 pub mod chunk;
+pub mod chunk_level;
 mod db_functions;
 pub mod dimension;
 pub mod errors;

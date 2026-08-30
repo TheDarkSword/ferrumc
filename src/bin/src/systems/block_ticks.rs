@@ -57,11 +57,25 @@ pub fn scheduled(
     mut scheduler: ResMut<FluidScheduler>,
     tick: Res<TickCounter>,
     player_query: Query<(&StreamWriter, &Position)>,
+    levels: Res<super::chunk_levels::Levels>,
 ) {
     let current = tick.get();
     let due = scheduler
         .0
         .drain_ordered(current, MAX_SCHEDULED_TICKS, TickKind::Block);
+    if due.is_empty() {
+        return;
+    }
+    // A tick due in a chunk that is not simulated waits rather than running: vanilla leaves it in
+    // the chunk, and putting it back is how it stays due without being lost.
+    let (due, waiting): (Vec<_>, Vec<_>) = due
+        .into_iter()
+        .partition(|tick| levels.0.status(tick.pos.chunk()).ticks_blocks());
+    for tick in waiting {
+        scheduler
+            .0
+            .schedule_with_priority(tick.pos, tick.kind, current, 0, tick.priority);
+    }
     if due.is_empty() {
         return;
     }
@@ -89,10 +103,13 @@ pub fn random(
     tick: Res<TickCounter>,
     mut positions: ResMut<RandomTickPositions>,
     player_query: Query<(&StreamWriter, &Position)>,
+    levels: Res<super::chunk_levels::Levels>,
 ) {
     let players: Vec<_> = player_query.iter().collect();
     // The chunks are listed first and the map released, so loading a chunk to write to it later
     // cannot deadlock against the iterator.
+    // Only what is close enough to a player to be simulated. A chunk at the edge of what someone
+    // can see is kept and sent; nothing in it grows.
     let chunks: Vec<ChunkPos> = state
         .0
         .world
@@ -100,6 +117,7 @@ pub fn random(
         .iter()
         .filter(|entry| entry.key().1 == "overworld")
         .map(|entry| entry.key().0)
+        .filter(|&pos| levels.0.status(pos).ticks_blocks())
         .collect();
 
     let current = tick.get();
@@ -144,4 +162,60 @@ pub fn random(
     }
     let changed = std::mem::take(&mut world.changed);
     super::block_world::broadcast_changes(&changed, players.iter().copied());
+}
+
+/// Moves waiting turns between the chunks and the scheduler.
+///
+/// A loaded chunk's ticks belong in the scheduler, where they can be ordered against every other
+/// chunk's; a chunk that is not loaded holds its own, so they are written with it and come back
+/// when it does. This system carries them each way as chunks come and go.
+pub fn carry_ticks(
+    state: Res<GlobalStateResource>,
+    mut scheduler: ResMut<FluidScheduler>,
+    tick: Res<TickCounter>,
+    levels: Res<super::chunk_levels::Levels>,
+) {
+    let current = tick.get();
+
+    // Chunks that have just been loaded hand over what they were holding.
+    let waiting: Vec<ChunkPos> = state
+        .0
+        .world
+        .get_cache()
+        .iter()
+        .filter(|entry| entry.key().1 == "overworld" && !entry.value().scheduled_ticks().is_empty())
+        .map(|entry| entry.key().0)
+        .collect();
+    for pos in waiting {
+        let Ok(mut chunk) = ferrumc_utils::world::load_or_generate_mut(&state.0, pos, "overworld")
+        else {
+            continue;
+        };
+        let held = chunk.take_scheduled_ticks();
+        drop(chunk);
+        scheduler.0.restore_chunk(&held, current);
+    }
+
+    // Chunks that are no longer kept take theirs back, so nothing is left ticking for a chunk that
+    // is about to be written out and forgotten.
+    let leaving: Vec<ChunkPos> = state
+        .0
+        .world
+        .get_cache()
+        .iter()
+        .filter(|entry| entry.key().1 == "overworld")
+        .map(|entry| entry.key().0)
+        .filter(|&pos| !levels.0.status(pos).is_loaded())
+        .collect();
+    for pos in leaving {
+        let held = scheduler.0.take_chunk(pos, current);
+        if held.is_empty() {
+            continue;
+        }
+        if let Ok(mut chunk) =
+            ferrumc_utils::world::load_or_generate_mut(&state.0, pos, "overworld")
+        {
+            chunk.hold_scheduled_ticks(held);
+        }
+    }
 }

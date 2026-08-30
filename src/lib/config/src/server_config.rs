@@ -35,6 +35,10 @@ pub fn set_global_config(config: ServerConfig) {
 /// - `world`: The name of the world that the server will load.
 /// - `network_compression_threshold`: The threshold at which the server will compress network packets.
 /// - `whitelist`: Whether the server whitelist is enabled or not.
+fn default_simulation_distance() -> u32 {
+    10
+}
+
 /// - `chunk_render_distance`: The render distance of the chunks. This is the number of chunks that will be
 ///   loaded around the player.
 #[derive(Debug, Deserialize, Serialize, Default)]
@@ -56,6 +60,11 @@ pub struct ServerConfig {
     pub online_mode: bool,
     pub whitelist: bool,
     pub chunk_render_distance: u32,
+    /// How far from a player things actually happen: crops grow, fluids move, scheduled ticks run.
+    /// Chunks further out than this are still kept and sent, they simply do nothing. Vanilla's
+    /// default is ten.
+    #[serde(default = "default_simulation_distance")]
+    pub simulation_distance: u32,
     pub default_gamemode: String,
     pub dashboard: DashboardConfig,
     pub performance: PerformanceConfig,

@@ -26,6 +26,11 @@ pub struct Chunk {
     /// What the blocks in this chunk hold beyond their state ids. Few enough per chunk that a list
     /// is faster to walk than a map is to hash, and it is written with the chunk.
     block_entities: Vec<crate::block_entity::BlockEntity>,
+
+    /// Turns blocks in this chunk are waiting for, held here only while the chunk is not loaded.
+    /// A loaded chunk's ticks live in the scheduler, where they can be ordered against every other
+    /// chunk's.
+    scheduled_ticks: Vec<crate::scheduler::SavedTick>,
 }
 
 impl Chunk {
@@ -56,6 +61,7 @@ impl Chunk {
             height,
             heightmaps: None,
             block_entities: Vec::new(),
+            scheduled_ticks: Vec::new(),
         }
     }
 
@@ -81,6 +87,7 @@ impl Chunk {
             height,
             heightmaps: None,
             block_entities: Vec::new(),
+            scheduled_ticks: Vec::new(),
         }
     }
 
@@ -140,6 +147,22 @@ impl Chunk {
         }
 
         self.sections[section as usize].get_block(pos.section_block_pos())
+    }
+
+    /// Turns this chunk is holding for whenever it is loaded again.
+    #[must_use]
+    pub fn scheduled_ticks(&self) -> &[crate::scheduler::SavedTick] {
+        &self.scheduled_ticks
+    }
+
+    /// Hands its waiting turns to whoever is loading it, leaving none behind.
+    pub fn take_scheduled_ticks(&mut self) -> Vec<crate::scheduler::SavedTick> {
+        std::mem::take(&mut self.scheduled_ticks)
+    }
+
+    /// Gives it turns to hold while it is not loaded.
+    pub fn hold_scheduled_ticks(&mut self, ticks: Vec<crate::scheduler::SavedTick>) {
+        self.scheduled_ticks = ticks;
     }
 
     /// Everything in this chunk that holds more than its state id.
@@ -306,6 +329,7 @@ impl TryFrom<&VanillaChunk> for Chunk {
             // An imported world's block entities are not read yet; see
             // `internal_docs/deferred.md`.
             block_entities: Vec::new(),
+            scheduled_ticks: Vec::new(),
         })
     }
 }

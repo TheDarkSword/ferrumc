@@ -264,6 +264,10 @@ fn build_timed_scheduler() -> Scheduler {
 
         register_game_systems(s); // General game logic (chunks, day cycle, etc.)
         register_gameplay_listeners(s); // Event listeners for gameplay events
+                                        // What each chunk is worth has to be settled before anything asks.
+        s.add_systems(crate::systems::chunk_levels::handle);
+        // Waiting turns move between the chunks and the scheduler as chunks come and go.
+        s.add_systems(crate::systems::block_ticks::carry_ticks);
         register_physics(s); // Physics systems (movement, collision, etc.)
                              // Ticks a block asked for, then the ones the world hands out at random.
         s.add_systems(

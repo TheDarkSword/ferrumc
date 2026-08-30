@@ -2,6 +2,7 @@ use bevy_ecs::schedule::IntoScheduleConfigs;
 pub mod block_ticks;
 pub mod block_world;
 mod chunk_calculator;
+pub mod chunk_levels;
 mod chunk_sending;
 pub mod chunk_unloader;
 pub mod connection_killer;

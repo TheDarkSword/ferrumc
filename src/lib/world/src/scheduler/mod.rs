@@ -25,7 +25,17 @@ use std::collections::{HashMap, HashSet};
 /// Kept separate from the fluid module so the scheduler has no dependency on fluid specifics;
 /// new tick kinds (redstone, crops, random block ticks) can be added here without touching the
 /// queue machinery.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    Hash,
+    bitcode_derive::Encode,
+    bitcode_derive::Decode,
+    deepsize::DeepSizeOf,
+)]
 pub enum TickKind {
     /// A fluid block should re-evaluate its spread.
     FluidSpread,
@@ -39,7 +49,20 @@ pub enum TickKind {
 /// Redstone reads as it does because the order within a tick is observable: a repeater that
 /// updates before its neighbour behaves differently from one that updates after. Vanilla's values
 /// are kept so that ordering carries across.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    Default,
+    bitcode_derive::Encode,
+    bitcode_derive::Decode,
+    deepsize::DeepSizeOf,
+)]
 pub enum TickPriority {
     ExtremelyHigh,
     VeryHigh,
@@ -90,9 +113,21 @@ impl TickPriority {
 ///
 /// The field names are vanilla's, so a chunk written here can be read there and the other way
 /// about.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    bitcode_derive::Encode,
+    bitcode_derive::Decode,
+    deepsize::DeepSizeOf,
+)]
 pub struct SavedTick {
-    pub pos: BlockPos,
+    /// Kept as plain coordinates so the whole thing can be written with its chunk.
+    pub x: i32,
+    pub y: i32,
+    pub z: i32,
     pub kind: TickKind,
     /// Ticks from the save to when it is due. Negative would mean overdue, which is written as
     /// zero.
@@ -384,7 +419,9 @@ impl BlockTickScheduler {
             .pending
             .into_iter()
             .map(|tick| SavedTick {
-                pos: tick.pos,
+                x: tick.pos.pos.x,
+                y: tick.pos.pos.y,
+                z: tick.pos.pos.z,
                 kind: tick.kind,
                 delay: tick.target_tick.saturating_sub(current_tick) as u32,
                 priority: tick.priority,
@@ -396,7 +433,7 @@ impl BlockTickScheduler {
     pub fn restore_chunk(&mut self, saved: &[SavedTick], current_tick: u64) {
         for tick in saved {
             self.schedule_with_priority(
-                tick.pos,
+                BlockPos::of(tick.x, tick.y, tick.z),
                 tick.kind,
                 current_tick,
                 u64::from(tick.delay),

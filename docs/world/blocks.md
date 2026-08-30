@@ -226,3 +226,32 @@ scripts/sync_data_assets.py --check # reports anything left behind by a version 
 Every one of these reads the version's own extracted data. A file left behind from an older version
 is a wrong answer rather than a missing feature, and a silent one — see
 [Known gaps](../networking/known-gaps.md) for what that cost once already.
+
+## How much attention a chunk gets
+
+A chunk is not simply loaded or not. Every chunk has a *level*, a number saying how close it is to
+something that cares about it, and what the server does with it follows from that number:
+
+| Level | What happens |
+|---|---|
+| ≤ 31 | Its entities tick |
+| 32 | Its blocks tick: crops grow, fluids move, scheduled ticks run |
+| 33 | Kept and sendable, but nothing in it happens |
+| above | Not kept |
+
+Levels come from *tickets*. Something that wants a chunk kept asks for it at a level, and the level
+spreads outwards a step at a time, so one ticket keeps a whole neighbourhood at progressively less
+attention. A player holds two: one for what they can see, and a tighter one for what goes on around
+them, at `simulation_distance` in the config.
+
+Those are two separate questions, so they are two separate sets of levels, as they are in vanilla.
+One set would make a chunk near a player tick because the player can see far, which is not what a
+simulation distance is for.
+
+A scheduled tick due in a chunk that is not simulated waits rather than running, and a chunk that is
+let go takes its waiting turns back and is written with them, so they are still due when it returns.
+What is saved is the remaining wait rather than a tick number.
+
+A stored chunk carries a format version. The encoding is not self-describing, so a chunk written by
+an older layout would otherwise be read as whatever the current one expects and come back quietly
+wrong; instead it is treated as absent and generated again.

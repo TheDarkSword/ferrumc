@@ -133,7 +133,7 @@ impl World {
             let dim = pair.key().1.clone();
             trace!("Syncing chunk: {:?}", pos);
             let encoded = yazi::compress(
-                &bitcode::encode(pair.value()),
+                &encode_chunk(pair.value()),
                 yazi::Format::Zlib,
                 yazi::CompressionLevel::BestSpeed,
             )?;
@@ -229,6 +229,34 @@ impl World {
     }
 }
 
+/// What the stored form of a chunk looks like.
+///
+/// The encoding is not self-describing, so a chunk written by an older layout would be read as
+/// whatever the current one expects and quietly come back wrong. Raising this makes those chunks
+/// unreadable instead, and an unreadable chunk is generated again.
+///
+/// Raise it whenever the shape of `Chunk` or anything in it changes.
+const CHUNK_FORMAT_VERSION: u32 = 2;
+
+/// A chunk, ready to store: its format version and then the chunk.
+fn encode_chunk(chunk: &Chunk) -> Vec<u8> {
+    let mut out = CHUNK_FORMAT_VERSION.to_le_bytes().to_vec();
+    out.extend(bitcode::encode(chunk));
+    out
+}
+
+/// Reads a stored chunk back, or says it is not there when it was written by another layout.
+fn decode_chunk(data: &[u8]) -> Result<Chunk, WorldError> {
+    let Some((stamp, payload)) = data.split_at_checked(size_of::<u32>()) else {
+        return Err(WorldError::ChunkNotFound);
+    };
+    let version = u32::from_le_bytes([stamp[0], stamp[1], stamp[2], stamp[3]]);
+    if version != CHUNK_FORMAT_VERSION {
+        return Err(WorldError::ChunkNotFound);
+    }
+    bitcode::decode(payload).map_err(|e| WorldError::BitcodeDecodeError(e.to_string()))
+}
+
 pub(crate) fn save_chunk_internal(
     world: &World,
     pos: ChunkPos,
@@ -239,7 +267,7 @@ pub(crate) fn save_chunk_internal(
         world.storage_backend.create_table("chunks".to_string())?;
     }
     let as_bytes = yazi::compress(
-        &bitcode::encode(chunk),
+        &encode_chunk(chunk),
         yazi::Format::Zlib,
         CompressionLevel::BestSpeed,
     )?;
@@ -269,9 +297,7 @@ pub(crate) fn load_chunk_internal(
                     warn!("Chunk data does not have a checksum, skipping verification.");
                 }
             }
-            let chunk: Chunk = bitcode::decode(&data)
-                .map_err(|e| WorldError::BitcodeDecodeError(e.to_string()))?;
-            Ok(chunk)
+            Ok(decode_chunk(&data)?)
         }
         None => Err(WorldError::ChunkNotFound),
     }
@@ -302,9 +328,7 @@ pub(crate) fn load_chunk_batch_internal(
                         warn!("Chunk data does not have a checksum, skipping verification.");
                     }
                 }
-                let chunk: Chunk = bitcode::decode(&data)
-                    .map_err(|e| WorldError::BitcodeDecodeError(e.to_string()))?;
-                Ok(chunk)
+                decode_chunk(&data)
             }
             None => Err(WorldError::ChunkNotFound),
         })
@@ -344,4 +368,38 @@ fn create_key(dimension: &str, pos: ChunkPos) -> u128 {
     hasher.write_u8(0xFF);
     let dim_hash = hasher.finish();
     (dim_hash as u128) << 96 | pos.pack() as u128
+}
+
+#[cfg(test)]
+mod format_tests {
+    use super::*;
+
+    /// A chunk written now reads back as itself.
+    #[test]
+    fn a_stored_chunk_reads_back() {
+        let chunk = Chunk::new_empty();
+        let stored = encode_chunk(&chunk);
+        let back = decode_chunk(&stored).expect("reads back");
+        assert_eq!(back.sections.len(), chunk.sections.len());
+    }
+
+    /// One written by another layout is treated as absent rather than read as something it is not.
+    /// Without the stamp it would decode into whatever the current shape expects and come back
+    /// quietly wrong.
+    #[test]
+    fn a_chunk_from_another_layout_is_not_read() {
+        let chunk = Chunk::new_empty();
+        let mut stored = encode_chunk(&chunk);
+        stored[0] = stored[0].wrapping_add(1);
+
+        assert!(matches!(
+            decode_chunk(&stored),
+            Err(WorldError::ChunkNotFound)
+        ));
+        // And so is anything too short to carry a stamp at all.
+        assert!(matches!(
+            decode_chunk(&[1, 2]),
+            Err(WorldError::ChunkNotFound)
+        ));
+    }
 }
