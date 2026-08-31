@@ -3,13 +3,14 @@ use crossbeam_channel::Receiver;
 use ferrumc_components::player::teleport_tracker::TeleportTracker;
 use ferrumc_components::player::{
     gamemode::GameModeComponent, offline_player_data::OfflinePlayerData,
-    pending_events::PendingPlayerJoin, player_bundle::PlayerBundle, sneak::SneakState,
-    swimming::SwimmingState,
+    pending_events::PendingPlayerJoin, player_bundle::PlayerBundle,
 };
 use ferrumc_core::{
     chunks::chunk_receiver::ChunkReceiver, conn::keepalive::KeepAliveTracker,
     transform::grounded::OnGround,
 };
+use ferrumc_entities::entity_type::EntityType;
+use ferrumc_entities::synced_data::SyncedData;
 use ferrumc_inventories::hotbar::Hotbar;
 use ferrumc_net::connection::{DisconnectHandle, NewConnection};
 use ferrumc_state::GlobalStateResource;
@@ -62,8 +63,6 @@ pub fn accept_new_connections(
             hunger: player_data.hunger,
             experience: player_data.experience,
             active_effects: player_data.active_effects,
-            swimming: SwimmingState::default(),
-            sneak: SneakState::default(),
         };
 
         // --- 3. Spawn the PlayerBundle, then .insert() the network components ---
@@ -73,6 +72,7 @@ pub fn accept_new_connections(
         // The marker triggers `emit_player_joined` to fire the actual event
         // after `apply_deferred` flushes the entity into existence.
         entity_commands.insert((
+            SyncedData::new(EntityType::Player),
             new_connection.stream,
             new_connection.client_information_component,
             DisconnectHandle {

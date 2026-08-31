@@ -22,6 +22,7 @@ pub mod physics;
 mod player_swimming;
 mod send_entity_updates;
 pub mod shutdown_systems;
+pub mod synced_data;
 pub mod tick_counter;
 pub mod tps_broadcast;
 pub(crate) mod update_player_ping;
@@ -44,7 +45,17 @@ pub fn register_game_systems(schedule: &mut bevy_ecs::schedule::Schedule) {
     // Tell a player what they have done when they join, and again as they do more.
     schedule.add_systems(advancements::on_join);
     schedule.add_systems(advancements::on_inventory_change);
-    schedule.add_systems(player_swimming::detect_player_swimming);
+    // What a client is told about an entity: the systems above write to it as they go, then the
+    // pose is worked out from what they wrote and whatever ended up changed is sent, once.
+    schedule.add_systems(
+        (
+            player_swimming::detect_player_swimming,
+            synced_data::mirror_components,
+            synced_data::update_poses,
+            synced_data::broadcast_changes,
+        )
+            .chain(),
+    );
 
     // Process scheduled fluid ticks: evaluate spreading, apply, broadcast, re-schedule.
     schedule.add_systems(fluids::seed_on_block_break);

@@ -6,6 +6,11 @@ edition = "2024"
 [dependencies]
 bevy_ecs = { workspace = true }
 bevy_math = { workspace = true }
+tokio = { workspace = true }
 
 ferrumc-core = { workspace = true }
+ferrumc-inventories = { workspace = true }
+ferrumc-nbt = { workspace = true }
+ferrumc-net-codec = { workspace = true }
 ferrumc-registry = { workspace = true }
+ferrumc-text = { workspace = true }

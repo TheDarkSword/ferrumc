@@ -1,337 +1,166 @@
-// https://minecraft.wiki/w/Minecraft_Wiki:Projects/wiki.vg_merge/Entity_metadata#Entity_Metadata_Format
-use crate::packets::outgoing::entity_metadata::entity_state::{EntityState, EntityStateMask};
-use crate::packets::outgoing::entity_metadata::index_type::EntityMetadataIndexType;
-use crate::packets::outgoing::entity_metadata::value::EntityMetadataValue;
+//! Telling a client what an entity looks like.
+//!
+//! The values themselves live in `ferrumc_entities::synced_data`; this is only how they reach a
+//! client. Each one is written as the place it sits for that client, the number of the kind of
+//! value that follows, and the value; a byte no field could ever sit at closes the row.
+//!
+//! Both the place and that number depend on the version being written to, and the version reaches
+//! here through the encode options, so one packet is right for every client it is sent to.
+
+use ferrumc_entities::entity_type::EntityType;
+use ferrumc_entities::synced_data::{place_for, DataValue, SyncedData};
 use ferrumc_macros::{packet, NetEncode};
+use ferrumc_net_codec::encode::errors::NetEncodeError;
 use ferrumc_net_codec::encode::{NetEncode, NetEncodeOpts};
 use ferrumc_net_codec::net_types::var_int::VarInt;
 use std::io::Write;
 
-/// Packet for sending entity metadata updates to clients
+/// No field sits here, so a client reading it knows the row has ended.
+const END_OF_ROW: u8 = 0xFF;
+
+/// What a client is told about an entity.
 #[derive(NetEncode, Clone)]
 #[packet(packet_id = "set_entity_data", state = "play")]
 pub struct EntityMetadataPacket {
     entity_id: VarInt,
-    metadata: Vec<EntityMetadata>,
-    terminator: u8, // Always 0xFF to indicate end of metadata (Simple is Best)
+    values: MetadataRow,
 }
 
 impl EntityMetadataPacket {
-    /// Creates a new metadata packet for the specified entity
-    ///
-    /// # Arguments
-    /// * `entity_id` - The entity ID to update metadata for
-    /// * `metadata` - Iterator of metadata entries to send
-    ///
-    /// # Example
-    /// ```ignored
-    /// let entity_id = ...;
-    /// let metadata = vec![
-    ///                     EntityMetadata::entity_sneaking_flag(),
-    ///                     EntityMetadata::entity_sneaking_visual(),
-    ///                     EntityMetadata::entity_standing()
-    ///                   ];
-    /// let packet = EntityMetadataPacket::new(entity_id, metadata);
-    /// ```
-    pub fn new<T>(entity_id: VarInt, metadata: T) -> Self
-    where
-        T: IntoIterator<Item = EntityMetadata>,
-    {
+    /// Everything there is to say about an entity, for a client that has just seen it.
+    #[must_use]
+    pub fn everything(entity_id: VarInt, data: &SyncedData) -> Self {
         Self {
             entity_id,
-            metadata: metadata.into_iter().collect(),
-            terminator: 0xFF,
-        }
-    }
-}
-
-/// Single metadata entry containing an index, type and value
-#[derive(NetEncode, Clone)]
-pub struct EntityMetadata {
-    index: u8,
-    index_type: EntityMetadataIndexType,
-    value: EntityMetadataValue,
-}
-
-pub mod constructors {
-    use super::*;
-    use crate::packets::outgoing::entity_metadata::extra_data_types::EntityPose;
-
-    impl EntityMetadata {
-        fn new(index_type: EntityMetadataIndexType, value: EntityMetadataValue) -> Self {
-            EntityMetadata {
-                index: value.index(),
-                index_type,
-                value,
-            }
-        }
-        /// Sets the sneaking flag in entity state byte (index 0).
-        /// This flag (0x02) affects name tag visibility and hitbox.
-        /// Typically paired with `entity_sneaking_visual()` for the full sneaking effect.
-        pub fn entity_sneaking_flag() -> Self {
-            Self::new(
-                EntityMetadataIndexType::Byte,
-                EntityMetadataValue::Entity0(EntityStateMask::from_state(
-                    EntityState::SneakingVisual,
-                )),
-            )
-        }
-        /// Actual sneaking visual, so you can see the player sneaking
-        pub fn entity_sneaking_visual() -> Self {
-            Self::new(
-                EntityMetadataIndexType::Pose,
-                EntityMetadataValue::Entity6(EntityPose::Sneaking),
-            )
-        }
-
-        /// Entity in standing pose
-        pub fn entity_standing() -> Self {
-            Self::new(
-                EntityMetadataIndexType::Pose,
-                EntityMetadataValue::Entity6(EntityPose::Standing),
-            )
-        }
-
-        /// Entity state with swimming bit set
-        pub fn entity_swimming_state() -> Self {
-            Self::new(
-                EntityMetadataIndexType::Byte,
-                EntityMetadataValue::Entity0(EntityStateMask::from_state(EntityState::Swimming)),
-            )
-        }
-
-        /// Entity in swimming pose
-        pub fn entity_swimming_pose() -> Self {
-            Self::new(
-                EntityMetadataIndexType::Pose,
-                EntityMetadataValue::Entity6(EntityPose::Swimming),
-            )
-        }
-
-        /// Entity state with all flags cleared (default state)
-        pub fn entity_clear_state() -> Self {
-            Self::new(
-                EntityMetadataIndexType::Byte,
-                EntityMetadataValue::Entity0(EntityStateMask::new()),
-            )
-        }
-
-        /// Entity state with sprinting bit set
-        pub fn entity_sprinting() -> Self {
-            Self::new(
-                EntityMetadataIndexType::Byte,
-                EntityMetadataValue::Entity0(EntityStateMask::from_state(EntityState::Sprinting)),
-            )
-        }
-    }
-}
-
-mod index_type {
-    use super::*;
-    use ferrumc_net_codec::encode::errors::NetEncodeError;
-
-    /// Available metadata field types
-    /// See: https://minecraft.wiki/w/Minecraft_Wiki:Projects/wiki.vg_merge/Entity_metadata#Entity_Metadata_Format
-    #[derive(Debug, Clone, Copy)]
-    pub enum EntityMetadataIndexType {
-        Byte, // (0) Used for bit masks and small numbers
-        Pose, // (21) Used for entity pose - protocol 772 (1.21.4)
-    }
-
-    impl EntityMetadataIndexType {
-        pub fn index(&self) -> VarInt {
-            use EntityMetadataIndexType::*;
-            let val = match self {
-                Byte => 0,
-                Pose => 21,
-            };
-
-            VarInt::new(val)
+            values: MetadataRow::from(data, data.everything()),
         }
     }
 
-    impl NetEncode for EntityMetadataIndexType {
-        fn encode<W: Write>(
-            &self,
-            writer: &mut W,
-            opts: &NetEncodeOpts,
-        ) -> Result<(), NetEncodeError> {
-            self.index().encode(writer, opts)
-        }
-
-        async fn encode_async<W: tokio::io::AsyncWrite + Unpin>(
-            &self,
-            writer: &mut W,
-            opts: &NetEncodeOpts,
-        ) -> Result<(), NetEncodeError> {
-            self.index().encode_async(writer, opts).await
-        }
-    }
-}
-
-mod value {
-    use super::*;
-    use crate::packets::outgoing::entity_metadata::extra_data_types::EntityPose;
-    /// Possible metadata values that can be sent
+    /// Only what has changed since the last time it was sent.
     ///
-    /// Couldn't be arsed coming up with the names.
-    /// Read here:
-    /// https://minecraft.wiki/w/Minecraft_Wiki:Projects/wiki.vg_merge/Entity_metadata#Entity
-    ///
-    /// Formatted like:
-    /// {Class Name}{Index}
-    #[derive(NetEncode, Clone)]
-    pub enum EntityMetadataValue {
-        Entity0(EntityStateMask),
-        Entity6(EntityPose),
+    /// Returns nothing when nothing has, since a row of no values is a packet worth not sending.
+    #[must_use]
+    pub fn changes(entity_id: VarInt, data: &SyncedData) -> Option<Self> {
+        data.has_changes().then(|| Self {
+            entity_id,
+            values: MetadataRow::from(data, data.changes()),
+        })
     }
+}
 
-    impl EntityMetadataValue {
-        pub fn index(&self) -> u8 {
-            use EntityMetadataValue::*;
-            match self {
-                Entity0(_) => 0,
-                Entity6(_) => 6,
-            }
+/// One entity's values, each written where the client being written to keeps it.
+#[derive(Clone)]
+pub struct MetadataRow {
+    /// The entity type these came off, which is what says where each of them sits.
+    kind: EntityType,
+    /// The values to write, each with the place it sits in the server's own terms.
+    fields: Vec<(u8, DataValue)>,
+}
+
+impl MetadataRow {
+    fn from<'a>(data: &SyncedData, values: impl Iterator<Item = (u8, &'a DataValue)>) -> Self {
+        Self {
+            kind: data.kind(),
+            fields: values
+                .map(|(index, value)| (index, value.clone()))
+                .collect(),
         }
     }
 }
 
-mod entity_state {
-    use ferrumc_macros::NetEncode;
-
-    /// Bit mask for various entity states
-    #[derive(Debug, NetEncode, Clone)]
-    pub struct EntityStateMask {
-        mask: u8,
-    }
-
-    impl Default for EntityStateMask {
-        fn default() -> Self {
-            Self::new()
-        }
-    }
-
-    impl EntityStateMask {
-        pub fn new() -> Self {
-            Self { mask: 0 }
-        }
-
-        pub fn from_state(state: EntityState) -> Self {
-            let mut mask = Self::new();
-            mask.set(state);
-            mask
-        }
-
-        pub fn set(&mut self, state: EntityState) {
-            self.mask |= state.mask();
-        }
-    }
-
-    /// Individual states that can be applied to an entity
-    /// Multiple states can be combined using a bit mask
-    #[expect(dead_code)]
-    pub enum EntityState {
-        OnFire,           // 0x01
-        SneakingVisual,   // 0x02
-        Sprinting,        // 0x08
-        Swimming,         // 0x10
-        Invisible,        // 0x20
-        Glowing,          // 0x40
-        FlyingWithElytra, // 0x80
-    }
-
-    impl EntityState {
-        pub fn mask(&self) -> u8 {
-            use EntityState::*;
-            match self {
-                OnFire => 0x01,
-                SneakingVisual => 0x02,
-                Sprinting => 0x08,
-                Swimming => 0x10,
-                Invisible => 0x20,
-                Glowing => 0x40,
-                FlyingWithElytra => 0x80,
-            }
-        }
-    }
-}
-
-mod extra_data_types {
-    use ferrumc_net_codec::encode::errors::NetEncodeError;
-    use ferrumc_net_codec::encode::{NetEncode, NetEncodeOpts};
-    use ferrumc_net_codec::net_types::var_int::VarInt;
-    use std::io::Write;
-    // STANDING = 0, FALL_FLYING = 1, SLEEPING = 2, SWIMMING = 3, SPIN_ATTACK = 4, SNEAKING = 5, LONG_JUMPING = 6, DYING = 7, CROAKING = 8,
-    // USING_TONGUE = 9, SITTING = 10, ROARING = 11, SNIFFING = 12, EMERGING = 13, DIGGING = 14, (1.21.3: SLIDING = 15, SHOOTING = 16,
-    // INHALING = 17
-
-    /// Possible poses/animations an entity can have
-    #[derive(Debug, Clone)]
-    #[expect(dead_code)]
-    pub enum EntityPose {
-        Standing,
-        FallFlying,
-        Sleeping,
-        Swimming,
-        SpinAttack,
-        Sneaking,
-        LongJumping,
-        Dying,
-        Croaking,
-        UsingTongue,
-        Sitting,
-        Roaring,
-        Sniffing,
-        Emerging,
-        Digging,
-        Sliding,
-        Shooting,
-        Inhaling,
-    }
-
-    impl EntityPose {
-        pub fn index(&self) -> VarInt {
-            use EntityPose::*;
-            let val = match self {
-                Standing => 0,
-                FallFlying => 1,
-                Sleeping => 2,
-                Swimming => 3,
-                SpinAttack => 4,
-                Sneaking => 5,
-                LongJumping => 6,
-                Dying => 7,
-                Croaking => 8,
-                UsingTongue => 9,
-                Sitting => 10,
-                Roaring => 11,
-                Sniffing => 12,
-                Emerging => 13,
-                Digging => 14,
-                Sliding => 15,
-                Shooting => 16,
-                Inhaling => 17,
+impl NetEncode for MetadataRow {
+    fn encode<W: Write>(&self, writer: &mut W, opts: &NetEncodeOpts) -> Result<(), NetEncodeError> {
+        let nested = opts.nested();
+        for (index, value) in &self.fields {
+            // A version with no place for a field is not told about it: the number would land on
+            // whatever that version does keep there, and the value would be read as that instead.
+            let Some((place, serializer)) = place_for(self.kind, *index, opts.version) else {
+                continue;
             };
-            VarInt::new(val)
+            place.encode(writer, &nested)?;
+            VarInt::new(i32::from(serializer.wire_id(opts.version))).encode(writer, &nested)?;
+            value.encode(writer, &nested)?;
         }
+        END_OF_ROW.encode(writer, &nested)
     }
 
-    impl NetEncode for EntityPose {
-        fn encode<W: Write>(
-            &self,
-            writer: &mut W,
-            opts: &NetEncodeOpts,
-        ) -> Result<(), NetEncodeError> {
-            self.index().encode(writer, opts)
-        }
+    async fn encode_async<W: tokio::io::AsyncWrite + Unpin>(
+        &self,
+        writer: &mut W,
+        opts: &NetEncodeOpts,
+    ) -> Result<(), NetEncodeError> {
+        // A row is a few dozen bytes, so one buffer beats an await per value.
+        let mut buffer = Vec::new();
+        self.encode(&mut buffer, opts)?;
+        buffer.encode_async(writer, &opts.nested()).await
+    }
+}
 
-        async fn encode_async<W: tokio::io::AsyncWrite + Unpin>(
-            &self,
-            writer: &mut W,
-            opts: &NetEncodeOpts,
-        ) -> Result<(), NetEncodeError> {
-            self.index().encode_async(writer, opts).await
-        }
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use ferrumc_entities::entity_type::EntityType;
+    use ferrumc_entities::synced_data::{fields, EntityFlag, Pose};
+    use ferrumc_net_codec::encode::Framing;
+    use ferrumc_net_codec::version::ProtocolVersion;
+
+    /// The row on its own, without the packet id or the length in front of it.
+    fn row(data: &SyncedData, version: ProtocolVersion) -> Vec<u8> {
+        let row = MetadataRow::from(data, data.changes());
+        let mut bytes = Vec::new();
+        row.encode(&mut bytes, &NetEncodeOpts::new(Framing::None, version))
+            .expect("a row writes to a buffer");
+        bytes
+    }
+
+    #[test]
+    fn a_value_is_written_as_its_place_its_kind_and_itself() {
+        let mut player = SyncedData::new(EntityType::Player);
+        player.set_flag(EntityFlag::Crouching, true);
+        player.set(fields::entity::POSE, Pose::Crouching);
+
+        assert_eq!(
+            row(&player, ProtocolVersion::V26_2),
+            vec![
+                0, 0, 0b10, // the shared flags byte, written as a byte, with crouching set
+                6, 20, 5,    // the pose, written as a pose, crouching
+                0xFF, // and nothing more
+            ]
+        );
+    }
+
+    #[test]
+    fn a_row_a_client_can_read_ends_even_when_nothing_is_in_it() {
+        let player = SyncedData::new(EntityType::Player);
+        assert_eq!(row(&player, ProtocolVersion::V26_2), vec![0xFF]);
+    }
+
+    #[test]
+    fn nothing_is_sent_when_nothing_changed() {
+        let player = SyncedData::new(EntityType::Player);
+        assert!(EntityMetadataPacket::changes(VarInt::new(1), &player).is_none());
+    }
+
+    #[test]
+    fn a_value_reaches_an_older_client_where_that_version_keeps_it() {
+        let mut slime = SyncedData::new(EntityType::Slime);
+        slime.set(fields::abstract_cube_mob::SIZE, 2);
+
+        // 26.2 made a slime an ageable mob, which pushed its size two places down the row.
+        assert_eq!(row(&slime, ProtocolVersion::V26_2), vec![18, 1, 2, 0xFF]);
+        assert_eq!(row(&slime, ProtocolVersion::V26_1), vec![16, 1, 2, 0xFF]);
+    }
+
+    #[test]
+    fn a_value_an_older_client_has_no_place_for_is_left_out() {
+        let mut slime = SyncedData::new(EntityType::Slime);
+        slime.set(fields::ageable_mob::BABY, true);
+
+        assert_eq!(row(&slime, ProtocolVersion::V26_2), vec![16, 8, 1, 0xFF]);
+        assert_eq!(
+            row(&slime, ProtocolVersion::V26_1),
+            vec![0xFF],
+            "26.1 keeps something else at 16, and would read the byte as that"
+        );
     }
 }

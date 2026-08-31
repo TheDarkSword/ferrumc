@@ -8,9 +8,12 @@ use ferrumc_entities::components::{CombatProperties, LastSyncedPosition};
 use ferrumc_entities::entity_type::{EntityType, SpawnPlacement};
 use ferrumc_entities::markers::entity_types::*;
 use ferrumc_entities::markers::{HasCollisions, HasGravity, HasWaterDrag};
+use ferrumc_entities::synced_data::SyncedData;
 use ferrumc_messages::{SpawnEntityCommand, SpawnEntityEvent};
 use ferrumc_net::connection::StreamWriter;
+use ferrumc_net::packets::outgoing::entity_metadata::EntityMetadataPacket;
 use ferrumc_net::packets::outgoing::spawn_entity::SpawnEntityPacket;
+use ferrumc_net_codec::net_types::var_int::VarInt;
 use tracing::{error, warn};
 
 /// Helper function to broadcast entity spawn packets to all connected players.
@@ -66,11 +69,21 @@ fn broadcast_entity_spawn(world: &mut World, entity: Entity) {
         rotation,
     );
 
+    // What the entity looks like has to follow it, or it spawns as a default of its type.
+    let metadata = world
+        .get::<SyncedData>(entity)
+        .map(|data| EntityMetadataPacket::everything(VarInt::new(identity.entity_id), data));
+
     // Broadcast to all connected players
     let mut writer_query = world.query::<&StreamWriter>();
     for writer in writer_query.iter(world) {
         if let Err(e) = writer.send_packet_ref(&spawn_packet) {
             error!("Failed to send spawn packet: {:?}", e);
+        }
+        if let Some(metadata) = &metadata {
+            if let Err(e) = writer.send_packet_ref(metadata) {
+                error!("Failed to send spawn metadata: {:?}", e);
+            }
         }
     }
 }
@@ -116,6 +129,7 @@ pub fn handle_spawn_entity(mut events: MessageReader<SpawnEntityEvent>, mut comm
             OnGround(false),
             LastSyncedPosition::from_position(&event.position),
             HasCollisions,
+            SyncedData::new(kind),
         ));
 
         // Which physics apply is what the game says about where the kind may stand: a thing that
