@@ -21,6 +21,20 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 VERSION = "26.2"
 SOURCE = REPO_ROOT / "assets" / "extracted" / VERSION / "entity_types.json"
 PHYSICS = REPO_ROOT / "assets" / "extracted" / VERSION / "entity_physics.json"
+SPAWN_RULES = REPO_ROOT / "assets" / "extracted" / VERSION / "spawn_rules.json"
+
+# The conditions shared by more than one kind of mob. The rest are one mob each and belong with
+# that mob's behaviour; until then a type carrying one is not spawned at all, which is the safe way
+# to be wrong.
+SHARED_RULES = {
+    "Mob.checkMobSpawnRules": "Standable",
+    "Monster.checkMonsterSpawnRules": "Dark",
+    "Monster.checkAnyLightMonsterSpawnRules": "AnyLight",
+    "Monster.checkSurfaceMonstersSpawnRules": "DarkUnderSky",
+    "Animal.checkAnimalSpawnRules": "Animal",
+    "WaterAnimal.checkSurfaceWaterAnimalSpawnRules": "SurfaceWater",
+    "AgeableWaterCreature.checkSurfaceAgeableWaterCreatureSpawnRules": "SurfaceWater",
+}
 OUT = REPO_ROOT / "src" / "lib" / "entities" / "src" / "entity_type" / "generated.rs"
 
 # What vanilla writes for "never update this entity again".
@@ -42,6 +56,7 @@ def main() -> None:
     data = json.loads(SOURCE.read_text())
     types = data["types"]
     physics = json.loads(PHYSICS.read_text())["types"]
+    spawn_rules = json.loads(SPAWN_RULES.read_text())["rules"]
     missing = {entry["name"] for entry in types} - set(physics)
     if missing:
         raise SystemExit(f"no physics read for {sorted(missing)}; run scripts/extract_entity_physics.py")
@@ -58,6 +73,32 @@ def main() -> None:
     add("//! the variant itself rather than something looked up beside it.")
     add("")
     add("pub use ferrumc_physics::Motion;")
+    add("")
+
+    # What a place has to be like before a mob appears there. Vanilla holds one of these per type
+    # as a method reference; the ones more than one mob shares are named here and the rest are left
+    # to the mob.
+    add("/// What has to be true of a place before a mob appears there on its own.")
+    add("#[derive(Debug, Clone, Copy, PartialEq, Eq)]")
+    add("pub enum SpawnRule {")
+    add("    /// Nothing beyond where the kind may stand.")
+    add("    None,")
+    add("    /// Something a mob may stand on.")
+    add("    Standable,")
+    add("    /// Dark enough, and something to stand on.")
+    add("    Dark,")
+    add("    /// Something to stand on, however light it is.")
+    add("    AnyLight,")
+    add("    /// Dark enough, something to stand on, and open sky overhead.")
+    add("    DarkUnderSky,")
+    add("    /// Ground animals grow on, and bright enough to see.")
+    add("    Animal,")
+    add("    /// Water, near enough the surface.")
+    add("    SurfaceWater,")
+    add("    /// A rule of this mob's own. Nothing works one out yet, so a type carrying one never")
+    add("    /// appears on its own rather than appearing where it should not.")
+    add("    OwnRule,")
+    add("}")
     add("")
 
     # The categories, in the order the game declares them.
@@ -87,12 +128,33 @@ def main() -> None:
     add("}")
     add("")
     add("impl MobCategory {")
+    add("    /// The category of this name, as the packs write it.")
+    add("    #[must_use]")
+    add("    pub fn from_name(name: &str) -> Option<Self> {")
+    add("        CATEGORIES")
+    add("            .iter()")
+    add("            .position(|def| def.name == name)")
+    add("            .map(|index| ALL_CATEGORIES[index])")
+    add("    }")
+    add("")
+    add("    /// Every category there is.")
+    add("    #[must_use]")
+    add("    pub const fn all() -> &'static [Self] {")
+    add("        &ALL_CATEGORIES")
+    add("    }")
+    add("")
     add("    /// What this category allows.")
     add("    #[must_use]")
     add("    pub const fn def(self) -> &'static CategoryDef {")
     add("        &CATEGORIES[self as usize]")
     add("    }")
     add("}")
+    add("")
+    add("/// Every category, in the order the table holds them.")
+    add(f"static ALL_CATEGORIES: [MobCategory; {len(categories)}] = [")
+    for name in categories:
+        add(f"    MobCategory::{variant(name)},")
+    add("];")
     add("")
     add(f"static CATEGORIES: [CategoryDef; {len(categories)}] = [")
     for name, c in categories.items():
@@ -160,6 +222,8 @@ def main() -> None:
     add("    pub max_health: Option<f32>,")
     add("    /// How a tick moves one of these when nothing else does.")
     add("    pub motion: Motion,")
+    add("    /// What has to be true of a place before one appears there on its own.")
+    add("    pub spawn_rule: SpawnRule,")
     add("}")
     add("")
 
@@ -216,6 +280,9 @@ def main() -> None:
         add(f"            omnidirectional: {str(m['omnidirectional']).lower()},")
         add(f"            pushed_by_fluid: {str(m['pushed_by_fluid']).lower()},")
         add("        },")
+        rule = spawn_rules.get(t["name"])
+        add(f"        spawn_rule: SpawnRule::{'None' if rule is None else SHARED_RULES.get(rule, 'OwnRule')},"
+            + ("" if rule is None or rule in SHARED_RULES else f" // {rule}"))
         add("    },")
     add("];")
     add("")

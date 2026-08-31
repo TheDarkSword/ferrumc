@@ -7,6 +7,28 @@
 
 pub use ferrumc_physics::Motion;
 
+/// What has to be true of a place before a mob appears there on its own.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SpawnRule {
+    /// Nothing beyond where the kind may stand.
+    None,
+    /// Something a mob may stand on.
+    Standable,
+    /// Dark enough, and something to stand on.
+    Dark,
+    /// Something to stand on, however light it is.
+    AnyLight,
+    /// Dark enough, something to stand on, and open sky overhead.
+    DarkUnderSky,
+    /// Ground animals grow on, and bright enough to see.
+    Animal,
+    /// Water, near enough the surface.
+    SurfaceWater,
+    /// A rule of this mob's own. Nothing works one out yet, so a type carrying one never
+    /// appears on its own rather than appearing where it should not.
+    OwnRule,
+}
+
 /// The group a type spawns and is counted in.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum MobCategory {
@@ -39,12 +61,39 @@ pub struct CategoryDef {
 }
 
 impl MobCategory {
+    /// The category of this name, as the packs write it.
+    #[must_use]
+    pub fn from_name(name: &str) -> Option<Self> {
+        CATEGORIES
+            .iter()
+            .position(|def| def.name == name)
+            .map(|index| ALL_CATEGORIES[index])
+    }
+
+    /// Every category there is.
+    #[must_use]
+    pub const fn all() -> &'static [Self] {
+        &ALL_CATEGORIES
+    }
+
     /// What this category allows.
     #[must_use]
     pub const fn def(self) -> &'static CategoryDef {
         &CATEGORIES[self as usize]
     }
 }
+
+/// Every category, in the order the table holds them.
+static ALL_CATEGORIES: [MobCategory; 8] = [
+    MobCategory::Monster,
+    MobCategory::Creature,
+    MobCategory::Ambient,
+    MobCategory::Axolotls,
+    MobCategory::UndergroundWaterCreature,
+    MobCategory::WaterCreature,
+    MobCategory::WaterAmbient,
+    MobCategory::Misc,
+];
 
 static CATEGORIES: [CategoryDef; 8] = [
     CategoryDef {
@@ -163,6 +212,8 @@ pub struct EntityDef {
     pub max_health: Option<f32>,
     /// How a tick moves one of these when nothing else does.
     pub motion: Motion,
+    /// What has to be true of a place before one appears there on its own.
+    pub spawn_rule: SpawnRule,
 }
 
 /// Every entity type, numbered as the registry numbers them.
@@ -359,6 +410,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::None,
     },
     EntityDef {
         name: "minecraft:acacia_chest_boat",
@@ -385,6 +437,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::None,
     },
     EntityDef {
         name: "minecraft:allay",
@@ -411,6 +464,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::None,
     },
     EntityDef {
         name: "minecraft:area_effect_cloud",
@@ -437,6 +491,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::None,
     },
     EntityDef {
         name: "minecraft:armadillo",
@@ -463,6 +518,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::OwnRule, // Armadillo.checkArmadilloSpawnRules
     },
     EntityDef {
         name: "minecraft:armor_stand",
@@ -489,6 +545,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::None,
     },
     EntityDef {
         name: "minecraft:arrow",
@@ -515,6 +572,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::None,
     },
     EntityDef {
         name: "minecraft:axolotl",
@@ -541,6 +599,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: false,
         },
+        spawn_rule: SpawnRule::OwnRule, // Axolotl.checkAxolotlSpawnRules
     },
     EntityDef {
         name: "minecraft:bamboo_chest_raft",
@@ -567,6 +626,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::None,
     },
     EntityDef {
         name: "minecraft:bamboo_raft",
@@ -593,6 +653,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::None,
     },
     EntityDef {
         name: "minecraft:bat",
@@ -619,6 +680,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::OwnRule, // Bat.checkBatSpawnRules
     },
     EntityDef {
         name: "minecraft:bee",
@@ -645,6 +707,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: true,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::None,
     },
     EntityDef {
         name: "minecraft:birch_boat",
@@ -671,6 +734,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::None,
     },
     EntityDef {
         name: "minecraft:birch_chest_boat",
@@ -697,6 +761,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::None,
     },
     EntityDef {
         name: "minecraft:blaze",
@@ -723,6 +788,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::AnyLight,
     },
     EntityDef {
         name: "minecraft:block_display",
@@ -749,6 +815,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::None,
     },
     EntityDef {
         name: "minecraft:bogged",
@@ -775,6 +842,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::Dark,
     },
     EntityDef {
         name: "minecraft:breeze",
@@ -801,6 +869,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::AnyLight,
     },
     EntityDef {
         name: "minecraft:breeze_wind_charge",
@@ -827,6 +896,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::None,
     },
     EntityDef {
         name: "minecraft:camel",
@@ -853,6 +923,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::OwnRule, // Camel.checkCamelSpawnRules
     },
     EntityDef {
         name: "minecraft:camel_husk",
@@ -879,6 +950,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::DarkUnderSky,
     },
     EntityDef {
         name: "minecraft:cat",
@@ -905,6 +977,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::Animal,
     },
     EntityDef {
         name: "minecraft:cave_spider",
@@ -931,6 +1004,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::Dark,
     },
     EntityDef {
         name: "minecraft:cherry_boat",
@@ -957,6 +1031,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::None,
     },
     EntityDef {
         name: "minecraft:cherry_chest_boat",
@@ -983,6 +1058,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::None,
     },
     EntityDef {
         name: "minecraft:chest_minecart",
@@ -1009,6 +1085,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::None,
     },
     EntityDef {
         name: "minecraft:chicken",
@@ -1035,6 +1112,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::Animal,
     },
     EntityDef {
         name: "minecraft:cod",
@@ -1061,6 +1139,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: false,
         },
+        spawn_rule: SpawnRule::SurfaceWater,
     },
     EntityDef {
         name: "minecraft:copper_golem",
@@ -1087,6 +1166,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::None,
     },
     EntityDef {
         name: "minecraft:command_block_minecart",
@@ -1113,6 +1193,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::None,
     },
     EntityDef {
         name: "minecraft:cow",
@@ -1139,6 +1220,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::Animal,
     },
     EntityDef {
         name: "minecraft:creaking",
@@ -1165,6 +1247,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::Dark,
     },
     EntityDef {
         name: "minecraft:creeper",
@@ -1191,6 +1274,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::Dark,
     },
     EntityDef {
         name: "minecraft:dark_oak_boat",
@@ -1217,6 +1301,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::None,
     },
     EntityDef {
         name: "minecraft:dark_oak_chest_boat",
@@ -1243,6 +1328,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::None,
     },
     EntityDef {
         name: "minecraft:dolphin",
@@ -1269,6 +1355,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: false,
         },
+        spawn_rule: SpawnRule::SurfaceWater,
     },
     EntityDef {
         name: "minecraft:donkey",
@@ -1295,6 +1382,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::Animal,
     },
     EntityDef {
         name: "minecraft:dragon_fireball",
@@ -1321,6 +1409,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::None,
     },
     EntityDef {
         name: "minecraft:drowned",
@@ -1347,6 +1436,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::OwnRule, // Drowned.checkDrownedSpawnRules
     },
     EntityDef {
         name: "minecraft:egg",
@@ -1373,6 +1463,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::None,
     },
     EntityDef {
         name: "minecraft:elder_guardian",
@@ -1399,6 +1490,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::OwnRule, // Guardian.checkGuardianSpawnRules
     },
     EntityDef {
         name: "minecraft:enderman",
@@ -1425,6 +1517,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::Dark,
     },
     EntityDef {
         name: "minecraft:endermite",
@@ -1451,6 +1544,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::OwnRule, // Endermite.checkEndermiteSpawnRules
     },
     EntityDef {
         name: "minecraft:ender_dragon",
@@ -1477,6 +1571,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::Standable,
     },
     EntityDef {
         name: "minecraft:ender_pearl",
@@ -1503,6 +1598,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::None,
     },
     EntityDef {
         name: "minecraft:end_crystal",
@@ -1529,6 +1625,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::None,
     },
     EntityDef {
         name: "minecraft:evoker",
@@ -1555,6 +1652,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::Dark,
     },
     EntityDef {
         name: "minecraft:evoker_fangs",
@@ -1581,6 +1679,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::None,
     },
     EntityDef {
         name: "minecraft:experience_bottle",
@@ -1607,6 +1706,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::None,
     },
     EntityDef {
         name: "minecraft:experience_orb",
@@ -1633,6 +1733,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::None,
     },
     EntityDef {
         name: "minecraft:eye_of_ender",
@@ -1659,6 +1760,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::None,
     },
     EntityDef {
         name: "minecraft:falling_block",
@@ -1685,6 +1787,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::None,
     },
     EntityDef {
         name: "minecraft:fireball",
@@ -1711,6 +1814,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::None,
     },
     EntityDef {
         name: "minecraft:firework_rocket",
@@ -1737,6 +1841,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::None,
     },
     EntityDef {
         name: "minecraft:fox",
@@ -1763,6 +1868,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::OwnRule, // Fox.checkFoxSpawnRules
     },
     EntityDef {
         name: "minecraft:frog",
@@ -1789,6 +1895,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: false,
         },
+        spawn_rule: SpawnRule::OwnRule, // Frog.checkFrogSpawnRules
     },
     EntityDef {
         name: "minecraft:furnace_minecart",
@@ -1815,6 +1922,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::None,
     },
     EntityDef {
         name: "minecraft:ghast",
@@ -1841,6 +1949,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::OwnRule, // Ghast.checkGhastSpawnRules
     },
     EntityDef {
         name: "minecraft:happy_ghast",
@@ -1867,6 +1976,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::Animal,
     },
     EntityDef {
         name: "minecraft:giant",
@@ -1893,6 +2003,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::Dark,
     },
     EntityDef {
         name: "minecraft:glow_item_frame",
@@ -1919,6 +2030,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::None,
     },
     EntityDef {
         name: "minecraft:glow_squid",
@@ -1945,6 +2057,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: false,
         },
+        spawn_rule: SpawnRule::OwnRule, // GlowSquid.checkGlowSquidSpawnRules
     },
     EntityDef {
         name: "minecraft:goat",
@@ -1971,6 +2084,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::OwnRule, // Goat.checkGoatSpawnRules
     },
     EntityDef {
         name: "minecraft:guardian",
@@ -1997,6 +2111,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::OwnRule, // Guardian.checkGuardianSpawnRules
     },
     EntityDef {
         name: "minecraft:hoglin",
@@ -2023,6 +2138,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::OwnRule, // Hoglin.checkHoglinSpawnRules
     },
     EntityDef {
         name: "minecraft:hopper_minecart",
@@ -2049,6 +2165,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::None,
     },
     EntityDef {
         name: "minecraft:horse",
@@ -2075,6 +2192,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::Animal,
     },
     EntityDef {
         name: "minecraft:husk",
@@ -2101,6 +2219,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::DarkUnderSky,
     },
     EntityDef {
         name: "minecraft:illusioner",
@@ -2127,6 +2246,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::Dark,
     },
     EntityDef {
         name: "minecraft:interaction",
@@ -2153,6 +2273,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::None,
     },
     EntityDef {
         name: "minecraft:iron_golem",
@@ -2179,6 +2300,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::Standable,
     },
     EntityDef {
         name: "minecraft:item",
@@ -2205,6 +2327,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::None,
     },
     EntityDef {
         name: "minecraft:item_display",
@@ -2231,6 +2354,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::None,
     },
     EntityDef {
         name: "minecraft:item_frame",
@@ -2257,6 +2381,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::None,
     },
     EntityDef {
         name: "minecraft:jungle_boat",
@@ -2283,6 +2408,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::None,
     },
     EntityDef {
         name: "minecraft:jungle_chest_boat",
@@ -2309,6 +2435,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::None,
     },
     EntityDef {
         name: "minecraft:leash_knot",
@@ -2335,6 +2462,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::None,
     },
     EntityDef {
         name: "minecraft:lightning_bolt",
@@ -2361,6 +2489,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::None,
     },
     EntityDef {
         name: "minecraft:llama",
@@ -2387,6 +2516,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::Animal,
     },
     EntityDef {
         name: "minecraft:llama_spit",
@@ -2413,6 +2543,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::None,
     },
     EntityDef {
         name: "minecraft:magma_cube",
@@ -2439,6 +2570,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::OwnRule, // MagmaCube.checkMagmaCubeSpawnRules
     },
     EntityDef {
         name: "minecraft:mangrove_boat",
@@ -2465,6 +2597,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::None,
     },
     EntityDef {
         name: "minecraft:mangrove_chest_boat",
@@ -2491,6 +2624,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::None,
     },
     EntityDef {
         name: "minecraft:mannequin",
@@ -2517,6 +2651,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::None,
     },
     EntityDef {
         name: "minecraft:marker",
@@ -2543,6 +2678,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::None,
     },
     EntityDef {
         name: "minecraft:minecart",
@@ -2569,6 +2705,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::None,
     },
     EntityDef {
         name: "minecraft:mooshroom",
@@ -2595,6 +2732,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::OwnRule, // MushroomCow.checkMushroomSpawnRules
     },
     EntityDef {
         name: "minecraft:mule",
@@ -2621,6 +2759,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::Animal,
     },
     EntityDef {
         name: "minecraft:nautilus",
@@ -2647,6 +2786,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: false,
         },
+        spawn_rule: SpawnRule::OwnRule, // AbstractNautilus.checkNautilusSpawnRules
     },
     EntityDef {
         name: "minecraft:oak_boat",
@@ -2673,6 +2813,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::None,
     },
     EntityDef {
         name: "minecraft:oak_chest_boat",
@@ -2699,6 +2840,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::None,
     },
     EntityDef {
         name: "minecraft:ocelot",
@@ -2725,6 +2867,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::OwnRule, // Ocelot.checkOcelotSpawnRules
     },
     EntityDef {
         name: "minecraft:ominous_item_spawner",
@@ -2751,6 +2894,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::None,
     },
     EntityDef {
         name: "minecraft:painting",
@@ -2777,6 +2921,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::None,
     },
     EntityDef {
         name: "minecraft:pale_oak_boat",
@@ -2803,6 +2948,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::None,
     },
     EntityDef {
         name: "minecraft:pale_oak_chest_boat",
@@ -2829,6 +2975,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::None,
     },
     EntityDef {
         name: "minecraft:panda",
@@ -2855,6 +3002,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::Animal,
     },
     EntityDef {
         name: "minecraft:parched",
@@ -2881,6 +3029,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::DarkUnderSky,
     },
     EntityDef {
         name: "minecraft:parrot",
@@ -2907,6 +3056,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: true,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::OwnRule, // Parrot.checkParrotSpawnRules
     },
     EntityDef {
         name: "minecraft:phantom",
@@ -2933,6 +3083,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::Standable,
     },
     EntityDef {
         name: "minecraft:pig",
@@ -2959,6 +3110,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::Animal,
     },
     EntityDef {
         name: "minecraft:piglin",
@@ -2985,6 +3137,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::OwnRule, // Piglin.checkPiglinSpawnRules
     },
     EntityDef {
         name: "minecraft:piglin_brute",
@@ -3011,6 +3164,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::None,
     },
     EntityDef {
         name: "minecraft:pillager",
@@ -3037,6 +3191,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::OwnRule, // PatrollingMonster.checkPatrollingMonsterSpawnRules
     },
     EntityDef {
         name: "minecraft:polar_bear",
@@ -3063,6 +3218,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::OwnRule, // PolarBear.checkPolarBearSpawnRules
     },
     EntityDef {
         name: "minecraft:splash_potion",
@@ -3089,6 +3245,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::None,
     },
     EntityDef {
         name: "minecraft:lingering_potion",
@@ -3115,6 +3272,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::None,
     },
     EntityDef {
         name: "minecraft:pufferfish",
@@ -3141,6 +3299,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: false,
         },
+        spawn_rule: SpawnRule::SurfaceWater,
     },
     EntityDef {
         name: "minecraft:rabbit",
@@ -3167,6 +3326,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::OwnRule, // Rabbit.checkRabbitSpawnRules
     },
     EntityDef {
         name: "minecraft:ravager",
@@ -3193,6 +3353,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::Dark,
     },
     EntityDef {
         name: "minecraft:salmon",
@@ -3219,6 +3380,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: false,
         },
+        spawn_rule: SpawnRule::SurfaceWater,
     },
     EntityDef {
         name: "minecraft:sheep",
@@ -3245,6 +3407,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::Animal,
     },
     EntityDef {
         name: "minecraft:shulker",
@@ -3271,6 +3434,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::Standable,
     },
     EntityDef {
         name: "minecraft:shulker_bullet",
@@ -3297,6 +3461,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::None,
     },
     EntityDef {
         name: "minecraft:silverfish",
@@ -3323,6 +3488,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::OwnRule, // Silverfish.checkSilverfishSpawnRules
     },
     EntityDef {
         name: "minecraft:skeleton",
@@ -3349,6 +3515,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::Dark,
     },
     EntityDef {
         name: "minecraft:skeleton_horse",
@@ -3375,6 +3542,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::OwnRule, // SkeletonHorse.checkSkeletonHorseSpawnRules
     },
     EntityDef {
         name: "minecraft:slime",
@@ -3401,6 +3569,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::OwnRule, // Slime.checkSlimeSpawnRules
     },
     EntityDef {
         name: "minecraft:small_fireball",
@@ -3427,6 +3596,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::None,
     },
     EntityDef {
         name: "minecraft:sniffer",
@@ -3453,6 +3623,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::None,
     },
     EntityDef {
         name: "minecraft:snowball",
@@ -3479,6 +3650,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::None,
     },
     EntityDef {
         name: "minecraft:snow_golem",
@@ -3505,6 +3677,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::Standable,
     },
     EntityDef {
         name: "minecraft:spawner_minecart",
@@ -3531,6 +3704,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::None,
     },
     EntityDef {
         name: "minecraft:spectral_arrow",
@@ -3557,6 +3731,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::None,
     },
     EntityDef {
         name: "minecraft:spider",
@@ -3583,6 +3758,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::Dark,
     },
     EntityDef {
         name: "minecraft:spruce_boat",
@@ -3609,6 +3785,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::None,
     },
     EntityDef {
         name: "minecraft:spruce_chest_boat",
@@ -3635,6 +3812,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::None,
     },
     EntityDef {
         name: "minecraft:squid",
@@ -3661,6 +3839,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: false,
         },
+        spawn_rule: SpawnRule::SurfaceWater,
     },
     EntityDef {
         name: "minecraft:stray",
@@ -3687,6 +3866,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::OwnRule, // Stray.checkStraySpawnRules
     },
     EntityDef {
         name: "minecraft:strider",
@@ -3713,6 +3893,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::OwnRule, // Strider.checkStriderSpawnRules
     },
     EntityDef {
         name: "minecraft:sulfur_cube",
@@ -3739,6 +3920,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::OwnRule, // SulfurCube.checkSulfurCubeSpawnRules
     },
     EntityDef {
         name: "minecraft:tadpole",
@@ -3765,6 +3947,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: false,
         },
+        spawn_rule: SpawnRule::None,
     },
     EntityDef {
         name: "minecraft:text_display",
@@ -3791,6 +3974,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::None,
     },
     EntityDef {
         name: "minecraft:tnt",
@@ -3817,6 +4001,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::None,
     },
     EntityDef {
         name: "minecraft:tnt_minecart",
@@ -3843,6 +4028,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::None,
     },
     EntityDef {
         name: "minecraft:trader_llama",
@@ -3869,6 +4055,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::Animal,
     },
     EntityDef {
         name: "minecraft:trident",
@@ -3895,6 +4082,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::None,
     },
     EntityDef {
         name: "minecraft:tropical_fish",
@@ -3921,6 +4109,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: false,
         },
+        spawn_rule: SpawnRule::OwnRule, // TropicalFish.checkTropicalFishSpawnRules
     },
     EntityDef {
         name: "minecraft:turtle",
@@ -3947,6 +4136,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: false,
         },
+        spawn_rule: SpawnRule::OwnRule, // Turtle.checkTurtleSpawnRules
     },
     EntityDef {
         name: "minecraft:vex",
@@ -3973,6 +4163,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::Dark,
     },
     EntityDef {
         name: "minecraft:villager",
@@ -3999,6 +4190,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::Standable,
     },
     EntityDef {
         name: "minecraft:vindicator",
@@ -4025,6 +4217,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::Dark,
     },
     EntityDef {
         name: "minecraft:wandering_trader",
@@ -4051,6 +4244,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::Standable,
     },
     EntityDef {
         name: "minecraft:warden",
@@ -4077,6 +4271,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::Dark,
     },
     EntityDef {
         name: "minecraft:wind_charge",
@@ -4103,6 +4298,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::None,
     },
     EntityDef {
         name: "minecraft:witch",
@@ -4129,6 +4325,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::Dark,
     },
     EntityDef {
         name: "minecraft:wither",
@@ -4155,6 +4352,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::Dark,
     },
     EntityDef {
         name: "minecraft:wither_skeleton",
@@ -4181,6 +4379,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::Dark,
     },
     EntityDef {
         name: "minecraft:wither_skull",
@@ -4207,6 +4406,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::None,
     },
     EntityDef {
         name: "minecraft:wolf",
@@ -4233,6 +4433,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::OwnRule, // Wolf.checkWolfSpawnRules
     },
     EntityDef {
         name: "minecraft:zoglin",
@@ -4259,6 +4460,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::AnyLight,
     },
     EntityDef {
         name: "minecraft:zombie",
@@ -4285,6 +4487,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::Dark,
     },
     EntityDef {
         name: "minecraft:zombie_horse",
@@ -4311,6 +4514,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::Dark,
     },
     EntityDef {
         name: "minecraft:zombie_nautilus",
@@ -4337,6 +4541,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: false,
         },
+        spawn_rule: SpawnRule::None,
     },
     EntityDef {
         name: "minecraft:zombie_villager",
@@ -4363,6 +4568,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::Dark,
     },
     EntityDef {
         name: "minecraft:zombified_piglin",
@@ -4389,6 +4595,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::OwnRule, // ZombifiedPiglin.checkZombifiedPiglinSpawnRules
     },
     EntityDef {
         name: "minecraft:player",
@@ -4415,6 +4622,7 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::None,
     },
     EntityDef {
         name: "minecraft:fishing_bobber",
@@ -4441,5 +4649,6 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
             omnidirectional: false,
             pushed_by_fluid: true,
         },
+        spawn_rule: SpawnRule::None,
     },
 ];

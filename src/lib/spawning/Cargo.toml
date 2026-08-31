@@ -1,0 +1,14 @@
+[package]
+name = "ferrumc-spawning"
+edition.workspace = true
+version.workspace = true
+
+[dependencies]
+bevy_math = { workspace = true }
+rand = { workspace = true }
+
+ferrumc-entities = { workspace = true }
+ferrumc-world = { workspace = true }
+
+[lints]
+workspace = true

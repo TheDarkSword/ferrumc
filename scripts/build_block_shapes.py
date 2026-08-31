@@ -115,6 +115,14 @@ def main() -> None:
             ticking[index // 8] |= 1 << (index % 8)
     (OUT_BIN / "randomly_ticking.bin").write_bytes(ticking)
 
+    # One bit per state: whether a mob may stand on it. The spawn loop asks this of every position
+    # it tries, which is thousands a second, so it is one bit test.
+    spawnable = bytearray((len(states) + 7) // 8)
+    for index, state in enumerate(states):
+        if state is not None and state["valid_spawn"]:
+            spawnable[index // 8] |= 1 << (index % 8)
+    (OUT_BIN / "valid_spawn.bin").write_bytes(spawnable)
+
     lines = [
         "//! Which boxes each block state occupies.",
         "//!",

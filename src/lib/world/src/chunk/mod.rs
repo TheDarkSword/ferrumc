@@ -265,6 +265,38 @@ impl Chunk {
         }
     }
 
+    /// The biome at a position.
+    #[must_use]
+    pub fn get_biome(&self, pos: ChunkBlockPos) -> crate::chunk::section::biome::BiomeType {
+        let section = (pos.y() + -self.height.min_y) / 16;
+        if section < 0 || section as usize >= self.sections.len() {
+            return crate::chunk::section::biome::BiomeType(0);
+        }
+        self.sections[section as usize]
+            .biome
+            .get_biome(pos.section_block_pos())
+    }
+
+    /// How high the first thing that stops movement is in a column, counting from the top.
+    ///
+    /// A chunk that came from a vanilla world carries this already; one this server generated does
+    /// not, and there is nothing to do but look. Callers that ask often should remember the answer.
+    #[must_use]
+    pub fn surface_height(&self, x: u8, z: u8) -> i32 {
+        if let Some(heightmaps) = self.heightmaps.as_ref() {
+            return i32::from(heightmaps.motion_blocking.get_height(x, z));
+        }
+        let bottom = i32::from(self.height.min_y);
+        let top = bottom + (self.sections.len() as i32) * 16 - 1;
+        for y in (bottom..=top).rev() {
+            let at = self.get_block(ChunkBlockPos::new(x, y as i16, z));
+            if at != block!("air") && at != block!("void_air") {
+                return y + 1;
+            }
+        }
+        bottom
+    }
+
     /// Sets a block in the chunk.
     ///
     /// # Arguments

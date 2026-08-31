@@ -128,6 +128,14 @@
 - [ ] **Statistics tracking** — Not implemented.
 - [ ] **Advancements** — Not implemented.
 
+### **Spawning**
+- [x] **Natural spawning** — [`src/lib/spawning/`](../src/lib/spawning/), driven by [`src/bin/src/systems/mobs/natural.rs`](../src/bin/src/systems/mobs/natural.rs). The per-chunk attempt loop, pack spawning and the distance rules, in vanilla's order.
+- [x] **Mob caps** — both of vanilla's: one against how much of the world is loaded, one against the chunks around a place.
+- [x] **Spawn placement** — where a kind may stand and what the place has to be like, both extracted from the game. Seven conditions cover fifty types; the rest belong to a mob each and are refused until it exists.
+- [x] **Despawning** — by the category's despawn distance, with the roll vanilla gives a mob between the two distances.
+- [/] **Chunk-generation spawning** — the algorithm exists and is tested; hooking it needs a mark on the chunk saying it has been populated. See `internal_docs/deferred.md`.
+- [ ] **Spawner blocks** — Not implemented. Rules of their own, and they need block entities that tick.
+
 ### **AI (Mob Brains)**
 - [ ] **Pathfinding** — Not implemented.
 - [ ] **Goal Selector** — Not implemented.
@@ -135,7 +143,7 @@
 
 ### **Entity Categories**
 - [/] **Living** — `Health` component in [`src/lib/components/src/health.rs`](../src/lib/components/src/health.rs). **Missing:** Potions, armor, hand items.
-- [/] **Mobs** — Partial implementation. **Implemented:** Pig entity (`PigBundle`) with full component set (physics, combat, metadata). **Missing:** AI, other mobs.
+- [/] **Mobs** — every type exists and can be spawned, naturally or by command, with the physics and synced data the game gives it. **Missing:** behaviour, and the thirty-three types whose spawn condition is their own.
 - [ ] **Projectiles** — Not implemented.
 - [ ] **Vehicles** — Not implemented.
 - [ ] **Items** — Not implemented. No item entities.

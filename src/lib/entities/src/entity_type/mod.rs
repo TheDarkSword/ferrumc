@@ -7,7 +7,7 @@
 pub mod generated;
 
 pub use generated::{
-    CategoryDef, EntityDef, EntityType, MobCategory, SpawnHeightmap, SpawnPlacement,
+    CategoryDef, EntityDef, EntityType, MobCategory, SpawnHeightmap, SpawnPlacement, SpawnRule,
 };
 
 use generated::ENTITY_TYPES;

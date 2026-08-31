@@ -21,6 +21,23 @@ pub fn randomly_ticking(state: BlockStateId) -> bool {
         .is_some_and(|byte| byte & (1 << (index % 8)) != 0)
 }
 
+/// One bit per state, saying whether a mob may stand on it.
+static VALID_SPAWN: &[u8] =
+    include_bytes!("../../../../../assets/data/block_shapes/valid_spawn.bin");
+
+/// Whether a mob may stand on this state.
+///
+/// Vanilla's default is a sturdy top face giving off little light, and a few blocks answer
+/// differently — leaves and ice among them, and those two answer differently again depending on
+/// which mob is asking. This is the answer for an ordinary walking mob.
+#[must_use]
+pub fn valid_spawn(state: BlockStateId) -> bool {
+    let index = state.raw() as usize;
+    VALID_SPAWN
+        .get(index / 8)
+        .is_some_and(|byte| byte & (1 << (index % 8)) != 0)
+}
+
 /// Three bytes per state: one bit per face and support type.
 static FACE_STURDY: &[u8] =
     include_bytes!("../../../../../assets/data/block_shapes/face_sturdy.bin");

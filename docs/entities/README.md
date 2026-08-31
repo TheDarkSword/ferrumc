@@ -144,6 +144,42 @@ An entity that walks into a rise it could walk up tries the move again from a bo
 step height, and takes it only if it gets further along. A mob steps up 0.6; a dropped item steps
 up nothing and walks into the slab.
 
+## How a mob comes to exist
+
+Every tick, for every chunk a player is keeping loaded, the server tries to put a mob somewhere.
+Almost every attempt fails, and that is the point: a world feels populated rather than crowded
+because the questions are hard to pass.
+
+`src/lib/spawning` holds the questions and knows nothing about the world — what the world has to
+say is a `SpawnWorld`, and what comes back is a list of mobs to put down. `systems/mobs/natural.rs`
+answers the questions from the chunks and turns the answers into entities.
+
+The order is vanilla's, cheapest question first:
+
+1. is there room for another of this group, in the world and in these chunks;
+2. is a player at least twenty-four blocks away, and is anyone there at all;
+3. does the biome have anything of this group to offer;
+4. may this kind stand here — on the ground, in water, in lava, anywhere;
+5. does its own rule hold — dark enough for a monster, light enough for an animal;
+6. does it fit.
+
+### Two caps, and a mob has to be under both
+
+One counts every mob of a group in the world against how much of the world is loaded, which is why
+one player alone sees far fewer mobs than a busy server does. The other counts them in the chunks
+around a place, which is why a crowd in one valley stops more appearing beside it.
+
+### What decides whether a place will do
+
+Where a kind may stand is on the type, extracted with everything else. The condition beyond that is
+a method reference in vanilla — one per type — so `scripts/extract_spawn_rules.py` reads which one
+each type points at. Seven conditions cover fifty types; the other thirty-three belong to a single
+mob each and are refused until that mob exists, which keeps a slime from appearing everywhere
+rather than nowhere.
+
+Whether a block may be stood on is the block's own answer, extracted per state: the default is a
+sturdy top face giving off little light, and a few blocks differ.
+
 ## Regenerating
 
 ```bash
@@ -157,6 +193,8 @@ scripts/build_synced_data.py           # writes the layouts, the field names and
 scripts/extract_entity_physics.py      # asks the game how each type moves
 
 scripts/extract_serializer_ids.py --all   # reads every version's kind numbers out of its jar
+scripts/extract_field_layouts.py --all    # and where each field sits in it
+scripts/extract_spawn_rules.py            # which condition decides where a mob may appear
 ```
 
 Both entity extractors build a real entity to ask it, which needs a world for it to be built in;

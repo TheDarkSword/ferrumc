@@ -26,6 +26,7 @@ import net.minecraft.core.Direction;
 import net.minecraft.world.level.block.SupportType;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.world.level.block.entity.BlockEntityType;
+import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.level.lighting.LightEngine;
@@ -178,7 +179,8 @@ public final class BlockShapeExtractor {
                     + "\"face_occludes_light\":%d,\"face_shapes\":%s,"
                     + "\"hardness\":%s,"
                     + "\"air\":%b,\"solid\":%b,\"occludes\":%b,\"randomly_ticking\":%b,"
-                    + "\"needs_tool\":%b,\"push_reaction\":\"%s\"}",
+                    + "\"needs_tool\":%b,\"push_reaction\":\"%s\","
+                    + "\"valid_spawn\":%b}",
                 shape(state.getCollisionShape(EmptyBlockGetter.INSTANCE, origin)),
                 shape(state.getShape(EmptyBlockGetter.INSTANCE, origin)),
                 faceSturdy(state, origin),
@@ -194,7 +196,11 @@ public final class BlockShapeExtractor {
                 state.canOcclude(),
                 state.isRandomlyTicking(),
                 state.requiresCorrectToolForDrops(),
-                state.getPistonPushReaction()
+                state.getPistonPushReaction(),
+                // Whether a mob may stand on this. The default is a sturdy top face that is not
+                // giving off much light, and a few blocks answer differently; two of them answer
+                // differently again per mob, which is asked here for an ordinary walking one.
+                state.isValidSpawn(EmptyBlockGetter.INSTANCE, origin, EntityTypes.ZOMBIE)
             ));
         }
 

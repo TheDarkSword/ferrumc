@@ -31,7 +31,11 @@ pub fn register_resources(
     world.insert_resource(FluidTickControl::default());
     world.insert_resource(FluidSettleTracker::default());
     world.insert_resource(ServerPerformance::new(get_global_config().tps));
-    world.insert_resource(
-        crate::systems::datapacks::Datapacks::load().expect("the built-in datapack should open"),
-    );
+    let datapacks =
+        crate::systems::datapacks::Datapacks::load().expect("the built-in datapack should open");
+    // What lives in each biome, read off the packs once rather than looked up per attempt.
+    world.insert_resource(crate::systems::mobs::natural::BiomeSpawns::load(
+        &datapacks.worldgen,
+    ));
+    world.insert_resource(datapacks);
 }
