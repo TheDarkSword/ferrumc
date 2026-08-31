@@ -20,6 +20,7 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parent.parent
 VERSION = "26.2"
 SOURCE = REPO_ROOT / "assets" / "extracted" / VERSION / "entity_types.json"
+PHYSICS = REPO_ROOT / "assets" / "extracted" / VERSION / "entity_physics.json"
 OUT = REPO_ROOT / "src" / "lib" / "entities" / "src" / "entity_type" / "generated.rs"
 
 # What vanilla writes for "never update this entity again".
@@ -40,6 +41,10 @@ def rust_float(value: float) -> str:
 def main() -> None:
     data = json.loads(SOURCE.read_text())
     types = data["types"]
+    physics = json.loads(PHYSICS.read_text())["types"]
+    missing = {entry["name"] for entry in types} - set(physics)
+    if missing:
+        raise SystemExit(f"no physics read for {sorted(missing)}; run scripts/extract_entity_physics.py")
     categories = data["categories"]
 
     lines: list[str] = []
@@ -51,6 +56,8 @@ def main() -> None:
     add("//!")
     add("//! The variants carry the registry's own numbers, so the value that goes on the wire is")
     add("//! the variant itself rather than something looked up beside it.")
+    add("")
+    add("pub use ferrumc_physics::Motion;")
     add("")
 
     # The categories, in the order the game declares them.
@@ -151,6 +158,8 @@ def main() -> None:
     add("    pub heightmap: SpawnHeightmap,")
     add("    /// What a living one starts with, or nothing where it is not a living entity.")
     add("    pub max_health: Option<f32>,")
+    add("    /// How a tick moves one of these when nothing else does.")
+    add("    pub motion: Motion,")
     add("}")
     add("")
 
@@ -198,6 +207,15 @@ def main() -> None:
         add(f"        placement: SpawnPlacement::{placements[t['placement']]},")
         add(f"        heightmap: SpawnHeightmap::{heightmaps[t['heightmap']]},")
         add(f"        max_health: {health},")
+        m = physics[t["name"]]
+        add("        motion: Motion {")
+        add(f"            gravity: {rust_float(m['gravity'])},")
+        add(f"            air_drag: {rust_float(m['air_drag'])},")
+        add(f"            step_height: {rust_float(m['step_height'])},")
+        add(f"            living: {str(m['living']).lower()},")
+        add(f"            omnidirectional: {str(m['omnidirectional']).lower()},")
+        add(f"            pushed_by_fluid: {str(m['pushed_by_fluid']).lower()},")
+        add("        },")
         add("    },")
     add("];")
     add("")

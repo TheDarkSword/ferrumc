@@ -5,6 +5,8 @@
 //! The variants carry the registry's own numbers, so the value that goes on the wire is
 //! the variant itself rather than something looked up beside it.
 
+pub use ferrumc_physics::Motion;
+
 /// The group a type spawns and is counted in.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum MobCategory {
@@ -159,6 +161,8 @@ pub struct EntityDef {
     pub heightmap: SpawnHeightmap,
     /// What a living one starts with, or nothing where it is not a living entity.
     pub max_health: Option<f32>,
+    /// How a tick moves one of these when nothing else does.
+    pub motion: Motion,
 }
 
 /// Every entity type, numbered as the registry numbers them.
@@ -347,6 +351,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::NoRestrictions,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: None,
+        motion: Motion {
+            gravity: 0.04f32,
+            air_drag: 1.0f32,
+            step_height: 0.0f32,
+            living: false,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:acacia_chest_boat",
@@ -365,6 +377,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::NoRestrictions,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: None,
+        motion: Motion {
+            gravity: 0.04f32,
+            air_drag: 1.0f32,
+            step_height: 0.0f32,
+            living: false,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:allay",
@@ -383,6 +403,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::NoRestrictions,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: Some(20.0f32),
+        motion: Motion {
+            gravity: 0.08f32,
+            air_drag: 0.98f32,
+            step_height: 0.6f32,
+            living: true,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:area_effect_cloud",
@@ -401,6 +429,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::NoRestrictions,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: None,
+        motion: Motion {
+            gravity: 0.0f32,
+            air_drag: 0.98f32,
+            step_height: 0.0f32,
+            living: false,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:armadillo",
@@ -419,6 +455,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::OnGround,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: Some(12.0f32),
+        motion: Motion {
+            gravity: 0.08f32,
+            air_drag: 0.98f32,
+            step_height: 0.6f32,
+            living: true,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:armor_stand",
@@ -437,6 +481,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::NoRestrictions,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: Some(20.0f32),
+        motion: Motion {
+            gravity: 0.08f32,
+            air_drag: 0.98f32,
+            step_height: 0.0f32,
+            living: true,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:arrow",
@@ -455,6 +507,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::NoRestrictions,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: None,
+        motion: Motion {
+            gravity: 0.05f32,
+            air_drag: 0.99f32,
+            step_height: 0.0f32,
+            living: false,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:axolotl",
@@ -473,6 +533,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::InWater,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: Some(14.0f32),
+        motion: Motion {
+            gravity: 0.08f32,
+            air_drag: 0.98f32,
+            step_height: 1.0f32,
+            living: true,
+            omnidirectional: false,
+            pushed_by_fluid: false,
+        },
     },
     EntityDef {
         name: "minecraft:bamboo_chest_raft",
@@ -491,6 +559,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::NoRestrictions,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: None,
+        motion: Motion {
+            gravity: 0.04f32,
+            air_drag: 1.0f32,
+            step_height: 0.0f32,
+            living: false,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:bamboo_raft",
@@ -509,6 +585,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::NoRestrictions,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: None,
+        motion: Motion {
+            gravity: 0.04f32,
+            air_drag: 1.0f32,
+            step_height: 0.0f32,
+            living: false,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:bat",
@@ -527,6 +611,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::OnGround,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: Some(6.0f32),
+        motion: Motion {
+            gravity: 0.08f32,
+            air_drag: 0.98f32,
+            step_height: 0.6f32,
+            living: true,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:bee",
@@ -545,6 +637,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::NoRestrictions,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: Some(10.0f32),
+        motion: Motion {
+            gravity: 0.08f32,
+            air_drag: 0.91f32,
+            step_height: 0.6f32,
+            living: true,
+            omnidirectional: true,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:birch_boat",
@@ -563,6 +663,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::NoRestrictions,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: None,
+        motion: Motion {
+            gravity: 0.04f32,
+            air_drag: 1.0f32,
+            step_height: 0.0f32,
+            living: false,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:birch_chest_boat",
@@ -581,6 +689,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::NoRestrictions,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: None,
+        motion: Motion {
+            gravity: 0.04f32,
+            air_drag: 1.0f32,
+            step_height: 0.0f32,
+            living: false,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:blaze",
@@ -599,6 +715,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::OnGround,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: Some(20.0f32),
+        motion: Motion {
+            gravity: 0.08f32,
+            air_drag: 0.98f32,
+            step_height: 0.6f32,
+            living: true,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:block_display",
@@ -617,6 +741,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::NoRestrictions,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: None,
+        motion: Motion {
+            gravity: 0.0f32,
+            air_drag: 0.98f32,
+            step_height: 0.0f32,
+            living: false,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:bogged",
@@ -635,6 +767,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::OnGround,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: Some(16.0f32),
+        motion: Motion {
+            gravity: 0.08f32,
+            air_drag: 0.98f32,
+            step_height: 0.6f32,
+            living: true,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:breeze",
@@ -653,6 +793,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::OnGround,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: Some(30.0f32),
+        motion: Motion {
+            gravity: 0.08f32,
+            air_drag: 0.98f32,
+            step_height: 0.6f32,
+            living: true,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:breeze_wind_charge",
@@ -671,6 +819,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::NoRestrictions,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: None,
+        motion: Motion {
+            gravity: 0.0f32,
+            air_drag: 0.98f32,
+            step_height: 0.0f32,
+            living: false,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:camel",
@@ -689,6 +845,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::OnGround,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: Some(32.0f32),
+        motion: Motion {
+            gravity: 0.08f32,
+            air_drag: 0.98f32,
+            step_height: 1.5f32,
+            living: true,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:camel_husk",
@@ -707,6 +871,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::OnGround,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: Some(32.0f32),
+        motion: Motion {
+            gravity: 0.08f32,
+            air_drag: 0.98f32,
+            step_height: 1.5f32,
+            living: true,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:cat",
@@ -725,6 +897,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::OnGround,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: Some(10.0f32),
+        motion: Motion {
+            gravity: 0.08f32,
+            air_drag: 0.98f32,
+            step_height: 0.6f32,
+            living: true,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:cave_spider",
@@ -743,6 +923,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::OnGround,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: Some(12.0f32),
+        motion: Motion {
+            gravity: 0.08f32,
+            air_drag: 0.98f32,
+            step_height: 0.6f32,
+            living: true,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:cherry_boat",
@@ -761,6 +949,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::NoRestrictions,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: None,
+        motion: Motion {
+            gravity: 0.04f32,
+            air_drag: 1.0f32,
+            step_height: 0.0f32,
+            living: false,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:cherry_chest_boat",
@@ -779,6 +975,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::NoRestrictions,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: None,
+        motion: Motion {
+            gravity: 0.04f32,
+            air_drag: 1.0f32,
+            step_height: 0.0f32,
+            living: false,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:chest_minecart",
@@ -797,6 +1001,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::NoRestrictions,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: None,
+        motion: Motion {
+            gravity: 0.04f32,
+            air_drag: 0.95f32,
+            step_height: 0.0f32,
+            living: false,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:chicken",
@@ -815,6 +1027,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::OnGround,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: Some(4.0f32),
+        motion: Motion {
+            gravity: 0.08f32,
+            air_drag: 0.98f32,
+            step_height: 0.6f32,
+            living: true,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:cod",
@@ -833,6 +1053,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::InWater,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: Some(3.0f32),
+        motion: Motion {
+            gravity: 0.08f32,
+            air_drag: 0.98f32,
+            step_height: 0.6f32,
+            living: true,
+            omnidirectional: false,
+            pushed_by_fluid: false,
+        },
     },
     EntityDef {
         name: "minecraft:copper_golem",
@@ -851,6 +1079,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::NoRestrictions,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: Some(12.0f32),
+        motion: Motion {
+            gravity: 0.08f32,
+            air_drag: 0.98f32,
+            step_height: 1.0f32,
+            living: true,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:command_block_minecart",
@@ -869,6 +1105,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::NoRestrictions,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: None,
+        motion: Motion {
+            gravity: 0.04f32,
+            air_drag: 0.95f32,
+            step_height: 0.0f32,
+            living: false,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:cow",
@@ -887,6 +1131,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::OnGround,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: Some(10.0f32),
+        motion: Motion {
+            gravity: 0.08f32,
+            air_drag: 0.98f32,
+            step_height: 0.6f32,
+            living: true,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:creaking",
@@ -905,6 +1157,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::OnGround,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: Some(1.0f32),
+        motion: Motion {
+            gravity: 0.08f32,
+            air_drag: 0.98f32,
+            step_height: 1.0625f32,
+            living: true,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:creeper",
@@ -923,6 +1183,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::OnGround,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: Some(20.0f32),
+        motion: Motion {
+            gravity: 0.08f32,
+            air_drag: 0.98f32,
+            step_height: 0.6f32,
+            living: true,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:dark_oak_boat",
@@ -941,6 +1209,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::NoRestrictions,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: None,
+        motion: Motion {
+            gravity: 0.04f32,
+            air_drag: 1.0f32,
+            step_height: 0.0f32,
+            living: false,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:dark_oak_chest_boat",
@@ -959,6 +1235,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::NoRestrictions,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: None,
+        motion: Motion {
+            gravity: 0.04f32,
+            air_drag: 1.0f32,
+            step_height: 0.0f32,
+            living: false,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:dolphin",
@@ -977,6 +1261,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::InWater,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: Some(10.0f32),
+        motion: Motion {
+            gravity: 0.08f32,
+            air_drag: 0.98f32,
+            step_height: 0.6f32,
+            living: true,
+            omnidirectional: false,
+            pushed_by_fluid: false,
+        },
     },
     EntityDef {
         name: "minecraft:donkey",
@@ -995,6 +1287,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::OnGround,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: Some(53.0f32),
+        motion: Motion {
+            gravity: 0.08f32,
+            air_drag: 0.98f32,
+            step_height: 1.0f32,
+            living: true,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:dragon_fireball",
@@ -1013,6 +1313,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::NoRestrictions,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: None,
+        motion: Motion {
+            gravity: 0.0f32,
+            air_drag: 0.98f32,
+            step_height: 0.0f32,
+            living: false,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:drowned",
@@ -1031,6 +1339,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::InWater,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: Some(20.0f32),
+        motion: Motion {
+            gravity: 0.08f32,
+            air_drag: 0.98f32,
+            step_height: 1.0f32,
+            living: true,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:egg",
@@ -1049,6 +1365,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::NoRestrictions,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: None,
+        motion: Motion {
+            gravity: 0.03f32,
+            air_drag: 0.99f32,
+            step_height: 0.0f32,
+            living: false,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:elder_guardian",
@@ -1067,6 +1391,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::InWater,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: Some(80.0f32),
+        motion: Motion {
+            gravity: 0.08f32,
+            air_drag: 0.98f32,
+            step_height: 0.6f32,
+            living: true,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:enderman",
@@ -1085,6 +1417,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::OnGround,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: Some(40.0f32),
+        motion: Motion {
+            gravity: 0.08f32,
+            air_drag: 0.98f32,
+            step_height: 1.0f32,
+            living: true,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:endermite",
@@ -1103,6 +1443,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::OnGround,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: Some(8.0f32),
+        motion: Motion {
+            gravity: 0.08f32,
+            air_drag: 0.98f32,
+            step_height: 0.6f32,
+            living: true,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:ender_dragon",
@@ -1121,6 +1469,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::OnGround,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: Some(200.0f32),
+        motion: Motion {
+            gravity: 0.08f32,
+            air_drag: 0.98f32,
+            step_height: 0.6f32,
+            living: true,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:ender_pearl",
@@ -1139,6 +1495,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::NoRestrictions,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: None,
+        motion: Motion {
+            gravity: 0.03f32,
+            air_drag: 0.99f32,
+            step_height: 0.0f32,
+            living: false,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:end_crystal",
@@ -1157,6 +1521,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::NoRestrictions,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: None,
+        motion: Motion {
+            gravity: 0.0f32,
+            air_drag: 0.98f32,
+            step_height: 0.0f32,
+            living: false,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:evoker",
@@ -1175,6 +1547,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::NoRestrictions,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: Some(24.0f32),
+        motion: Motion {
+            gravity: 0.08f32,
+            air_drag: 0.98f32,
+            step_height: 0.6f32,
+            living: true,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:evoker_fangs",
@@ -1193,6 +1573,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::NoRestrictions,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: None,
+        motion: Motion {
+            gravity: 0.0f32,
+            air_drag: 0.98f32,
+            step_height: 0.0f32,
+            living: false,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:experience_bottle",
@@ -1211,6 +1599,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::NoRestrictions,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: None,
+        motion: Motion {
+            gravity: 0.07f32,
+            air_drag: 0.99f32,
+            step_height: 0.0f32,
+            living: false,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:experience_orb",
@@ -1229,6 +1625,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::NoRestrictions,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: None,
+        motion: Motion {
+            gravity: 0.03f32,
+            air_drag: 0.98f32,
+            step_height: 0.0f32,
+            living: false,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:eye_of_ender",
@@ -1247,6 +1651,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::NoRestrictions,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: None,
+        motion: Motion {
+            gravity: 0.0f32,
+            air_drag: 0.98f32,
+            step_height: 0.0f32,
+            living: false,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:falling_block",
@@ -1265,6 +1677,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::NoRestrictions,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: None,
+        motion: Motion {
+            gravity: 0.04f32,
+            air_drag: 0.98f32,
+            step_height: 0.0f32,
+            living: false,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:fireball",
@@ -1283,6 +1703,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::NoRestrictions,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: None,
+        motion: Motion {
+            gravity: 0.0f32,
+            air_drag: 0.98f32,
+            step_height: 0.0f32,
+            living: false,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:firework_rocket",
@@ -1301,6 +1729,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::NoRestrictions,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: None,
+        motion: Motion {
+            gravity: 0.0f32,
+            air_drag: 0.98f32,
+            step_height: 0.0f32,
+            living: false,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:fox",
@@ -1319,6 +1755,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::NoRestrictions,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: Some(10.0f32),
+        motion: Motion {
+            gravity: 0.08f32,
+            air_drag: 0.98f32,
+            step_height: 0.6f32,
+            living: true,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:frog",
@@ -1337,6 +1781,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::OnGround,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: Some(10.0f32),
+        motion: Motion {
+            gravity: 0.08f32,
+            air_drag: 0.98f32,
+            step_height: 1.0f32,
+            living: true,
+            omnidirectional: false,
+            pushed_by_fluid: false,
+        },
     },
     EntityDef {
         name: "minecraft:furnace_minecart",
@@ -1355,6 +1807,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::NoRestrictions,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: None,
+        motion: Motion {
+            gravity: 0.04f32,
+            air_drag: 0.95f32,
+            step_height: 0.0f32,
+            living: false,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:ghast",
@@ -1373,6 +1833,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::OnGround,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: Some(10.0f32),
+        motion: Motion {
+            gravity: 0.08f32,
+            air_drag: 0.98f32,
+            step_height: 0.6f32,
+            living: true,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:happy_ghast",
@@ -1391,6 +1859,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::OnGround,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: Some(20.0f32),
+        motion: Motion {
+            gravity: 0.08f32,
+            air_drag: 0.98f32,
+            step_height: 0.6f32,
+            living: true,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:giant",
@@ -1409,6 +1885,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::OnGround,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: Some(100.0f32),
+        motion: Motion {
+            gravity: 0.08f32,
+            air_drag: 0.98f32,
+            step_height: 0.6f32,
+            living: true,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:glow_item_frame",
@@ -1427,6 +1911,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::NoRestrictions,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: None,
+        motion: Motion {
+            gravity: 0.0f32,
+            air_drag: 0.98f32,
+            step_height: 0.0f32,
+            living: false,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:glow_squid",
@@ -1445,6 +1937,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::InWater,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: Some(10.0f32),
+        motion: Motion {
+            gravity: 0.08f32,
+            air_drag: 0.98f32,
+            step_height: 0.6f32,
+            living: true,
+            omnidirectional: false,
+            pushed_by_fluid: false,
+        },
     },
     EntityDef {
         name: "minecraft:goat",
@@ -1463,6 +1963,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::OnGround,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: Some(10.0f32),
+        motion: Motion {
+            gravity: 0.08f32,
+            air_drag: 0.98f32,
+            step_height: 0.6f32,
+            living: true,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:guardian",
@@ -1481,6 +1989,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::InWater,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: Some(30.0f32),
+        motion: Motion {
+            gravity: 0.08f32,
+            air_drag: 0.98f32,
+            step_height: 0.6f32,
+            living: true,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:hoglin",
@@ -1499,6 +2015,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::OnGround,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: Some(40.0f32),
+        motion: Motion {
+            gravity: 0.08f32,
+            air_drag: 0.98f32,
+            step_height: 0.6f32,
+            living: true,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:hopper_minecart",
@@ -1517,6 +2041,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::NoRestrictions,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: None,
+        motion: Motion {
+            gravity: 0.04f32,
+            air_drag: 0.95f32,
+            step_height: 0.0f32,
+            living: false,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:horse",
@@ -1535,6 +2067,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::OnGround,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: Some(53.0f32),
+        motion: Motion {
+            gravity: 0.08f32,
+            air_drag: 0.98f32,
+            step_height: 1.0f32,
+            living: true,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:husk",
@@ -1553,6 +2093,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::OnGround,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: Some(20.0f32),
+        motion: Motion {
+            gravity: 0.08f32,
+            air_drag: 0.98f32,
+            step_height: 0.6f32,
+            living: true,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:illusioner",
@@ -1571,6 +2119,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::NoRestrictions,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: Some(32.0f32),
+        motion: Motion {
+            gravity: 0.08f32,
+            air_drag: 0.98f32,
+            step_height: 0.6f32,
+            living: true,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:interaction",
@@ -1589,6 +2145,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::NoRestrictions,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: None,
+        motion: Motion {
+            gravity: 0.0f32,
+            air_drag: 0.98f32,
+            step_height: 0.0f32,
+            living: false,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:iron_golem",
@@ -1607,6 +2171,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::OnGround,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: Some(100.0f32),
+        motion: Motion {
+            gravity: 0.08f32,
+            air_drag: 0.98f32,
+            step_height: 1.0f32,
+            living: true,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:item",
@@ -1625,6 +2197,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::NoRestrictions,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: None,
+        motion: Motion {
+            gravity: 0.04f32,
+            air_drag: 0.98f32,
+            step_height: 0.0f32,
+            living: false,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:item_display",
@@ -1643,6 +2223,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::NoRestrictions,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: None,
+        motion: Motion {
+            gravity: 0.0f32,
+            air_drag: 0.98f32,
+            step_height: 0.0f32,
+            living: false,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:item_frame",
@@ -1661,6 +2249,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::NoRestrictions,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: None,
+        motion: Motion {
+            gravity: 0.0f32,
+            air_drag: 0.98f32,
+            step_height: 0.0f32,
+            living: false,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:jungle_boat",
@@ -1679,6 +2275,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::NoRestrictions,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: None,
+        motion: Motion {
+            gravity: 0.04f32,
+            air_drag: 1.0f32,
+            step_height: 0.0f32,
+            living: false,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:jungle_chest_boat",
@@ -1697,6 +2301,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::NoRestrictions,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: None,
+        motion: Motion {
+            gravity: 0.04f32,
+            air_drag: 1.0f32,
+            step_height: 0.0f32,
+            living: false,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:leash_knot",
@@ -1715,6 +2327,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::NoRestrictions,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: None,
+        motion: Motion {
+            gravity: 0.0f32,
+            air_drag: 0.98f32,
+            step_height: 0.0f32,
+            living: false,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:lightning_bolt",
@@ -1733,6 +2353,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::NoRestrictions,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: None,
+        motion: Motion {
+            gravity: 0.0f32,
+            air_drag: 0.98f32,
+            step_height: 0.0f32,
+            living: false,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:llama",
@@ -1751,6 +2379,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::OnGround,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: Some(53.0f32),
+        motion: Motion {
+            gravity: 0.08f32,
+            air_drag: 0.98f32,
+            step_height: 1.0f32,
+            living: true,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:llama_spit",
@@ -1769,6 +2405,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::NoRestrictions,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: None,
+        motion: Motion {
+            gravity: 0.06f32,
+            air_drag: 0.99f32,
+            step_height: 0.0f32,
+            living: false,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:magma_cube",
@@ -1787,6 +2431,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::OnGround,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: Some(20.0f32),
+        motion: Motion {
+            gravity: 0.08f32,
+            air_drag: 0.98f32,
+            step_height: 0.6f32,
+            living: true,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:mangrove_boat",
@@ -1805,6 +2457,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::NoRestrictions,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: None,
+        motion: Motion {
+            gravity: 0.04f32,
+            air_drag: 1.0f32,
+            step_height: 0.0f32,
+            living: false,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:mangrove_chest_boat",
@@ -1823,6 +2483,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::NoRestrictions,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: None,
+        motion: Motion {
+            gravity: 0.04f32,
+            air_drag: 1.0f32,
+            step_height: 0.0f32,
+            living: false,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:mannequin",
@@ -1841,6 +2509,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::NoRestrictions,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: Some(20.0f32),
+        motion: Motion {
+            gravity: 0.08f32,
+            air_drag: 0.98f32,
+            step_height: 0.6f32,
+            living: true,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:marker",
@@ -1859,6 +2535,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::NoRestrictions,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: None,
+        motion: Motion {
+            gravity: 0.0f32,
+            air_drag: 0.98f32,
+            step_height: 0.0f32,
+            living: false,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:minecart",
@@ -1877,6 +2561,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::NoRestrictions,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: None,
+        motion: Motion {
+            gravity: 0.04f32,
+            air_drag: 0.95f32,
+            step_height: 0.0f32,
+            living: false,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:mooshroom",
@@ -1895,6 +2587,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::OnGround,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: Some(10.0f32),
+        motion: Motion {
+            gravity: 0.08f32,
+            air_drag: 0.98f32,
+            step_height: 0.6f32,
+            living: true,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:mule",
@@ -1913,6 +2613,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::OnGround,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: Some(53.0f32),
+        motion: Motion {
+            gravity: 0.08f32,
+            air_drag: 0.98f32,
+            step_height: 1.0f32,
+            living: true,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:nautilus",
@@ -1931,6 +2639,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::InWater,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: Some(15.0f32),
+        motion: Motion {
+            gravity: 0.08f32,
+            air_drag: 0.98f32,
+            step_height: 0.6f32,
+            living: true,
+            omnidirectional: false,
+            pushed_by_fluid: false,
+        },
     },
     EntityDef {
         name: "minecraft:oak_boat",
@@ -1949,6 +2665,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::NoRestrictions,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: None,
+        motion: Motion {
+            gravity: 0.04f32,
+            air_drag: 1.0f32,
+            step_height: 0.0f32,
+            living: false,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:oak_chest_boat",
@@ -1967,6 +2691,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::NoRestrictions,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: None,
+        motion: Motion {
+            gravity: 0.04f32,
+            air_drag: 1.0f32,
+            step_height: 0.0f32,
+            living: false,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:ocelot",
@@ -1985,6 +2717,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::OnGround,
         heightmap: SpawnHeightmap::MotionBlocking,
         max_health: Some(10.0f32),
+        motion: Motion {
+            gravity: 0.08f32,
+            air_drag: 0.98f32,
+            step_height: 0.6f32,
+            living: true,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:ominous_item_spawner",
@@ -2003,6 +2743,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::NoRestrictions,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: None,
+        motion: Motion {
+            gravity: 0.0f32,
+            air_drag: 0.98f32,
+            step_height: 0.0f32,
+            living: false,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:painting",
@@ -2021,6 +2769,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::NoRestrictions,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: None,
+        motion: Motion {
+            gravity: 0.0f32,
+            air_drag: 0.98f32,
+            step_height: 0.0f32,
+            living: false,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:pale_oak_boat",
@@ -2039,6 +2795,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::NoRestrictions,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: None,
+        motion: Motion {
+            gravity: 0.04f32,
+            air_drag: 1.0f32,
+            step_height: 0.0f32,
+            living: false,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:pale_oak_chest_boat",
@@ -2057,6 +2821,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::NoRestrictions,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: None,
+        motion: Motion {
+            gravity: 0.04f32,
+            air_drag: 1.0f32,
+            step_height: 0.0f32,
+            living: false,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:panda",
@@ -2075,6 +2847,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::NoRestrictions,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: Some(20.0f32),
+        motion: Motion {
+            gravity: 0.08f32,
+            air_drag: 0.98f32,
+            step_height: 0.6f32,
+            living: true,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:parched",
@@ -2093,6 +2873,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::OnGround,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: Some(16.0f32),
+        motion: Motion {
+            gravity: 0.08f32,
+            air_drag: 0.98f32,
+            step_height: 0.6f32,
+            living: true,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:parrot",
@@ -2111,6 +2899,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::OnGround,
         heightmap: SpawnHeightmap::MotionBlocking,
         max_health: Some(6.0f32),
+        motion: Motion {
+            gravity: 0.08f32,
+            air_drag: 0.91f32,
+            step_height: 0.6f32,
+            living: true,
+            omnidirectional: true,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:phantom",
@@ -2129,6 +2925,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::NoRestrictions,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: Some(20.0f32),
+        motion: Motion {
+            gravity: 0.08f32,
+            air_drag: 0.98f32,
+            step_height: 0.6f32,
+            living: true,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:pig",
@@ -2147,6 +2951,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::OnGround,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: Some(10.0f32),
+        motion: Motion {
+            gravity: 0.08f32,
+            air_drag: 0.98f32,
+            step_height: 0.6f32,
+            living: true,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:piglin",
@@ -2165,6 +2977,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::OnGround,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: Some(16.0f32),
+        motion: Motion {
+            gravity: 0.08f32,
+            air_drag: 0.98f32,
+            step_height: 0.6f32,
+            living: true,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:piglin_brute",
@@ -2183,6 +3003,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::NoRestrictions,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: Some(50.0f32),
+        motion: Motion {
+            gravity: 0.08f32,
+            air_drag: 0.98f32,
+            step_height: 0.6f32,
+            living: true,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:pillager",
@@ -2201,6 +3029,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::OnGround,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: Some(24.0f32),
+        motion: Motion {
+            gravity: 0.08f32,
+            air_drag: 0.98f32,
+            step_height: 0.6f32,
+            living: true,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:polar_bear",
@@ -2219,6 +3055,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::OnGround,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: Some(30.0f32),
+        motion: Motion {
+            gravity: 0.08f32,
+            air_drag: 0.98f32,
+            step_height: 0.6f32,
+            living: true,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:splash_potion",
@@ -2237,6 +3081,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::NoRestrictions,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: None,
+        motion: Motion {
+            gravity: 0.05f32,
+            air_drag: 0.99f32,
+            step_height: 0.0f32,
+            living: false,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:lingering_potion",
@@ -2255,6 +3107,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::NoRestrictions,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: None,
+        motion: Motion {
+            gravity: 0.05f32,
+            air_drag: 0.99f32,
+            step_height: 0.0f32,
+            living: false,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:pufferfish",
@@ -2273,6 +3133,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::InWater,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: Some(3.0f32),
+        motion: Motion {
+            gravity: 0.08f32,
+            air_drag: 0.98f32,
+            step_height: 0.6f32,
+            living: true,
+            omnidirectional: false,
+            pushed_by_fluid: false,
+        },
     },
     EntityDef {
         name: "minecraft:rabbit",
@@ -2291,6 +3159,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::OnGround,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: Some(3.0f32),
+        motion: Motion {
+            gravity: 0.08f32,
+            air_drag: 0.98f32,
+            step_height: 0.6f32,
+            living: true,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:ravager",
@@ -2309,6 +3185,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::OnGround,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: Some(100.0f32),
+        motion: Motion {
+            gravity: 0.08f32,
+            air_drag: 0.98f32,
+            step_height: 1.0f32,
+            living: true,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:salmon",
@@ -2327,6 +3211,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::InWater,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: Some(3.0f32),
+        motion: Motion {
+            gravity: 0.08f32,
+            air_drag: 0.98f32,
+            step_height: 0.6f32,
+            living: true,
+            omnidirectional: false,
+            pushed_by_fluid: false,
+        },
     },
     EntityDef {
         name: "minecraft:sheep",
@@ -2345,6 +3237,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::OnGround,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: Some(8.0f32),
+        motion: Motion {
+            gravity: 0.08f32,
+            air_drag: 0.98f32,
+            step_height: 0.6f32,
+            living: true,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:shulker",
@@ -2363,6 +3263,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::NoRestrictions,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: Some(30.0f32),
+        motion: Motion {
+            gravity: 0.08f32,
+            air_drag: 0.98f32,
+            step_height: 0.6f32,
+            living: true,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:shulker_bullet",
@@ -2381,6 +3289,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::NoRestrictions,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: None,
+        motion: Motion {
+            gravity: 0.04f32,
+            air_drag: 0.98f32,
+            step_height: 0.0f32,
+            living: false,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:silverfish",
@@ -2399,6 +3315,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::OnGround,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: Some(8.0f32),
+        motion: Motion {
+            gravity: 0.08f32,
+            air_drag: 0.98f32,
+            step_height: 0.6f32,
+            living: true,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:skeleton",
@@ -2417,6 +3341,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::OnGround,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: Some(20.0f32),
+        motion: Motion {
+            gravity: 0.08f32,
+            air_drag: 0.98f32,
+            step_height: 0.6f32,
+            living: true,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:skeleton_horse",
@@ -2435,6 +3367,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::OnGround,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: Some(15.0f32),
+        motion: Motion {
+            gravity: 0.08f32,
+            air_drag: 0.98f32,
+            step_height: 1.0f32,
+            living: true,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:slime",
@@ -2453,6 +3393,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::OnGround,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: Some(20.0f32),
+        motion: Motion {
+            gravity: 0.08f32,
+            air_drag: 0.98f32,
+            step_height: 0.6f32,
+            living: true,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:small_fireball",
@@ -2471,6 +3419,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::NoRestrictions,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: None,
+        motion: Motion {
+            gravity: 0.0f32,
+            air_drag: 0.98f32,
+            step_height: 0.0f32,
+            living: false,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:sniffer",
@@ -2489,6 +3445,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::NoRestrictions,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: Some(14.0f32),
+        motion: Motion {
+            gravity: 0.08f32,
+            air_drag: 0.98f32,
+            step_height: 0.6f32,
+            living: true,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:snowball",
@@ -2507,6 +3471,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::NoRestrictions,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: None,
+        motion: Motion {
+            gravity: 0.03f32,
+            air_drag: 0.99f32,
+            step_height: 0.0f32,
+            living: false,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:snow_golem",
@@ -2525,6 +3497,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::OnGround,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: Some(4.0f32),
+        motion: Motion {
+            gravity: 0.08f32,
+            air_drag: 0.98f32,
+            step_height: 0.6f32,
+            living: true,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:spawner_minecart",
@@ -2543,6 +3523,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::NoRestrictions,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: None,
+        motion: Motion {
+            gravity: 0.04f32,
+            air_drag: 0.95f32,
+            step_height: 0.0f32,
+            living: false,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:spectral_arrow",
@@ -2561,6 +3549,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::NoRestrictions,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: None,
+        motion: Motion {
+            gravity: 0.05f32,
+            air_drag: 0.99f32,
+            step_height: 0.0f32,
+            living: false,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:spider",
@@ -2579,6 +3575,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::OnGround,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: Some(16.0f32),
+        motion: Motion {
+            gravity: 0.08f32,
+            air_drag: 0.98f32,
+            step_height: 0.6f32,
+            living: true,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:spruce_boat",
@@ -2597,6 +3601,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::NoRestrictions,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: None,
+        motion: Motion {
+            gravity: 0.04f32,
+            air_drag: 1.0f32,
+            step_height: 0.0f32,
+            living: false,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:spruce_chest_boat",
@@ -2615,6 +3627,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::NoRestrictions,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: None,
+        motion: Motion {
+            gravity: 0.04f32,
+            air_drag: 1.0f32,
+            step_height: 0.0f32,
+            living: false,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:squid",
@@ -2633,6 +3653,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::InWater,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: Some(10.0f32),
+        motion: Motion {
+            gravity: 0.08f32,
+            air_drag: 0.98f32,
+            step_height: 0.6f32,
+            living: true,
+            omnidirectional: false,
+            pushed_by_fluid: false,
+        },
     },
     EntityDef {
         name: "minecraft:stray",
@@ -2651,6 +3679,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::OnGround,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: Some(20.0f32),
+        motion: Motion {
+            gravity: 0.08f32,
+            air_drag: 0.98f32,
+            step_height: 0.6f32,
+            living: true,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:strider",
@@ -2669,6 +3705,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::InLava,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: Some(20.0f32),
+        motion: Motion {
+            gravity: 0.08f32,
+            air_drag: 0.98f32,
+            step_height: 0.6f32,
+            living: true,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:sulfur_cube",
@@ -2687,6 +3731,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::OnGround,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: Some(20.0f32),
+        motion: Motion {
+            gravity: 0.08f32,
+            air_drag: 0.98f32,
+            step_height: 0.6f32,
+            living: true,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:tadpole",
@@ -2705,6 +3757,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::NoRestrictions,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: Some(6.0f32),
+        motion: Motion {
+            gravity: 0.08f32,
+            air_drag: 0.98f32,
+            step_height: 0.6f32,
+            living: true,
+            omnidirectional: false,
+            pushed_by_fluid: false,
+        },
     },
     EntityDef {
         name: "minecraft:text_display",
@@ -2723,6 +3783,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::NoRestrictions,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: None,
+        motion: Motion {
+            gravity: 0.0f32,
+            air_drag: 0.98f32,
+            step_height: 0.0f32,
+            living: false,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:tnt",
@@ -2741,6 +3809,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::NoRestrictions,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: None,
+        motion: Motion {
+            gravity: 0.04f32,
+            air_drag: 0.98f32,
+            step_height: 0.0f32,
+            living: false,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:tnt_minecart",
@@ -2759,6 +3835,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::NoRestrictions,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: None,
+        motion: Motion {
+            gravity: 0.04f32,
+            air_drag: 0.95f32,
+            step_height: 0.0f32,
+            living: false,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:trader_llama",
@@ -2777,6 +3861,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::NoRestrictions,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: Some(53.0f32),
+        motion: Motion {
+            gravity: 0.08f32,
+            air_drag: 0.98f32,
+            step_height: 1.0f32,
+            living: true,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:trident",
@@ -2795,6 +3887,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::NoRestrictions,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: None,
+        motion: Motion {
+            gravity: 0.05f32,
+            air_drag: 0.99f32,
+            step_height: 0.0f32,
+            living: false,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:tropical_fish",
@@ -2813,6 +3913,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::InWater,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: Some(3.0f32),
+        motion: Motion {
+            gravity: 0.08f32,
+            air_drag: 0.98f32,
+            step_height: 0.6f32,
+            living: true,
+            omnidirectional: false,
+            pushed_by_fluid: false,
+        },
     },
     EntityDef {
         name: "minecraft:turtle",
@@ -2831,6 +3939,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::OnGround,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: Some(30.0f32),
+        motion: Motion {
+            gravity: 0.08f32,
+            air_drag: 0.98f32,
+            step_height: 1.0f32,
+            living: true,
+            omnidirectional: false,
+            pushed_by_fluid: false,
+        },
     },
     EntityDef {
         name: "minecraft:vex",
@@ -2849,6 +3965,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::NoRestrictions,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: Some(14.0f32),
+        motion: Motion {
+            gravity: 0.08f32,
+            air_drag: 0.98f32,
+            step_height: 0.6f32,
+            living: true,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:villager",
@@ -2867,6 +3991,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::OnGround,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: Some(20.0f32),
+        motion: Motion {
+            gravity: 0.08f32,
+            air_drag: 0.98f32,
+            step_height: 0.6f32,
+            living: true,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:vindicator",
@@ -2885,6 +4017,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::NoRestrictions,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: Some(24.0f32),
+        motion: Motion {
+            gravity: 0.08f32,
+            air_drag: 0.98f32,
+            step_height: 0.6f32,
+            living: true,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:wandering_trader",
@@ -2903,6 +4043,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::OnGround,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: Some(20.0f32),
+        motion: Motion {
+            gravity: 0.08f32,
+            air_drag: 0.98f32,
+            step_height: 0.6f32,
+            living: true,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:warden",
@@ -2921,6 +4069,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::NoRestrictions,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: Some(500.0f32),
+        motion: Motion {
+            gravity: 0.08f32,
+            air_drag: 0.98f32,
+            step_height: 0.6f32,
+            living: true,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:wind_charge",
@@ -2939,6 +4095,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::NoRestrictions,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: None,
+        motion: Motion {
+            gravity: 0.0f32,
+            air_drag: 0.98f32,
+            step_height: 0.0f32,
+            living: false,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:witch",
@@ -2957,6 +4121,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::OnGround,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: Some(26.0f32),
+        motion: Motion {
+            gravity: 0.08f32,
+            air_drag: 0.98f32,
+            step_height: 0.6f32,
+            living: true,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:wither",
@@ -2975,6 +4147,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::OnGround,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: Some(300.0f32),
+        motion: Motion {
+            gravity: 0.08f32,
+            air_drag: 0.98f32,
+            step_height: 0.6f32,
+            living: true,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:wither_skeleton",
@@ -2993,6 +4173,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::OnGround,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: Some(20.0f32),
+        motion: Motion {
+            gravity: 0.08f32,
+            air_drag: 0.98f32,
+            step_height: 0.6f32,
+            living: true,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:wither_skull",
@@ -3011,6 +4199,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::NoRestrictions,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: None,
+        motion: Motion {
+            gravity: 0.0f32,
+            air_drag: 0.98f32,
+            step_height: 0.0f32,
+            living: false,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:wolf",
@@ -3029,6 +4225,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::OnGround,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: Some(8.0f32),
+        motion: Motion {
+            gravity: 0.08f32,
+            air_drag: 0.98f32,
+            step_height: 0.6f32,
+            living: true,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:zoglin",
@@ -3047,6 +4251,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::OnGround,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: Some(40.0f32),
+        motion: Motion {
+            gravity: 0.08f32,
+            air_drag: 0.98f32,
+            step_height: 0.6f32,
+            living: true,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:zombie",
@@ -3065,6 +4277,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::OnGround,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: Some(20.0f32),
+        motion: Motion {
+            gravity: 0.08f32,
+            air_drag: 0.98f32,
+            step_height: 0.6f32,
+            living: true,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:zombie_horse",
@@ -3083,6 +4303,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::OnGround,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: Some(25.0f32),
+        motion: Motion {
+            gravity: 0.08f32,
+            air_drag: 0.98f32,
+            step_height: 1.0f32,
+            living: true,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:zombie_nautilus",
@@ -3101,6 +4329,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::NoRestrictions,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: Some(15.0f32),
+        motion: Motion {
+            gravity: 0.08f32,
+            air_drag: 0.98f32,
+            step_height: 0.6f32,
+            living: true,
+            omnidirectional: false,
+            pushed_by_fluid: false,
+        },
     },
     EntityDef {
         name: "minecraft:zombie_villager",
@@ -3119,6 +4355,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::OnGround,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: Some(20.0f32),
+        motion: Motion {
+            gravity: 0.08f32,
+            air_drag: 0.98f32,
+            step_height: 0.6f32,
+            living: true,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:zombified_piglin",
@@ -3137,6 +4381,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::OnGround,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: Some(20.0f32),
+        motion: Motion {
+            gravity: 0.08f32,
+            air_drag: 0.98f32,
+            step_height: 0.6f32,
+            living: true,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:player",
@@ -3155,6 +4407,14 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::NoRestrictions,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: Some(20.0f32),
+        motion: Motion {
+            gravity: 0.08f32,
+            air_drag: 0.98f32,
+            step_height: 0.6f32,
+            living: true,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
     EntityDef {
         name: "minecraft:fishing_bobber",
@@ -3173,5 +4433,13 @@ pub(crate) static ENTITY_TYPES: [EntityDef; 158] = [
         placement: SpawnPlacement::NoRestrictions,
         heightmap: SpawnHeightmap::MotionBlockingNoLeaves,
         max_health: None,
+        motion: Motion {
+            gravity: 0.0f32,
+            air_drag: 0.98f32,
+            step_height: 0.0f32,
+            living: false,
+            omnidirectional: false,
+            pushed_by_fluid: true,
+        },
     },
 ];

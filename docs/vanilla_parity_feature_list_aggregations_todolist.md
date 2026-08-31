@@ -114,11 +114,11 @@
 - [x] **DataTracker (Metadata)** — `SyncedData` in [`src/lib/entities/src/synced_data/`](../src/lib/entities/src/synced_data/), the wire form in [`entity_metadata.rs`](../src/lib/net/src/packets/outgoing/entity_metadata.rs). Layouts and serializer numbers extracted per version; only what changed is sent.
 
 ### **Physics & Movement**
-- [ ] **Gravity simulation** — Not implemented.
-- [ ] **Drag/Air Resistance** — Not implemented.
-- [ ] **Fluid handling** — Not implemented.
+- [x] **Gravity simulation** — [`src/lib/physics/`](../src/lib/physics/), driven by [`src/bin/src/systems/physics/`](../src/bin/src/systems/physics/). Per type, extracted from the game; sixty-five of the hundred and fifty-eight types differ from the common 0.08.
+- [x] **Drag/Air Resistance** — same place. Applied in vanilla's own order, which differs between mobs and dropped things and is what decides the terminal speed.
+- [/] **Fluid handling** — water and lava change how an entity is pulled and slowed. **Missing:** fluid height, so being in one is decided by the block at the entity's feet; and bubble columns.
 - [ ] **Piston pushing logic** — Not implemented.
-- [/] **Collision resolution** — Basic collision bounds checking in [`src/lib/core/src/collisions/`](../src/lib/core/src/collisions/). **Missing:** Full collision response.
+- [x] **Collision resolution** — [`src/bin/src/systems/physics/collisions.rs`](../src/bin/src/systems/physics/collisions.rs). Swept per axis against the real voxel shapes, with the step-up that walks an entity onto a slab.
 
 ### **Player Entity**
 - [x] **Gamemodes** — [`src/lib/components/src/player/gamemode.rs`](../src/lib/components/src/player/gamemode.rs). All 4 modes: Survival, Creative, Adventure, Spectator. Configurable default in config.
@@ -183,7 +183,7 @@
 - [ ] **Attack Cooldown** — Not implemented.
 - [ ] **Damage Sources** — Not implemented.
 - [ ] **Armor formulas** — Not implemented.
-- [ ] **Knockback** — Not implemented.
+- [/] **Knockback** — the arithmetic in [`src/lib/physics/`](../src/lib/physics/). **Missing:** a caller, since nothing deals damage yet.
 - [ ] **Critical Hits** — Not implemented.
 
 ### **Magic & Effects**

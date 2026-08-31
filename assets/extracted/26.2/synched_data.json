@@ -129,7 +129,7 @@
         {"index": 7, "serializer": "int", "owner": "Entity#DATA_TICKS_FROZEN", "name": "DATA_TICKS_FROZEN", "default_text": 0, "default": "00"},
         {"index": 8, "serializer": "float", "owner": "AreaEffectCloud#DATA_RADIUS", "name": "DATA_RADIUS", "default_text": 3.0, "default": "40400000"},
         {"index": 9, "serializer": "boolean", "owner": "AreaEffectCloud#DATA_WAITING", "name": "DATA_WAITING", "default_text": false, "default": "00"},
-        {"index": 10, "serializer": "particle", "owner": "AreaEffectCloud#DATA_PARTICLE", "name": "DATA_PARTICLE", "default_text": "net.minecraft.core.particles.ColorParticleOption@8b5b497", "default": "1cffffffff"}
+        {"index": 10, "serializer": "particle", "owner": "AreaEffectCloud#DATA_PARTICLE", "name": "DATA_PARTICLE", "default_text": "net.minecraft.core.particles.ColorParticleOption@4cde646c", "default": "1cffffffff"}
       ]
     },
     "minecraft:armadillo": {
@@ -3006,7 +3006,7 @@
         {"index": 16, "serializer": "boolean", "owner": "AgeableMob#DATA_BABY_ID", "name": "DATA_BABY_ID", "default_text": false, "default": "00"},
         {"index": 17, "serializer": "boolean", "owner": "AgeableMob#AGE_LOCKED", "name": "AGE_LOCKED", "default_text": false, "default": "00"},
         {"index": 18, "serializer": "int", "owner": "AbstractVillager#DATA_UNHAPPY_COUNTER", "name": "DATA_UNHAPPY_COUNTER", "default_text": 0, "default": "00"},
-        {"index": 19, "serializer": "villager_data", "owner": "Villager#DATA_VILLAGER_DATA", "name": "DATA_VILLAGER_DATA", "default_text": "VillagerData[type=Reference{ResourceKey[minecraft:villager_type / minecraft:plains]=net.minecraft.world.entity.npc.villager.VillagerType@2a3cedc1}, profession=Reference{ResourceKey[minecraft:villager_profession / minecraft:none]=VillagerProfession[name=translation{key='entity.minecraft.villager.none', args=[]}, heldJobSite=net.minecraft.world.entity.ai.village.poi.PoiType$$Lambda/0x0000000074897718@3e3f3421, acquirableJobSite=net.minecraft.world.entity.npc.villager.VillagerProfession$$Lambda/0x00000000748974c0@581149f8, requestedItems=[], secondaryPoi=[], workSound=null, tradeSetsByLevel={}]}, level=1]", "default": "020001"},
+        {"index": 19, "serializer": "villager_data", "owner": "Villager#DATA_VILLAGER_DATA", "name": "DATA_VILLAGER_DATA", "default_text": "VillagerData[type=Reference{ResourceKey[minecraft:villager_type / minecraft:plains]=net.minecraft.world.entity.npc.villager.VillagerType@1c427f9d}, profession=Reference{ResourceKey[minecraft:villager_profession / minecraft:none]=VillagerProfession[name=translation{key='entity.minecraft.villager.none', args=[]}, heldJobSite=net.minecraft.world.entity.ai.village.poi.PoiType$$Lambda/0x000000001f897718@581149f8, acquirableJobSite=net.minecraft.world.entity.npc.villager.VillagerProfession$$Lambda/0x000000001f8974c0@35752757, requestedItems=[], secondaryPoi=[], workSound=null, tradeSetsByLevel={}]}, level=1]", "default": "020001"},
         {"index": 20, "serializer": "boolean", "owner": "Villager#DATA_VILLAGER_DATA_FINALIZED", "name": "DATA_VILLAGER_DATA_FINALIZED", "default_text": false, "default": "00"}
       ]
     },
@@ -3324,7 +3324,7 @@
         {"index": 17, "serializer": "int", "owner": "Zombie#DATA_SPECIAL_TYPE_ID", "name": "DATA_SPECIAL_TYPE_ID", "default_text": 0, "default": "00"},
         {"index": 18, "serializer": "boolean", "owner": "Zombie#DATA_DROWNED_CONVERSION_ID", "name": "DATA_DROWNED_CONVERSION_ID", "default_text": false, "default": "00"},
         {"index": 19, "serializer": "boolean", "owner": "ZombieVillager#DATA_CONVERTING_ID", "name": "DATA_CONVERTING_ID", "default_text": false, "default": "00"},
-        {"index": 20, "serializer": "villager_data", "owner": "ZombieVillager#DATA_VILLAGER_DATA", "name": "DATA_VILLAGER_DATA", "default_text": "VillagerData[type=Reference{ResourceKey[minecraft:villager_type / minecraft:plains]=net.minecraft.world.entity.npc.villager.VillagerType@2a3cedc1}, profession=Reference{ResourceKey[minecraft:villager_profession / minecraft:nitwit]=VillagerProfession[name=translation{key='entity.minecraft.villager.nitwit', args=[]}, heldJobSite=net.minecraft.world.entity.ai.village.poi.PoiType$$Lambda/0x0000000074897718@3e3f3421, acquirableJobSite=net.minecraft.world.entity.ai.village.poi.PoiType$$Lambda/0x0000000074897718@3e3f3421, requestedItems=[], secondaryPoi=[], workSound=null, tradeSetsByLevel={}]}, level=1]", "default": "020b01"},
+        {"index": 20, "serializer": "villager_data", "owner": "ZombieVillager#DATA_VILLAGER_DATA", "name": "DATA_VILLAGER_DATA", "default_text": "VillagerData[type=Reference{ResourceKey[minecraft:villager_type / minecraft:plains]=net.minecraft.world.entity.npc.villager.VillagerType@1c427f9d}, profession=Reference{ResourceKey[minecraft:villager_profession / minecraft:fletcher]=VillagerProfession[name=translation{key='entity.minecraft.villager.fletcher', args=[]}, heldJobSite=net.minecraft.world.entity.npc.villager.VillagerProfession$$Lambda/0x000000001f899ff0@48fe9ceb, acquirableJobSite=net.minecraft.world.entity.npc.villager.VillagerProfession$$Lambda/0x000000001f89a250@64041e8b, requestedItems=[], secondaryPoi=[], workSound=SoundEvent[location=minecraft:entity.villager.work_fletcher, fixedRange=Optional.empty], tradeSetsByLevel={1=>ResourceKey[minecraft:trade_set / minecraft:fletcher/level_1], 2=>ResourceKey[minecraft:trade_set / minecraft:fletcher/level_2], 3=>ResourceKey[minecraft:trade_set / minecraft:fletcher/level_3], 4=>ResourceKey[minecraft:trade_set / minecraft:fletcher/level_4], 5=>ResourceKey[minecraft:trade_set / minecraft:fletcher/level_5]}]}, level=1]", "default": "020701"},
         {"index": 21, "serializer": "boolean", "owner": "ZombieVillager#DATA_VILLAGER_DATA_FINALIZED", "name": "DATA_VILLAGER_DATA_FINALIZED", "default_text": false, "default": "00"}
       ]
     },
@@ -3353,7 +3353,7 @@
       ]
     },
     "minecraft:player": {
-      "class": "SynchedDataExtractor$HollowPlayer",
+      "class": "GameEntities$HollowPlayer",
       "fields": [
         {"index": 0, "serializer": "byte", "owner": "Entity#DATA_SHARED_FLAGS_ID", "name": "DATA_SHARED_FLAGS_ID", "default_text": 0, "default": "00"},
         {"index": 1, "serializer": "int", "owner": "Entity#DATA_AIR_SUPPLY_ID", "name": "DATA_AIR_SUPPLY_ID", "default_text": 300, "default": "ac02"},

@@ -147,6 +147,12 @@ impl EntityType {
         }
     }
 
+    /// How a tick moves one of these when nothing else does.
+    #[must_use]
+    pub const fn motion(self) -> &'static ferrumc_physics::Motion {
+        &self.def().motion
+    }
+
     /// Every type there is.
     pub fn all() -> impl Iterator<Item = Self> {
         (0..ENTITY_TYPES.len())
@@ -227,6 +233,26 @@ mod tests {
     }
 
     /// A category is what decides whether a mob despawns and how many fit in a chunk.
+    #[test]
+    fn a_type_is_moved_the_way_the_game_moves_it() {
+        // A dropped thing is pulled down at half the rate a mob is, and the things that hang
+        // where they are put at none at all. None of that is guessable from the type — a squid is
+        // pulled down as hard as a zombie, and it is the water that holds it up.
+        assert_eq!(EntityType::Zombie.motion().gravity, 0.08);
+        assert_eq!(EntityType::Squid.motion().gravity, 0.08);
+        assert_eq!(EntityType::Item.motion().gravity, 0.04);
+        assert_eq!(EntityType::Arrow.motion().gravity, 0.05);
+        assert_eq!(EntityType::ExperienceOrb.motion().gravity, 0.03);
+        assert_eq!(EntityType::Painting.motion().gravity, 0.0);
+
+        assert!(EntityType::Zombie.motion().living);
+        assert!(!EntityType::Item.motion().living);
+
+        // A mob steps up a slab; a dropped thing walks into it.
+        assert_eq!(EntityType::Zombie.motion().step_height, 0.6);
+        assert_eq!(EntityType::Item.motion().step_height, 0.0);
+    }
+
     #[test]
     fn a_category_carries_its_limits() {
         let monster = MobCategory::Monster.def();

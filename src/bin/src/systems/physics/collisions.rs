@@ -57,14 +57,27 @@ pub fn handle(
             pos.coords.y + f64::from(physical.bounding_box.max.y),
             pos.coords.z + f64::from(physical.bounding_box.max.z),
         );
-        let allowed = collide(&state.0, entity, movement);
+        let allowed = collide(
+            &state.0,
+            entity,
+            movement,
+            f64::from(kind.motion().step_height),
+            grounded.0,
+        );
+
+        // Standing on something is decided every tick from whether the ground was still there to
+        // stop the fall, not remembered from the tick it first happened: a block mined out from
+        // under an entity has to leave it falling.
+        let landed = movement.y < 0.0 && allowed.y != movement.y;
+        if grounded.0 != landed {
+            grounded.0 = landed;
+        }
+
         if allowed == movement {
             continue;
         }
 
-        // An entity that was moving down and is no longer is standing on something.
         if allowed.y != movement.y {
-            grounded.0 = movement.y < 0.0;
             vel.y = 0.0;
         }
         if allowed.x != movement.x {
@@ -84,7 +97,41 @@ pub fn handle(
 /// blocked on one axis is still tried on the others. The vertical goes first, then the larger
 /// horizontal, which is the order that lets an entity slide along a wall it is pressed into rather
 /// than catching on the corner of every block.
-fn collide(state: &GlobalState, entity: Aabb, movement: DVec3) -> DVec3 {
+fn collide(
+    state: &GlobalState,
+    entity: Aabb,
+    movement: DVec3,
+    step_height: f64,
+    grounded: bool,
+) -> DVec3 {
+    let allowed = slide(state, entity, movement);
+
+    // Something that walks can walk up a rise it would otherwise walk into. The move is tried
+    // again from a box lifted by as much as the entity can step, and taken only if it gets further
+    // along the ground than the flat one did.
+    let blocked = allowed.x != movement.x || allowed.z != movement.z;
+    if !blocked || step_height <= 0.0 || !grounded {
+        return allowed;
+    }
+
+    let lift = axis(state, &entity, Axis::Y, step_height);
+    if lift <= 0.0 {
+        return allowed;
+    }
+    let stepped = slide(state, entity.offset(0.0, lift, 0.0), movement.with_y(0.0));
+    if stepped.x.abs() + stepped.z.abs() <= allowed.x.abs() + allowed.z.abs() {
+        return allowed;
+    }
+
+    // Back down onto whatever the step landed on, so the entity ends up standing on it rather
+    // than hanging in the air above it.
+    let settled = entity.offset(stepped.x, lift, stepped.z);
+    let drop = axis(state, &settled, Axis::Y, -lift);
+    DVec3::new(stepped.x, lift + drop, stepped.z)
+}
+
+/// How much of `movement` the world leaves a box, one axis at a time.
+fn slide(state: &GlobalState, entity: Aabb, movement: DVec3) -> DVec3 {
     let mut moving = entity;
     let mut allowed = DVec3::ZERO;
 
@@ -150,9 +197,4 @@ fn block_at(state: &GlobalState, pos: IVec3) -> ferrumc_world::block_state_id::B
     ferrumc_utils::world::load_or_generate_mut(state, ChunkPos::from(pos.as_dvec3()), "overworld")
         .expect("Failed to load or generate chunk")
         .get_block(ChunkBlockPos::from(pos))
-}
-
-/// Whether anything at all stops an entity at this position.
-pub fn is_solid_block(state: &GlobalState, pos: IVec3) -> bool {
-    !VoxelShape::collision_of(block_at(state, pos)).is_empty()
 }

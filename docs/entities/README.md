@@ -86,6 +86,49 @@ Twenty-one kinds of value have a shape. The rest — particles, villager data, t
 block states, profiles — are written back exactly as the game wrote their defaults, which is right
 until something wants to set one.
 
+## How an entity moves
+
+Two numbers move an entity on its own: the pull downwards and what the medium around it takes back.
+Both are per type, and both come from the game rather than from a constant that fits most of them.
+
+```rust
+EntityType::Zombie.motion().gravity   // 0.08
+EntityType::Item.motion().gravity     // 0.04 — half
+EntityType::Arrow.motion().gravity    // 0.05
+EntityType::Painting.motion().gravity // 0.0 — it hangs where it is put
+```
+
+Sixty-five of the hundred and fifty-eight types are pulled down at something other than 0.08, so a
+single constant was wrong for two entities in five. A squid is pulled down as hard as a zombie —
+it is the water that holds it up, not a lack of weight — which is the kind of thing a hand-written
+table gets wrong and an extractor does not.
+
+### The order is the whole thing
+
+Vanilla pulls the two kinds of entity down at different points in the tick:
+
+- a **mob** moves with what the tick before left it, and is pulled down and slowed afterwards;
+- a **dropped thing** is pulled down first, moves with that, and is slowed afterwards.
+
+Both settle at the same speed, so a terminal-velocity check passes either way. What differs is the
+first second: in twenty ticks vanilla drops a mob 13.2512 blocks and an item 7.4256. Applying the
+pull on the wrong side of the move costs a mob about two blocks over that second while everything
+still looks like falling. `src/lib/physics` is the arithmetic on its own, with those two numbers as
+its test, and `src/bin/src/systems/physics` is the tick that drives it:
+
+```
+pull_before_moving  →  collisions  →  velocity  →  pull_and_slow_after_moving
+```
+
+Standing on something is decided each tick from whether the ground was still there to stop the
+fall, not remembered — a block mined out from under an entity leaves it falling with no help.
+
+### Stepping up
+
+An entity that walks into a rise it could walk up tries the move again from a box lifted by its own
+step height, and takes it only if it gets further along. A mob steps up 0.6; a dropped item steps
+up nothing and walks into the slab.
+
 ## Regenerating
 
 ```bash
@@ -95,4 +138,10 @@ scripts/build_entity_types.py     # writes the enum and its table
 scripts/extract_synched_data.py 26.1   # asks the game how a row is laid out
 scripts/extract_synched_data.py 26.2
 scripts/build_synced_data.py           # writes the layouts, the field names and the vocabularies
+
+scripts/extract_entity_physics.py      # asks the game how each type moves
 ```
+
+Both entity extractors build a real entity to ask it, which needs a world for it to be built in;
+`scripts/extractor/GameEntities.java` is that world, answering the five things a constructor asks
+and nothing else.

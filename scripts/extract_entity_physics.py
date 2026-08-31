@@ -5,7 +5,7 @@ The registries report gives a name and a number. How big an entity is, how far i
 often it is updated, which category it spawns in and where it may stand all live on the type itself
 and in a table beside it, so no report carries them.
 
-Output is `assets/extracted/<version>/synched_data.json`.
+Output is `assets/extracted/<version>/entity_physics.json`.
 
 Usage:
     scripts/extract_entity_types.py
@@ -28,7 +28,7 @@ sys.path.insert(0, str(REPO_ROOT / "scripts"))
 from extract_assets import DEFAULT_CACHE, download_server_jar  # noqa: E402
 
 SHARED = REPO_ROOT / "scripts" / "extractor" / "GameEntities.java"
-EXTRACTOR = REPO_ROOT / "scripts" / "extractor" / "SynchedDataExtractor.java"
+EXTRACTOR = REPO_ROOT / "scripts" / "extractor" / "EntityPhysicsExtractor.java"
 NATIVE = "26.2"
 # Older jars are obfuscated, so the extractor would not compile against them.
 OLDEST_NAMED = "26.1"
@@ -58,7 +58,7 @@ def main() -> None:
         )
 
     jar = download_server_jar(args.version, DEFAULT_CACHE)
-    out = REPO_ROOT / "assets" / "extracted" / args.version / "synched_data.json"
+    out = REPO_ROOT / "assets" / "extracted" / args.version / "entity_physics.json"
     out.parent.mkdir(parents=True, exist_ok=True)
 
     with tempfile.TemporaryDirectory() as name:
@@ -88,10 +88,7 @@ def main() -> None:
 
     with out.open() as handle:
         data = json.load(handle)
-    print(
-        f"{len(data['serializers'])} serializers, {len(data['types'])} layouts"
-        f" -> {out.relative_to(REPO_ROOT)}"
-    )
+    print(f"{len(data['types'])} types -> {out.relative_to(REPO_ROOT)}")
 
 
 if __name__ == "__main__":

@@ -5,9 +5,9 @@ use ferrumc_core::transform::position::Position;
 use ferrumc_core::transform::rotation::Rotation;
 use ferrumc_core::transform::velocity::Velocity;
 use ferrumc_entities::components::{CombatProperties, LastSyncedPosition};
-use ferrumc_entities::entity_type::{EntityType, SpawnPlacement};
+use ferrumc_entities::entity_type::EntityType;
 use ferrumc_entities::markers::entity_types::*;
-use ferrumc_entities::markers::{HasCollisions, HasGravity, HasWaterDrag};
+use ferrumc_entities::markers::HasCollisions;
 use ferrumc_entities::synced_data::SyncedData;
 use ferrumc_messages::{SpawnEntityCommand, SpawnEntityEvent};
 use ferrumc_net::connection::StreamWriter;
@@ -131,15 +131,6 @@ pub fn handle_spawn_entity(mut events: MessageReader<SpawnEntityEvent>, mut comm
             HasCollisions,
             SyncedData::new(kind),
         ));
-
-        // Which physics apply is what the game says about where the kind may stand: a thing that
-        // belongs on the ground falls and is slowed by water, one that swims or flies does not
-        // fall, and one that lives in lava falls without the water drag.
-        match kind.def().placement {
-            SpawnPlacement::OnGround => entity.insert((HasGravity, HasWaterDrag)),
-            SpawnPlacement::InLava => entity.insert(HasGravity),
-            SpawnPlacement::InWater | SpawnPlacement::NoRestrictions => entity.insert(()),
-        };
 
         // The marker a system may filter an archetype on, for the kinds that have one.
         match kind {

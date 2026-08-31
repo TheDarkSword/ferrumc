@@ -74,8 +74,8 @@ public final class SynchedDataExtractor {
         Bootstrap.bootStrap();
 
         Map<EntityDataSerializer<?>, String> serializerNames = serializerNames();
-        RegistryAccess registries = loadEverything();
-        Level level = hollowLevel(registries);
+        GameEntities game = new GameEntities();
+        RegistryAccess registries = game.registries();
 
         try (PrintWriter out = new PrintWriter(
                 Files.newBufferedWriter(Path.of(args[0]), StandardCharsets.UTF_8))) {
@@ -118,7 +118,7 @@ public final class SynchedDataExtractor {
             for (EntityType<?> type : types) {
                 Identifier name = BuiltInRegistries.ENTITY_TYPE.getKey(type);
                 try {
-                    entries.add(layout(type, name, level, serializerNames, registries));
+                    entries.add(layout(type, name, game, serializerNames, registries));
                 } catch (Throwable failure) {
                     failures.add(name + ": " + failure);
                     if (System.getenv("TRACE") != null) {
@@ -163,16 +163,11 @@ public final class SynchedDataExtractor {
     private static String layout(
         final EntityType<?> type,
         final Identifier name,
-        final Level level,
+        final GameEntities game,
         final Map<EntityDataSerializer<?>, String> serializerNames,
         final RegistryAccess registries
     ) throws Exception {
-        Entity entity = name.getPath().equals("player")
-            ? new HollowPlayer(level)
-            : type.create(level, EntitySpawnReason.COMMAND);
-        if (entity == null) {
-            throw new IllegalStateException("no factory result");
-        }
+        Entity entity = game.build(type, name);
         Map<Integer, String> owners = accessorOwners(entity.getClass());
 
         Field itemsById = SynchedEntityData.class.getDeclaredField("itemsById");
@@ -310,172 +305,5 @@ public final class SynchedDataExtractor {
             return optional.isPresent() ? Integer.toString(optional.getAsInt()) : "null";
         }
         return "\"" + value.toString().replace("\\", "\\\\").replace("\"", "\\\"") + "\"";
-    }
-
-    /// A level that exists only enough to be passed to a constructor.
-    ///
-    /// Entity constructors ask a level for very little: the next entity id, the registries, and a
-    /// server to hang debug listeners off. Those are answered here and the rest of the level is
-    /// never initialised, so anything reaching past them throws and its type is reported unread.
-    private static Level hollowLevel(final RegistryAccess registries) throws Exception {
-        MinecraftServer server = hollow(net.minecraft.server.dedicated.DedicatedServer.class);
-        poke(server, "debugSubscribers", hollow(ServerDebugSubscribers.class));
-
-        HollowLevel level = hollow(HollowLevel.class);
-        poke(level, "registries", registries);
-        poke(level, "hollowServer", server);
-        poke(level, "hollowLevelData", hollow(PrimaryLevelData.class));
-        poke(level, "hollowScoreboard", new ServerScoreboard(server));
-        poke(level, "environmentAttributes",
-            net.minecraft.world.attribute.EnvironmentAttributeSystem.builder().build());
-        return level;
-    }
-
-    /// A level that answers what an entity constructor asks and nothing more.
-    private static final class HollowLevel extends net.minecraft.server.level.ServerLevel {
-        private RegistryAccess registries;
-        private MinecraftServer hollowServer;
-        private LevelData hollowLevelData;
-        private ServerScoreboard hollowScoreboard;
-
-        // Never called: the class is allocated without running a constructor. It exists only
-        // because a subclass has to name one of its superclass's.
-        private HollowLevel() {
-            super(null, null, null, null, null, null, false, 0L, null, false);
-        }
-
-        public int getNextEntityId() {
-            return 0;
-        }
-
-        @Override
-        public boolean isClientSide() {
-            return false;
-        }
-
-        @Override
-        public RegistryAccess registryAccess() {
-            return this.registries;
-        }
-
-        @Override
-        public MinecraftServer getServer() {
-            return this.hollowServer;
-        }
-
-        @Override
-        public FeatureFlagSet enabledFeatures() {
-            return FeatureFlags.VANILLA_SET;
-        }
-
-        @Override
-        public LevelData getLevelData() {
-            return this.hollowLevelData;
-        }
-
-        @Override
-        public ServerScoreboard getScoreboard() {
-            return this.hollowScoreboard;
-        }
-
-        @Override
-        public int getSeaLevel() {
-            return 63;
-        }
-
-        @Override
-        public net.minecraft.world.Difficulty getDifficulty() {
-            return net.minecraft.world.Difficulty.NORMAL;
-        }
-
-        @Override
-        public net.minecraft.core.Holder<net.minecraft.world.level.biome.Biome> getBiome(
-            final net.minecraft.core.BlockPos pos
-        ) {
-            return this.registries
-                .lookupOrThrow(net.minecraft.core.registries.Registries.BIOME)
-                .getOrThrow(net.minecraft.world.level.biome.Biomes.PLAINS);
-        }
-    }
-
-    /// Everything a running server would have loaded, loaded the way it loads it.
-    ///
-    /// A mob that carries an item asks the item registry for that item's components, and those are
-    /// only bound once the packs have been read; a mob with a variant asks for a registry that only
-    /// exists once they have. So the packs are read here rather than worked around.
-    private static RegistryAccess loadEverything() throws Exception {
-        PackRepository packs = ServerPacksSource.createVanillaTrustedRepository();
-        packs.reload();
-        // A fresh repository has nothing selected, and an unselected pack is not opened.
-        packs.setSelected(packs.getAvailableIds());
-
-        try (MultiPackResourceManager resources =
-                new MultiPackResourceManager(PackType.SERVER_DATA, packs.openAllSelected())) {
-            LayeredRegistryAccess<RegistryLayer> layers = RegistryLayer.createRegistryAccess();
-            List<Registry.PendingTags<?>> staticTags =
-                TagLoader.loadTagsForExistingRegistries(resources, layers.getLayer(RegistryLayer.STATIC));
-            // Binding them puts the tags on the registries themselves, so an access built from the
-            // layers afterwards knows them too.
-            staticTags.forEach(Registry.PendingTags::apply);
-            List<HolderLookup.RegistryLookup<?>> context = TagLoader.buildUpdatedLookups(
-                layers.getAccessForLoading(RegistryLayer.WORLDGEN), staticTags);
-            RegistryAccess.Frozen loaded = RegistryDataLoader.load(
-                resources, context, RegistryDataLoader.WORLDGEN_REGISTRIES, ForkJoinPool.commonPool()
-            ).join();
-            RegistryAccess.Frozen everything =
-                layers.replaceFrom(RegistryLayer.WORLDGEN, loaded).compositeAccess();
-            BuiltInRegistries.DATA_COMPONENT_INITIALIZERS.build(everything)
-                .forEach(DataComponentInitializers.PendingComponents::apply);
-            return everything;
-        }
-    }
-
-    /// A player, which the registry has no factory for because the server makes its own.
-    ///
-    /// The one the server makes adds no fields of its own, so what this lays out is what a real
-    /// player lays out.
-    private static final class HollowPlayer extends net.minecraft.world.entity.player.Player {
-        private HollowPlayer(final Level level) {
-            super(level, new com.mojang.authlib.GameProfile(java.util.UUID.randomUUID(), "hollow"));
-        }
-
-        @Override
-        public net.minecraft.world.level.GameType gameMode() {
-            return net.minecraft.world.level.GameType.SURVIVAL;
-        }
-
-        @Override
-        public net.minecraft.world.item.component.ResolvableProfile getProfile() {
-            throw new UnsupportedOperationException();
-        }
-    }
-
-    /// An instance of a class with none of its constructors run and every field left at zero.
-    @SuppressWarnings("unchecked")
-    private static <T> T hollow(final Class<? extends T> clazz) throws Exception {
-        return (T) unsafe().allocateInstance(clazz);
-    }
-
-    /// Writes a field that was never assigned, final or not.
-    private static void poke(final Object target, final String name, final Object value)
-            throws Exception {
-        Class<?> clazz = target.getClass();
-        while (clazz != null) {
-            try {
-                Field field = clazz.getDeclaredField(name);
-                Unsafe unsafe = unsafe();
-                unsafe.putObject(target, unsafe.objectFieldOffset(field), value);
-                return;
-            } catch (NoSuchFieldException missing) {
-                clazz = clazz.getSuperclass();
-            }
-        }
-        throw new NoSuchFieldException(name + " on " + target.getClass());
-    }
-
-    private static Unsafe unsafe() throws Exception {
-        Field field = Unsafe.class.getDeclaredField("theUnsafe");
-        field.setAccessible(true);
-        return (Unsafe) field.get(null);
     }
 }

@@ -27,6 +27,7 @@ sys.path.insert(0, str(REPO_ROOT / "scripts"))
 
 from extract_assets import DEFAULT_CACHE, download_server_jar  # noqa: E402
 
+SHARED = REPO_ROOT / "scripts" / "extractor" / "GameEntities.java"
 EXTRACTOR = REPO_ROOT / "scripts" / "extractor" / "EntityTypeExtractor.java"
 NATIVE = "26.2"
 # Older jars are obfuscated, so the extractor would not compile against them.
@@ -68,7 +69,16 @@ def main() -> None:
         classes.mkdir()
 
         subprocess.run(
-            [args.javac, "-nowarn", "-cp", classpath, "-d", str(classes), str(EXTRACTOR)],
+            [
+                args.javac,
+                "-nowarn",
+                "-cp",
+                classpath,
+                "-d",
+                str(classes),
+                str(EXTRACTOR),
+                str(SHARED),
+            ],
             check=True,
         )
         subprocess.run(
