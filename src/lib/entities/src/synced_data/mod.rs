@@ -164,10 +164,16 @@ impl SyncedData {
             .filter_map(|(index, value)| Some((u8::try_from(index).ok()?, value)))
     }
 
-    /// Where a value sits and what kind it is for a client speaking `version`.
+    /// Where a value sits and what number its kind travels as, for a client speaking `version`.
     #[must_use]
-    pub fn place_for(&self, index: u8, version: ProtocolVersion) -> Option<(u8, Serializer)> {
+    pub fn place_for(&self, index: u8, version: ProtocolVersion) -> Option<(u8, u8)> {
         place_for(self.kind, index, version)
+    }
+
+    /// What kind of value sits at a field, whatever version is being written to.
+    #[must_use]
+    pub fn serializer_at(&self, index: u8) -> Option<Serializer> {
+        Some(LAYOUTS[self.kind as usize].get(index as usize)?.serializer)
     }
 
     /// Whether one of the bits of the shared flags byte is set.
@@ -212,20 +218,21 @@ impl SyncedData {
     }
 }
 
-/// Where a field of `kind` sits and what kind of value it holds for a client speaking `version`,
-/// or nothing where that version has no place for it.
+/// Where a field of `kind` sits for a client speaking `version` and what number the kind of value
+/// it holds travels as, or nothing where that version has no place for it.
 ///
-/// A field a version never had cannot be sent to it at all: the number would land on whatever that
-/// version does keep at that place, and the client would read the bytes as that instead.
+/// Two separate things can be missing. A version may not put the field anywhere, and it may not
+/// have that kind of value at all — 1.21 has no place for two thirds of what 26.2 can write. Both
+/// mean the field cannot be sent: a number that version keeps something else at would be read as
+/// that something else, and since the kind decides how many bytes follow, everything after it in
+/// the row would be read at the wrong offset.
 #[must_use]
-pub fn place_for(
-    kind: EntityType,
-    index: u8,
-    version: ProtocolVersion,
-) -> Option<(u8, Serializer)> {
+pub fn place_for(kind: EntityType, index: u8, version: ProtocolVersion) -> Option<(u8, u8)> {
     let serializer = LAYOUTS[kind as usize].get(index as usize)?.serializer;
     let place = place_of(kind, index, version);
-    (place != ABSENT).then_some((place, serializer))
+    (place != ABSENT)
+        .then_some(place)
+        .zip(serializer.wire_id(version))
 }
 
 #[cfg(test)]
@@ -284,7 +291,20 @@ mod tests {
             .collect();
         assert_eq!(
             sent,
-            vec![(6, Serializer::Pose), (9, Serializer::Float)],
+            vec![
+                (
+                    6,
+                    Serializer::Pose
+                        .wire_id(ProtocolVersion::CURRENT)
+                        .expect("26.2 has poses")
+                ),
+                (
+                    9,
+                    Serializer::Float
+                        .wire_id(ProtocolVersion::CURRENT)
+                        .expect("and floats")
+                ),
+            ],
             "a change reaches a client where the game puts it, tagged as the game tags it"
         );
 
@@ -365,9 +385,9 @@ mod tests {
         for kind in EntityType::all() {
             let data = SyncedData::new(kind);
             for (index, value) in data.everything() {
-                let (_, serializer) = data
-                    .place_for(index, ProtocolVersion::CURRENT)
-                    .expect("the server's own version has a place for every field it holds");
+                let serializer = data
+                    .serializer_at(index)
+                    .expect("every field it holds has a kind");
                 let matches = matches!(
                     (serializer, value),
                     (_, DataValue::Raw(_))

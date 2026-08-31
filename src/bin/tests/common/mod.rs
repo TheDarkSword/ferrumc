@@ -67,6 +67,7 @@ impl TestServer {
         // hard link.
         let base = PathBuf::from(env!("CARGO_TARGET_TMPDIR"));
         std::fs::create_dir_all(&base)?;
+        sweep_stale(&base);
         let directory = tempfile::TempDir::new_in(&base)?;
         let root = directory.path();
 
@@ -126,6 +127,33 @@ impl TestServer {
     /// Opens a connection to this server.
     pub fn connect(&self) -> io::Result<TestClient> {
         TestClient::connect(self.address)
+    }
+}
+
+/// Nothing a test server made survives it for longer than this.
+const STALE_AFTER: Duration = Duration::from_secs(60 * 60);
+
+/// Throws away what earlier runs left behind.
+///
+/// A test server's directory goes when the value holding it drops, which does not happen if the
+/// test binary is killed — and each one pins a copy of the server binary, which is hundreds of
+/// megabytes. A few interrupted runs are enough to fill a disk, so every run clears out what is
+/// too old to belong to anything still running.
+fn sweep_stale(base: &std::path::Path) {
+    let Ok(entries) = std::fs::read_dir(base) else {
+        return;
+    };
+    for entry in entries.flatten() {
+        let old = entry
+            .metadata()
+            .and_then(|meta| meta.modified())
+            .map(|at| at.elapsed().unwrap_or_default() > STALE_AFTER)
+            .unwrap_or(false);
+        if old && entry.path().is_dir() {
+            // Whatever is left is another run's leavings, and a failure to remove it is not this
+            // run's problem.
+            let _ = std::fs::remove_dir_all(entry.path());
+        }
     }
 }
 

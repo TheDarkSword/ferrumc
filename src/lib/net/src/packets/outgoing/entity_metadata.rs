@@ -72,13 +72,15 @@ impl NetEncode for MetadataRow {
     fn encode<W: Write>(&self, writer: &mut W, opts: &NetEncodeOpts) -> Result<(), NetEncodeError> {
         let nested = opts.nested();
         for (index, value) in &self.fields {
-            // A version with no place for a field is not told about it: the number would land on
-            // whatever that version does keep there, and the value would be read as that instead.
-            let Some((place, serializer)) = place_for(self.kind, *index, opts.version) else {
+            // A version with no place for a field, or no such kind of value at all, is not told
+            // about it: the numbers would land on whatever that version does keep there, and since
+            // the kind says how many bytes follow, the rest of the row would be read at the wrong
+            // offset.
+            let Some((place, kind_id)) = place_for(self.kind, *index, opts.version) else {
                 continue;
             };
             place.encode(writer, &nested)?;
-            VarInt::new(i32::from(serializer.wire_id(opts.version))).encode(writer, &nested)?;
+            VarInt::new(i32::from(kind_id)).encode(writer, &nested)?;
             value.encode(writer, &nested)?;
         }
         END_OF_ROW.encode(writer, &nested)
@@ -100,7 +102,7 @@ impl NetEncode for MetadataRow {
 mod tests {
     use super::*;
     use ferrumc_entities::entity_type::EntityType;
-    use ferrumc_entities::synced_data::{fields, EntityFlag, Pose};
+    use ferrumc_entities::synced_data::{fields, Arm, EntityFlag, Pose};
     use ferrumc_net_codec::encode::Framing;
     use ferrumc_net_codec::version::ProtocolVersion;
 
@@ -139,6 +141,33 @@ mod tests {
     fn nothing_is_sent_when_nothing_changed() {
         let player = SyncedData::new(EntityType::Player);
         assert!(EntityMetadataPacket::changes(VarInt::new(1), &player).is_none());
+    }
+
+    #[test]
+    fn a_value_carries_the_number_its_reader_knows_the_kind_by() {
+        let mut player = SyncedData::new(EntityType::Player);
+        player.set(fields::entity::POSE, Pose::Crouching);
+
+        // Every version puts a pose at index six, and every version numbers the kind differently:
+        // 1.21 has a compound tag where 26.2 has a particle, and everything after it shifts.
+        assert_eq!(row(&player, ProtocolVersion::V26_2), vec![6, 20, 5, 0xFF]);
+        assert_eq!(
+            row(&player, ProtocolVersion::V1_21_11),
+            vec![6, 20, 5, 0xFF]
+        );
+        assert_eq!(row(&player, ProtocolVersion::V1_21_7), vec![6, 21, 5, 0xFF]);
+        assert_eq!(row(&player, ProtocolVersion::V1_21), vec![6, 21, 5, 0xFF]);
+    }
+
+    #[test]
+    fn a_value_of_a_kind_a_client_has_never_heard_of_is_left_out() {
+        // Which arm a player favours became a synced field in 26.1; before that there was no such
+        // kind of value at all, and a number naming one would be read as something else.
+        let mut player = SyncedData::new(EntityType::Player);
+        player.set(fields::avatar::PLAYER_MAIN_HAND, Arm::Left);
+
+        assert_eq!(row(&player, ProtocolVersion::V26_2), vec![15, 42, 0, 0xFF]);
+        assert_eq!(row(&player, ProtocolVersion::V1_21), vec![0xFF]);
     }
 
     #[test]

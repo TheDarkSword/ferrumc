@@ -72,13 +72,21 @@ byte, and each used to send the whole byte with only its own bit set.
 ### Getting it wrong is silent
 
 A field's place and its kind's number are both version-dependent and neither appears in any report
-the game publishes. A wrong number does not drop a value — the client reads the bytes as whatever it
-does keep at that place. So both are extracted rather than transcribed, and the table is per version:
-26.2 made a slime an ageable mob, which pushed its size two places down the row, so a 26.1 client is
-told 16 where a 26.2 client is told 18, and a field 26.1 never had is left out rather than misplaced.
+the game publishes. A wrong number does not drop a value: the kind says how many bytes follow, so a
+client reads the value as whatever kind it does keep at that number and then reads the rest of the
+row at the wrong offset. Both are therefore extracted rather than transcribed, and both are per
+version.
 
-Only 26.1 and 26.2 can be asked — older jars are obfuscated — so every older client is currently
-sent 26.1's layout. See `internal_docs/deferred.md`.
+**The kind numbers** are read out of every version's own jar. Older jars carry no names, but Mojang
+publishes a mapping file for every release, and the registration order is plain to see in the static
+initialiser — so `scripts/extract_serializer_ids.py` reads the class file rather than running it, and
+neither executes nor remaps anything. A pose is 21 in 1.21 and 20 in 26.2; ViaVersion's own tables
+agree with all ten readings, which is a second pair of eyes on numbers that fail silently.
+
+**A field's place** comes from walking the entity class tree, which only the 26.1 and newer jars can
+be asked for directly. 26.2 made a slime an ageable mob, which pushed its size two places down the
+row, so a 26.1 client is told 16 where a 26.2 client is told 18. Older versions are still sent 26.1's
+places; see `internal_docs/deferred.md`.
 
 ### What is not modelled
 
@@ -140,6 +148,8 @@ scripts/extract_synched_data.py 26.2
 scripts/build_synced_data.py           # writes the layouts, the field names and the vocabularies
 
 scripts/extract_entity_physics.py      # asks the game how each type moves
+
+scripts/extract_serializer_ids.py --all   # reads every version's kind numbers out of its jar
 ```
 
 Both entity extractors build a real entity to ask it, which needs a world for it to be built in;

@@ -34,6 +34,25 @@ KNOWN = ["26.1", "26.2"]
 # What a client reads instead of an index, for a field its version does not have.
 ABSENT = 255
 
+# Every version the server speaks, oldest first, matching `ProtocolVersion::ALL`. Each one is asked
+# what number every kind of value travels as, which is the one thing about a row that can be read
+# out of a jar that carries no names.
+SPOKEN = [
+    "1.21",
+    "1.21.2",
+    "1.21.4",
+    "1.21.5",
+    "1.21.6",
+    "1.21.8",
+    "1.21.9",
+    "1.21.11",
+    "26.1",
+    "26.2",
+]
+
+# A kind of value the game renamed without changing what it writes.
+RENAMED = {"optional_uuid": "optional_living_entity_reference"}
+
 # How each kind of value is held. A kind with no entry here is one nothing sets yet: its default
 # travels as the bytes the game wrote for it, and it gets a shape of its own when something needs
 # to write one.
@@ -279,14 +298,44 @@ def main() -> None:
         add(f"    {camel(name)} = {number},")
     add("}")
     add("")
+    # What each version numbers each kind, which is nothing like the same between them: 1.21 has
+    # no place at all for two thirds of what 26.2 can write, and puts a pose one along from where
+    # 26.2 puts it.
+    spoken: dict[str, list[str]] = {}
+    for version in SPOKEN:
+        path = EXTRACTED / version / "serializer_ids.json"
+        if not path.exists():
+            raise SystemExit(f"{path} is missing; run scripts/extract_serializer_ids.py --all")
+        spoken[version] = [
+            RENAMED.get(name, name) for name in json.loads(path.read_text())["serializers"]
+        ]
+    if spoken[NATIVE] != serializers:
+        raise SystemExit(
+            f"the two readings of {NATIVE} disagree; one of the extractors is wrong"
+        )
+
+    add("/// What number each kind travels as, for each version the server speaks.")
+    add("///")
+    add("/// Read out of every version's own jar rather than translated from the newest: the")
+    add("/// numbers are registration order and the order moves, so a client sent the wrong one")
+    add("/// does not lose a value, it reads the bytes as whatever kind it does keep there and")
+    add("/// then reads the rest of the row at the wrong offset.")
+    add(f"const WIRE_IDS: [[u8; {len(serializers)}]; {len(SPOKEN)}] = [")
+    for version in SPOKEN:
+        places = {name: number for number, name in enumerate(spoken[version])}
+        row = ", ".join(str(places.get(name, ABSENT)) for name in serializers)
+        add(f"    [{row}], // {version}")
+    add("];")
+    add("")
     add("impl Serializer {")
-    add("    /// The number a client speaking `version` reads to know what kind of value follows.")
-    add("    ///")
-    add("    /// Every version this server speaks numbers them the same way as far as the game")
-    add("    /// could be asked; the ones whose jars carry no names could not be asked at all.")
+    add("    /// The number a client speaking `version` reads to know what kind of value follows,")
+    add("    /// or nothing where that version has no such kind.")
     add("    #[must_use]")
-    add("    pub const fn wire_id(self, _version: ProtocolVersion) -> u8 {")
-    add("        self as u8")
+    add("    pub const fn wire_id(self, version: ProtocolVersion) -> Option<u8> {")
+    add("        match WIRE_IDS[version.index()][self as usize] {")
+    add("            ABSENT => None,")
+    add("            id => Some(id),")
+    add("        }")
     add("    }")
     add("}")
     add("")
@@ -335,12 +384,8 @@ def main() -> None:
     add("")
 
     # --- what an older client reads instead -------------------------------------------------
-    add("/// Where a field sits for a client whose version puts it somewhere else.")
-    add("///")
-    add("/// The server holds one entity in the newest version's terms, so a field's place for an")
-    add("/// older client is a translation. Only the types that moved carry a table; a field the")
-    add("/// older version never had reads as [`ABSENT`] and is left out of what it is sent.")
-    add("pub const ABSENT: u8 = 255;")
+    add("/// What a client reads instead of an index, for a field its version has no place for.")
+    add(f"pub const ABSENT: u8 = {ABSENT};")
     add("")
     for version, data in sorted(others.items()):
         table: list[tuple[str, list[int]]] = []
@@ -375,8 +420,10 @@ def main() -> None:
 
     add("/// Where a field of `kind` sits for a client speaking `version`, or [`ABSENT`].")
     add("///")
-    add("/// Versions older than the ones that could be read are given the oldest known layout,")
-    add("/// which is right wherever nothing moved and is the only answer available otherwise.")
+    add("/// The server holds one entity in the newest version's terms, so a field's place for an")
+    add("/// older client is a translation. Only the types that moved carry a table. Versions")
+    add("/// older than the ones that could be read are given the oldest known layout, which is")
+    add("/// right wherever nothing moved and is the only answer available otherwise.")
     add("#[must_use]")
     add("pub fn place_of(kind: EntityType, index: u8, version: ProtocolVersion) -> u8 {")
     add("    if version >= ProtocolVersion::V26_2 {")

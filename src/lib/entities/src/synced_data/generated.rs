@@ -69,14 +69,64 @@ pub enum Serializer {
     HumanoidArm = 42,
 }
 
+/// What number each kind travels as, for each version the server speaks.
+///
+/// Read out of every version's own jar rather than translated from the newest: the
+/// numbers are registration order and the order moves, so a client sent the wrong one
+/// does not lose a value, it reads the bytes as whatever kind it does keep there and
+/// then reads the rest of the row at the wrong offset.
+const WIRE_IDS: [[u8; 43]; 10] = [
+    [
+        0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 17, 18, 19, 20, 21, 22, 255, 255,
+        255, 23, 255, 24, 255, 255, 255, 255, 255, 25, 26, 27, 28, 255, 255, 29, 30, 255, 255,
+    ], // 1.21
+    [
+        0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 17, 18, 19, 20, 21, 22, 255, 255,
+        255, 23, 255, 24, 255, 255, 255, 255, 255, 25, 26, 27, 28, 255, 255, 29, 30, 255, 255,
+    ], // 1.21.2
+    [
+        0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 17, 18, 19, 20, 21, 22, 255, 255,
+        255, 23, 255, 24, 255, 255, 255, 255, 255, 25, 26, 27, 28, 255, 255, 29, 30, 255, 255,
+    ], // 1.21.4
+    [
+        0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 17, 18, 19, 20, 21, 22, 255, 23, 255,
+        24, 25, 26, 27, 255, 28, 255, 255, 29, 30, 31, 32, 255, 255, 33, 34, 255, 255,
+    ], // 1.21.5
+    [
+        0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 17, 18, 19, 20, 21, 22, 255, 23, 255,
+        24, 25, 26, 27, 255, 28, 255, 255, 29, 30, 31, 32, 255, 255, 33, 34, 255, 255,
+    ], // 1.21.6
+    [
+        0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 17, 18, 19, 20, 21, 22, 255, 23, 255,
+        24, 25, 26, 27, 255, 28, 255, 255, 29, 30, 31, 32, 255, 255, 33, 34, 255, 255,
+    ], // 1.21.8
+    [
+        0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 255, 22, 255,
+        23, 24, 25, 26, 255, 27, 255, 255, 28, 29, 30, 31, 32, 33, 34, 35, 36, 255,
+    ], // 1.21.9
+    [
+        0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 255, 22, 255,
+        23, 24, 25, 26, 255, 27, 255, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38,
+    ], // 1.21.11
+    [
+        0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24,
+        25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42,
+    ], // 26.1
+    [
+        0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24,
+        25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42,
+    ], // 26.2
+];
+
 impl Serializer {
-    /// The number a client speaking `version` reads to know what kind of value follows.
-    ///
-    /// Every version this server speaks numbers them the same way as far as the game
-    /// could be asked; the ones whose jars carry no names could not be asked at all.
+    /// The number a client speaking `version` reads to know what kind of value follows,
+    /// or nothing where that version has no such kind.
     #[must_use]
-    pub const fn wire_id(self, _version: ProtocolVersion) -> u8 {
-        self as u8
+    pub const fn wire_id(self, version: ProtocolVersion) -> Option<u8> {
+        match WIRE_IDS[version.index()][self as usize] {
+            ABSENT => None,
+            id => Some(id),
+        }
     }
 }
 
@@ -10688,7 +10738,7 @@ pub(crate) static LAYOUTS: [&[Slot]; 158] = [
         }, // ZombieVillager#DATA_CONVERTING_ID
         Slot {
             serializer: Serializer::VillagerData,
-            default: DataValue::Raw(&[0x02, 0x0b, 0x01]),
+            default: DataValue::Raw(&[0x02, 0x07, 0x01]),
         }, // ZombieVillager#DATA_VILLAGER_DATA
         Slot {
             serializer: Serializer::Boolean,
@@ -10906,11 +10956,7 @@ pub(crate) static LAYOUTS: [&[Slot]; 158] = [
     ],
 ];
 
-/// Where a field sits for a client whose version puts it somewhere else.
-///
-/// The server holds one entity in the newest version's terms, so a field's place for an
-/// older client is a translation. Only the types that moved carry a table; a field the
-/// older version never had reads as [`ABSENT`] and is left out of what it is sent.
+/// What a client reads instead of an index, for a field its version has no place for.
 pub const ABSENT: u8 = 255;
 
 /// The types 26.1 lays out differently, and where each field sits there.
@@ -10932,8 +10978,10 @@ static MOVED_IN_26_1: [(EntityType, &[u8]); 3] = [
 
 /// Where a field of `kind` sits for a client speaking `version`, or [`ABSENT`].
 ///
-/// Versions older than the ones that could be read are given the oldest known layout,
-/// which is right wherever nothing moved and is the only answer available otherwise.
+/// The server holds one entity in the newest version's terms, so a field's place for an
+/// older client is a translation. Only the types that moved carry a table. Versions
+/// older than the ones that could be read are given the oldest known layout, which is
+/// right wherever nothing moved and is the only answer available otherwise.
 #[must_use]
 pub fn place_of(kind: EntityType, index: u8, version: ProtocolVersion) -> u8 {
     if version >= ProtocolVersion::V26_2 {
