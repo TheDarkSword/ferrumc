@@ -171,6 +171,19 @@ mod tests {
     }
 
     #[test]
+    fn a_players_own_fields_reach_an_older_client_where_that_version_keeps_them() {
+        // 26.1 put which hand a player favours in front of the two that were there before, so a
+        // score written at 18 is read at 16 by everything older. A player is the one entity this
+        // server actually spawns, so this is the row that matters most.
+        let mut player = SyncedData::new(EntityType::Player);
+        player.set(fields::player::SCORE, 7);
+
+        assert_eq!(row(&player, ProtocolVersion::V26_2), vec![18, 1, 7, 0xFF]);
+        assert_eq!(row(&player, ProtocolVersion::V1_21_7), vec![16, 1, 7, 0xFF]);
+        assert_eq!(row(&player, ProtocolVersion::V1_21), vec![16, 1, 7, 0xFF]);
+    }
+
+    #[test]
     fn a_value_reaches_an_older_client_where_that_version_keeps_it() {
         let mut slime = SyncedData::new(EntityType::Slime);
         slime.set(fields::abstract_cube_mob::SIZE, 2);

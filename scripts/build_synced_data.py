@@ -383,56 +383,63 @@ def main() -> None:
     add("];")
     add("")
 
-    # --- what an older client reads instead -------------------------------------------------
+    # --- where a field sits for each client ----------------------------------------------
+    # Read out of every version's own jar. The names are matched rather than the places: a class
+    # can be split or renamed between versions while the field it declared stays the same field,
+    # which is what a client is actually reading.
+    def named(field: dict) -> tuple[str, str]:
+        return (constant(field["owner"].split("#")[1]), field["serializer"])
+
+    places_for: dict[str, dict[str, list[int]]] = {}
+    for version in SPOKEN:
+        path = EXTRACTED / version / "field_layouts.json"
+        if not path.exists():
+            raise SystemExit(f"{path} is missing; run scripts/extract_field_layouts.py --all")
+        there = json.loads(path.read_text())["types"]
+        rows: dict[str, list[int]] = {}
+        for name, entry in types.items():
+            older = there.get(name)
+            if older is None:
+                rows[name] = [ABSENT] * len(entry["fields"])
+                continue
+            at = {named(f): f["index"] for f in older["fields"]}
+            mapped = [at.get(named(f), ABSENT) for f in entry["fields"]]
+            # Nothing moved is by far the common case, and an empty row says so in no bytes.
+            rows[name] = [] if mapped == list(range(len(mapped))) else mapped
+        places_for[version] = rows
+
+    if any(places_for[NATIVE].values()):
+        raise SystemExit(
+            f"the two readings of {NATIVE} lay out an entity differently; one extractor is wrong"
+        )
+
     add("/// What a client reads instead of an index, for a field its version has no place for.")
     add(f"pub const ABSENT: u8 = {ABSENT};")
     add("")
-    for version, data in sorted(others.items()):
-        table: list[tuple[str, list[int]]] = []
-        for name, entry in types.items():
-            old = data["types"].get(name)
-            if old is None:
-                table.append((name, []))
-                continue
-            # Matched on the field's own name rather than the class that declared it: a class
-            # can be split or renamed between versions while the field it declared stays the same
-            # field, which is what a client is actually reading.
-            places = {
-                (constant(field["owner"].split("#")[1]), field["serializer"]): field["index"]
-                for field in old["fields"]
-            }
-            mapped = [
-                places.get(
-                    (constant(field["owner"].split("#")[1]), field["serializer"]), ABSENT
-                )
-                for field in entry["fields"]
-            ]
-            if mapped != list(range(len(mapped))):
-                table.append((name, mapped))
-        ident = f"MOVED_IN_{version.replace('.', '_')}"
-        add(f"/// The types {version} lays out differently, and where each field sits there.")
-        add(f"static {ident}: [(EntityType, &[u8]); {len(table)}] = [")
-        for name, mapped in table:
-            body = ", ".join(str(place) for place in mapped)
-            add(f"    (EntityType::{variant(name)}, &[{body}]),")
-        add("];")
-        add("")
-
-    add("/// Where a field of `kind` sits for a client speaking `version`, or [`ABSENT`].")
+    add("/// Where each of a type's fields sits for a client of each version.")
     add("///")
     add("/// The server holds one entity in the newest version's terms, so a field's place for an")
-    add("/// older client is a translation. Only the types that moved carry a table. Versions")
-    add("/// older than the ones that could be read are given the oldest known layout, which is")
-    add("/// right wherever nothing moved and is the only answer available otherwise.")
+    add("/// older client is a translation. A row of nothing means that version puts every field")
+    add("/// exactly where this one does; a row of [`ABSENT`] means it has no such entity at all.")
+    add(f"static PLACES: [[&[u8]; {len(types)}]; {len(SPOKEN)}] = [")
+    for version in SPOKEN:
+        add(f"    // {version}")
+        add("    [")
+        for name in types:
+            row = places_for[version][name]
+            body = ", ".join(str(place) for place in row)
+            add(f"        &[{body}], // {name}")
+        add("    ],")
+    add("];")
+    add("")
+    add("/// Where a field of `kind` sits for a client speaking `version`, or [`ABSENT`].")
     add("#[must_use]")
     add("pub fn place_of(kind: EntityType, index: u8, version: ProtocolVersion) -> u8 {")
-    add("    if version >= ProtocolVersion::V26_2 {")
+    add("    let row = PLACES[version.index()][kind as usize];")
+    add("    if row.is_empty() {")
     add("        return index;")
     add("    }")
-    add("    match MOVED_IN_26_1.iter().find(|(moved, _)| *moved == kind) {")
-    add("        Some((_, places)) => places.get(index as usize).copied().unwrap_or(ABSENT),")
-    add("        None => index,")
-    add("    }")
+    add("    row.get(index as usize).copied().unwrap_or(ABSENT)")
     add("}")
     add("")
 

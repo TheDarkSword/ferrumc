@@ -83,10 +83,17 @@ initialiser — so `scripts/extract_serializer_ids.py` reads the class file rath
 neither executes nor remaps anything. A pose is 21 in 1.21 and 20 in 26.2; ViaVersion's own tables
 agree with all ten readings, which is a second pair of eyes on numbers that fail silently.
 
-**A field's place** comes from walking the entity class tree, which only the 26.1 and newer jars can
-be asked for directly. 26.2 made a slime an ageable mob, which pushed its size two places down the
-row, so a 26.1 client is told 16 where a 26.2 client is told 18. Older versions are still sent 26.1's
-places; see `internal_docs/deferred.md`.
+**A field's place** comes from walking the entity class tree, and is read the same way: a class's
+static initialiser defines its fields in order, its header names what it extends, and the class a
+type is built from is named behind its factory. `scripts/extract_field_layouts.py` puts those three
+together for every type of every version, and for the two versions that can also be asked directly
+it answers exactly what the running game answers — which is what makes the readings for the other
+eight worth trusting.
+
+Between forty and fifty-five types sit differently in each version before 26.1, the player among
+them: 26.1 put which hand a player favours in front of absorption and score, so a score written at
+18 is read at 16 by everything older. A field an older version has no place for is left out rather
+than misplaced.
 
 ### What is not modelled
 

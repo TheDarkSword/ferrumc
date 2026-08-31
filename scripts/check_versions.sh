@@ -19,7 +19,12 @@ VERSIONS=("$@")
 
 BINARY="$ROOT/target/$PROFILE/ferrumc"
 [ -f "$PROXY" ]  || { echo "ViaProxy not found at $PROXY; set VIAPROXY_JAR" >&2; exit 1; }
-[ -f "$BINARY" ] || { echo "no server at $BINARY; cargo build --profile $PROFILE" >&2; exit 1; }
+
+# Built here rather than assumed: this profile is not the one anything else builds, so a binary
+# left from an earlier day reports a clean run for code that was never in it.
+echo "building the $PROFILE profile" >&2
+cargo build --profile "$PROFILE" --quiet || { echo "build failed" >&2; exit 1; }
+[ -f "$BINARY" ] || { echo "no server at $BINARY after building" >&2; exit 1; }
 
 PROXY_PIDS=()
 cleanup() {

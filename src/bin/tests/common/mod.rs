@@ -11,6 +11,7 @@
 
 #![allow(dead_code)] // grows a test at a time; not every helper has a caller yet
 
+use ferrumc_net_codec::version::ProtocolVersion;
 use std::io::{self, Read, Write};
 use std::net::{SocketAddr, TcpListener, TcpStream};
 use std::path::PathBuf;
@@ -102,7 +103,7 @@ impl TestServer {
         let log = root.join("server.log");
         let mut child = spawn_server(&binary, &log)?;
         let address = SocketAddr::from(([127, 0, 0, 1], port));
-        wait_until_listening(address)?;
+        wait_until_answering(address)?;
 
         // Something is listening, but it is only ours if our own process is still running: a
         // server that lost the race for this port has already exited.
@@ -193,17 +194,24 @@ fn spawn_server(binary: &PathBuf, log: &std::path::Path) -> io::Result<Child> {
     command.spawn()
 }
 
-fn wait_until_listening(address: SocketAddr) -> io::Result<()> {
+/// Waits until the server answers, rather than until something is listening.
+///
+/// The port opens before the registries and packs are loaded, so a test that starts the moment it
+/// can connect gets its first question dropped. Asking one and reading the answer is the only way
+/// to know the server is up rather than merely bound.
+fn wait_until_answering(address: SocketAddr) -> io::Result<()> {
     let deadline = Instant::now() + STARTUP_TIMEOUT;
     while Instant::now() < deadline {
-        if TcpStream::connect_timeout(&address, Duration::from_millis(200)).is_ok() {
+        let answered = TestClient::connect(address)
+            .and_then(|mut client| client.status(ProtocolVersion::CURRENT.number()));
+        if answered.is_ok() {
             return Ok(());
         }
         std::thread::sleep(Duration::from_millis(100));
     }
     Err(io::Error::new(
         io::ErrorKind::TimedOut,
-        format!("server did not start listening on {address} within {STARTUP_TIMEOUT:?}"),
+        format!("server on {address} did not answer within {STARTUP_TIMEOUT:?}"),
     ))
 }
 

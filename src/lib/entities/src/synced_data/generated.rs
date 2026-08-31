@@ -10959,38 +10959,2507 @@ pub(crate) static LAYOUTS: [&[Slot]; 158] = [
 /// What a client reads instead of an index, for a field its version has no place for.
 pub const ABSENT: u8 = 255;
 
-/// The types 26.1 lays out differently, and where each field sits there.
-static MOVED_IN_26_1: [(EntityType, &[u8]); 3] = [
-    (
-        EntityType::MagmaCube,
+/// Where each of a type's fields sits for a client of each version.
+///
+/// The server holds one entity in the newest version's terms, so a field's place for an
+/// older client is a translation. A row of nothing means that version puts every field
+/// exactly where this one does; a row of [`ABSENT`] means it has no such entity at all.
+static PLACES: [[&[u8]; 158]; 10] = [
+    // 1.21
+    [
+        &[
+            255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+        ], // minecraft:acacia_boat
+        &[
+            255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+        ], // minecraft:acacia_chest_boat
+        &[], // minecraft:allay
+        &[], // minecraft:area_effect_cloud
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17,
+        ], // minecraft:armadillo
+        &[], // minecraft:armor_stand
+        &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 255, 10], // minecraft:arrow
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18, 19,
+        ], // minecraft:axolotl
+        &[
+            255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+        ], // minecraft:bamboo_chest_raft
+        &[
+            255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+        ], // minecraft:bamboo_raft
+        &[], // minecraft:bat
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 255,
+        ], // minecraft:bee
+        &[
+            255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+        ], // minecraft:birch_boat
+        &[
+            255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+        ], // minecraft:birch_chest_boat
+        &[], // minecraft:blaze
+        &[], // minecraft:block_display
+        &[], // minecraft:bogged
+        &[], // minecraft:breeze
+        &[], // minecraft:breeze_wind_charge
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18, 19,
+        ], // minecraft:camel
+        &[
+            255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+            255, 255, 255, 255,
+        ], // minecraft:camel_husk
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 255, 19, 20, 21, 22,
+            255,
+        ], // minecraft:cat
+        &[], // minecraft:cave_spider
+        &[
+            255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+        ], // minecraft:cherry_boat
+        &[
+            255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+        ], // minecraft:cherry_chest_boat
+        &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 255, 12], // minecraft:chest_minecart
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 255, 255,
+        ], // minecraft:chicken
+        &[], // minecraft:cod
+        &[
+            255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+            255,
+        ], // minecraft:copper_golem
+        &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 255, 12, 14, 15], // minecraft:command_block_minecart
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 255, 255,
+        ], // minecraft:cow
+        &[
+            255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+            255, 255, 255,
+        ], // minecraft:creaking
+        &[], // minecraft:creeper
+        &[
+            255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+        ], // minecraft:dark_oak_boat
+        &[
+            255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+        ], // minecraft:dark_oak_chest_boat
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 255, 255, 17, 18,
+        ], // minecraft:dolphin
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18,
+        ], // minecraft:donkey
+        &[], // minecraft:dragon_fireball
+        &[], // minecraft:drowned
+        &[], // minecraft:egg
+        &[], // minecraft:elder_guardian
+        &[], // minecraft:enderman
+        &[], // minecraft:endermite
+        &[], // minecraft:ender_dragon
+        &[], // minecraft:ender_pearl
+        &[], // minecraft:end_crystal
+        &[], // minecraft:evoker
+        &[], // minecraft:evoker_fangs
+        &[], // minecraft:experience_bottle
+        &[0, 1, 2, 3, 4, 5, 6, 7, 255], // minecraft:experience_orb
+        &[], // minecraft:eye_of_ender
+        &[], // minecraft:falling_block
+        &[], // minecraft:fireball
+        &[], // minecraft:firework_rocket
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18, 255, 255,
+        ], // minecraft:fox
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18,
+        ], // minecraft:frog
+        &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 255, 12, 14], // minecraft:furnace_minecart
+        &[], // minecraft:ghast
+        &[
+            255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+            255, 255, 255,
+        ], // minecraft:happy_ghast
+        &[], // minecraft:giant
+        &[0, 1, 2, 3, 4, 5, 6, 7, 255, 8, 9], // minecraft:glow_item_frame
         &[
             0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 255, 255, 16,
-        ],
-    ),
-    (
-        EntityType::Slime,
+        ], // minecraft:glow_squid
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18, 19,
+        ], // minecraft:goat
+        &[], // minecraft:guardian
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17,
+        ], // minecraft:hoglin
+        &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 255, 12], // minecraft:hopper_minecart
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18,
+        ], // minecraft:horse
+        &[], // minecraft:husk
+        &[], // minecraft:illusioner
+        &[], // minecraft:interaction
+        &[], // minecraft:iron_golem
+        &[], // minecraft:item
+        &[], // minecraft:item_display
+        &[0, 1, 2, 3, 4, 5, 6, 7, 255, 8, 9], // minecraft:item_frame
+        &[
+            255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+        ], // minecraft:jungle_boat
+        &[
+            255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+        ], // minecraft:jungle_chest_boat
+        &[], // minecraft:leash_knot
+        &[], // minecraft:lightning_bolt
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18, 19, 20,
+        ], // minecraft:llama
+        &[], // minecraft:llama_spit
         &[
             0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 255, 255, 16,
-        ],
-    ),
-    (EntityType::SulfurCube, &[]),
+        ], // minecraft:magma_cube
+        &[
+            255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+        ], // minecraft:mangrove_boat
+        &[
+            255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+        ], // minecraft:mangrove_chest_boat
+        &[
+            255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+            255, 255, 255,
+        ], // minecraft:mannequin
+        &[], // minecraft:marker
+        &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 255, 12], // minecraft:minecart
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 255,
+        ], // minecraft:mooshroom
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18,
+        ], // minecraft:mule
+        &[
+            255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+            255, 255, 255, 255,
+        ], // minecraft:nautilus
+        &[
+            255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+        ], // minecraft:oak_boat
+        &[
+            255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+        ], // minecraft:oak_chest_boat
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17,
+        ], // minecraft:ocelot
+        &[], // minecraft:ominous_item_spawner
+        &[0, 1, 2, 3, 4, 5, 6, 7, 255, 8], // minecraft:painting
+        &[
+            255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+        ], // minecraft:pale_oak_boat
+        &[
+            255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+        ], // minecraft:pale_oak_chest_boat
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18, 19, 20, 21, 22,
+        ], // minecraft:panda
+        &[
+            255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+        ], // minecraft:parched
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 255, 19,
+        ], // minecraft:parrot
+        &[], // minecraft:phantom
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 18, 255, 255,
+        ], // minecraft:pig
+        &[], // minecraft:piglin
+        &[], // minecraft:piglin_brute
+        &[], // minecraft:pillager
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17,
+        ], // minecraft:polar_bear
+        &[255, 255, 255, 255, 255, 255, 255, 255, 255], // minecraft:splash_potion
+        &[255, 255, 255, 255, 255, 255, 255, 255, 255], // minecraft:lingering_potion
+        &[], // minecraft:pufferfish
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17,
+        ], // minecraft:rabbit
+        &[], // minecraft:ravager
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255,
+        ], // minecraft:salmon
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17,
+        ], // minecraft:sheep
+        &[], // minecraft:shulker
+        &[], // minecraft:shulker_bullet
+        &[], // minecraft:silverfish
+        &[], // minecraft:skeleton
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17,
+        ], // minecraft:skeleton_horse
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 255, 255, 16,
+        ], // minecraft:slime
+        &[], // minecraft:small_fireball
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18,
+        ], // minecraft:sniffer
+        &[], // minecraft:snowball
+        &[], // minecraft:snow_golem
+        &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 255, 12], // minecraft:spawner_minecart
+        &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 255], // minecraft:spectral_arrow
+        &[], // minecraft:spider
+        &[
+            255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+        ], // minecraft:spruce_boat
+        &[
+            255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+        ], // minecraft:spruce_chest_boat
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 255, 255,
+        ], // minecraft:squid
+        &[], // minecraft:stray
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18,
+        ], // minecraft:strider
+        &[
+            255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+            255, 255, 255, 255,
+        ], // minecraft:sulfur_cube
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255,
+        ], // minecraft:tadpole
+        &[], // minecraft:text_display
+        &[], // minecraft:tnt
+        &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 255, 12], // minecraft:tnt_minecart
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18, 19, 20,
+        ], // minecraft:trader_llama
+        &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 255, 10, 11], // minecraft:trident
+        &[], // minecraft:tropical_fish
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 18, 19,
+        ], // minecraft:turtle
+        &[], // minecraft:vex
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18, 255,
+        ], // minecraft:villager
+        &[], // minecraft:vindicator
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17,
+        ], // minecraft:wandering_trader
+        &[], // minecraft:warden
+        &[], // minecraft:wind_charge
+        &[], // minecraft:witch
+        &[], // minecraft:wither
+        &[], // minecraft:wither_skeleton
+        &[], // minecraft:wither_skull
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 255, 19, 20, 255,
+            22, 255,
+        ], // minecraft:wolf
+        &[], // minecraft:zoglin
+        &[], // minecraft:zombie
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17,
+        ], // minecraft:zombie_horse
+        &[
+            255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+            255, 255, 255, 255, 255,
+        ], // minecraft:zombie_nautilus
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 255,
+        ], // minecraft:zombie_villager
+        &[], // minecraft:zombified_piglin
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 255, 17, 15, 16, 255, 255,
+        ], // minecraft:player
+        &[], // minecraft:fishing_bobber
+    ],
+    // 1.21.2
+    [
+        &[], // minecraft:acacia_boat
+        &[], // minecraft:acacia_chest_boat
+        &[], // minecraft:allay
+        &[], // minecraft:area_effect_cloud
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17,
+        ], // minecraft:armadillo
+        &[], // minecraft:armor_stand
+        &[], // minecraft:arrow
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18, 19,
+        ], // minecraft:axolotl
+        &[], // minecraft:bamboo_chest_raft
+        &[], // minecraft:bamboo_raft
+        &[], // minecraft:bat
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 255,
+        ], // minecraft:bee
+        &[], // minecraft:birch_boat
+        &[], // minecraft:birch_chest_boat
+        &[], // minecraft:blaze
+        &[], // minecraft:block_display
+        &[], // minecraft:bogged
+        &[], // minecraft:breeze
+        &[], // minecraft:breeze_wind_charge
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18, 19,
+        ], // minecraft:camel
+        &[
+            255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+            255, 255, 255, 255,
+        ], // minecraft:camel_husk
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 255, 19, 20, 21, 22,
+            255,
+        ], // minecraft:cat
+        &[], // minecraft:cave_spider
+        &[], // minecraft:cherry_boat
+        &[], // minecraft:cherry_chest_boat
+        &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 255, 12], // minecraft:chest_minecart
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 255, 255,
+        ], // minecraft:chicken
+        &[], // minecraft:cod
+        &[
+            255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+            255,
+        ], // minecraft:copper_golem
+        &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 255, 12, 14, 15], // minecraft:command_block_minecart
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 255, 255,
+        ], // minecraft:cow
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 255, 255,
+        ], // minecraft:creaking
+        &[], // minecraft:creeper
+        &[], // minecraft:dark_oak_boat
+        &[], // minecraft:dark_oak_chest_boat
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 18, 19,
+        ], // minecraft:dolphin
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18,
+        ], // minecraft:donkey
+        &[], // minecraft:dragon_fireball
+        &[], // minecraft:drowned
+        &[], // minecraft:egg
+        &[], // minecraft:elder_guardian
+        &[], // minecraft:enderman
+        &[], // minecraft:endermite
+        &[], // minecraft:ender_dragon
+        &[], // minecraft:ender_pearl
+        &[], // minecraft:end_crystal
+        &[], // minecraft:evoker
+        &[], // minecraft:evoker_fangs
+        &[], // minecraft:experience_bottle
+        &[0, 1, 2, 3, 4, 5, 6, 7, 255], // minecraft:experience_orb
+        &[], // minecraft:eye_of_ender
+        &[], // minecraft:falling_block
+        &[], // minecraft:fireball
+        &[], // minecraft:firework_rocket
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18, 255, 255,
+        ], // minecraft:fox
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18,
+        ], // minecraft:frog
+        &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 255, 12, 14], // minecraft:furnace_minecart
+        &[], // minecraft:ghast
+        &[
+            255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+            255, 255, 255,
+        ], // minecraft:happy_ghast
+        &[], // minecraft:giant
+        &[0, 1, 2, 3, 4, 5, 6, 7, 255, 8, 9], // minecraft:glow_item_frame
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17,
+        ], // minecraft:glow_squid
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18, 19,
+        ], // minecraft:goat
+        &[], // minecraft:guardian
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17,
+        ], // minecraft:hoglin
+        &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 255, 12], // minecraft:hopper_minecart
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18,
+        ], // minecraft:horse
+        &[], // minecraft:husk
+        &[], // minecraft:illusioner
+        &[], // minecraft:interaction
+        &[], // minecraft:iron_golem
+        &[], // minecraft:item
+        &[], // minecraft:item_display
+        &[0, 1, 2, 3, 4, 5, 6, 7, 255, 8, 9], // minecraft:item_frame
+        &[], // minecraft:jungle_boat
+        &[], // minecraft:jungle_chest_boat
+        &[], // minecraft:leash_knot
+        &[], // minecraft:lightning_bolt
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18, 19, 20,
+        ], // minecraft:llama
+        &[], // minecraft:llama_spit
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 255, 255, 16,
+        ], // minecraft:magma_cube
+        &[], // minecraft:mangrove_boat
+        &[], // minecraft:mangrove_chest_boat
+        &[
+            255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+            255, 255, 255,
+        ], // minecraft:mannequin
+        &[], // minecraft:marker
+        &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 255, 12], // minecraft:minecart
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 255,
+        ], // minecraft:mooshroom
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18,
+        ], // minecraft:mule
+        &[
+            255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+            255, 255, 255, 255,
+        ], // minecraft:nautilus
+        &[], // minecraft:oak_boat
+        &[], // minecraft:oak_chest_boat
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17,
+        ], // minecraft:ocelot
+        &[], // minecraft:ominous_item_spawner
+        &[0, 1, 2, 3, 4, 5, 6, 7, 255, 8], // minecraft:painting
+        &[], // minecraft:pale_oak_boat
+        &[], // minecraft:pale_oak_chest_boat
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18, 19, 20, 21, 22,
+        ], // minecraft:panda
+        &[
+            255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+        ], // minecraft:parched
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 255, 19,
+        ], // minecraft:parrot
+        &[], // minecraft:phantom
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 18, 255, 255,
+        ], // minecraft:pig
+        &[], // minecraft:piglin
+        &[], // minecraft:piglin_brute
+        &[], // minecraft:pillager
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17,
+        ], // minecraft:polar_bear
+        &[255, 255, 255, 255, 255, 255, 255, 255, 255], // minecraft:splash_potion
+        &[255, 255, 255, 255, 255, 255, 255, 255, 255], // minecraft:lingering_potion
+        &[], // minecraft:pufferfish
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17,
+        ], // minecraft:rabbit
+        &[], // minecraft:ravager
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255,
+        ], // minecraft:salmon
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17,
+        ], // minecraft:sheep
+        &[], // minecraft:shulker
+        &[], // minecraft:shulker_bullet
+        &[], // minecraft:silverfish
+        &[], // minecraft:skeleton
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17,
+        ], // minecraft:skeleton_horse
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 255, 255, 16,
+        ], // minecraft:slime
+        &[], // minecraft:small_fireball
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18,
+        ], // minecraft:sniffer
+        &[], // minecraft:snowball
+        &[], // minecraft:snow_golem
+        &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 255, 12], // minecraft:spawner_minecart
+        &[], // minecraft:spectral_arrow
+        &[], // minecraft:spider
+        &[], // minecraft:spruce_boat
+        &[], // minecraft:spruce_chest_boat
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255,
+        ], // minecraft:squid
+        &[], // minecraft:stray
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18,
+        ], // minecraft:strider
+        &[
+            255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+            255, 255, 255, 255,
+        ], // minecraft:sulfur_cube
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255,
+        ], // minecraft:tadpole
+        &[], // minecraft:text_display
+        &[], // minecraft:tnt
+        &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 255, 12], // minecraft:tnt_minecart
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18, 19, 20,
+        ], // minecraft:trader_llama
+        &[], // minecraft:trident
+        &[], // minecraft:tropical_fish
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 18, 19,
+        ], // minecraft:turtle
+        &[], // minecraft:vex
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18, 255,
+        ], // minecraft:villager
+        &[], // minecraft:vindicator
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17,
+        ], // minecraft:wandering_trader
+        &[], // minecraft:warden
+        &[], // minecraft:wind_charge
+        &[], // minecraft:witch
+        &[], // minecraft:wither
+        &[], // minecraft:wither_skeleton
+        &[], // minecraft:wither_skull
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 255, 19, 20, 255,
+            22, 255,
+        ], // minecraft:wolf
+        &[], // minecraft:zoglin
+        &[], // minecraft:zombie
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17,
+        ], // minecraft:zombie_horse
+        &[
+            255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+            255, 255, 255, 255, 255,
+        ], // minecraft:zombie_nautilus
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 255,
+        ], // minecraft:zombie_villager
+        &[], // minecraft:zombified_piglin
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 255, 17, 15, 16, 255, 255,
+        ], // minecraft:player
+        &[], // minecraft:fishing_bobber
+    ],
+    // 1.21.4
+    [
+        &[], // minecraft:acacia_boat
+        &[], // minecraft:acacia_chest_boat
+        &[], // minecraft:allay
+        &[], // minecraft:area_effect_cloud
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17,
+        ], // minecraft:armadillo
+        &[], // minecraft:armor_stand
+        &[], // minecraft:arrow
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18, 19,
+        ], // minecraft:axolotl
+        &[], // minecraft:bamboo_chest_raft
+        &[], // minecraft:bamboo_raft
+        &[], // minecraft:bat
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 255,
+        ], // minecraft:bee
+        &[], // minecraft:birch_boat
+        &[], // minecraft:birch_chest_boat
+        &[], // minecraft:blaze
+        &[], // minecraft:block_display
+        &[], // minecraft:bogged
+        &[], // minecraft:breeze
+        &[], // minecraft:breeze_wind_charge
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18, 19,
+        ], // minecraft:camel
+        &[
+            255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+            255, 255, 255, 255,
+        ], // minecraft:camel_husk
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 255, 19, 20, 21, 22,
+            255,
+        ], // minecraft:cat
+        &[], // minecraft:cave_spider
+        &[], // minecraft:cherry_boat
+        &[], // minecraft:cherry_chest_boat
+        &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 255, 12], // minecraft:chest_minecart
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 255, 255,
+        ], // minecraft:chicken
+        &[], // minecraft:cod
+        &[
+            255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+            255,
+        ], // minecraft:copper_golem
+        &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 255, 12, 14, 15], // minecraft:command_block_minecart
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 255, 255,
+        ], // minecraft:cow
+        &[], // minecraft:creaking
+        &[], // minecraft:creeper
+        &[], // minecraft:dark_oak_boat
+        &[], // minecraft:dark_oak_chest_boat
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 18, 19,
+        ], // minecraft:dolphin
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18,
+        ], // minecraft:donkey
+        &[], // minecraft:dragon_fireball
+        &[], // minecraft:drowned
+        &[], // minecraft:egg
+        &[], // minecraft:elder_guardian
+        &[], // minecraft:enderman
+        &[], // minecraft:endermite
+        &[], // minecraft:ender_dragon
+        &[], // minecraft:ender_pearl
+        &[], // minecraft:end_crystal
+        &[], // minecraft:evoker
+        &[], // minecraft:evoker_fangs
+        &[], // minecraft:experience_bottle
+        &[0, 1, 2, 3, 4, 5, 6, 7, 255], // minecraft:experience_orb
+        &[], // minecraft:eye_of_ender
+        &[], // minecraft:falling_block
+        &[], // minecraft:fireball
+        &[], // minecraft:firework_rocket
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18, 255, 255,
+        ], // minecraft:fox
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18,
+        ], // minecraft:frog
+        &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 255, 12, 14], // minecraft:furnace_minecart
+        &[], // minecraft:ghast
+        &[
+            255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+            255, 255, 255,
+        ], // minecraft:happy_ghast
+        &[], // minecraft:giant
+        &[0, 1, 2, 3, 4, 5, 6, 7, 255, 8, 9], // minecraft:glow_item_frame
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17,
+        ], // minecraft:glow_squid
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18, 19,
+        ], // minecraft:goat
+        &[], // minecraft:guardian
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17,
+        ], // minecraft:hoglin
+        &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 255, 12], // minecraft:hopper_minecart
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18,
+        ], // minecraft:horse
+        &[], // minecraft:husk
+        &[], // minecraft:illusioner
+        &[], // minecraft:interaction
+        &[], // minecraft:iron_golem
+        &[], // minecraft:item
+        &[], // minecraft:item_display
+        &[0, 1, 2, 3, 4, 5, 6, 7, 255, 8, 9], // minecraft:item_frame
+        &[], // minecraft:jungle_boat
+        &[], // minecraft:jungle_chest_boat
+        &[], // minecraft:leash_knot
+        &[], // minecraft:lightning_bolt
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18, 19, 20,
+        ], // minecraft:llama
+        &[], // minecraft:llama_spit
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 255, 255, 16,
+        ], // minecraft:magma_cube
+        &[], // minecraft:mangrove_boat
+        &[], // minecraft:mangrove_chest_boat
+        &[
+            255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+            255, 255, 255,
+        ], // minecraft:mannequin
+        &[], // minecraft:marker
+        &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 255, 12], // minecraft:minecart
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 255,
+        ], // minecraft:mooshroom
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18,
+        ], // minecraft:mule
+        &[
+            255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+            255, 255, 255, 255,
+        ], // minecraft:nautilus
+        &[], // minecraft:oak_boat
+        &[], // minecraft:oak_chest_boat
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17,
+        ], // minecraft:ocelot
+        &[], // minecraft:ominous_item_spawner
+        &[0, 1, 2, 3, 4, 5, 6, 7, 255, 8], // minecraft:painting
+        &[], // minecraft:pale_oak_boat
+        &[], // minecraft:pale_oak_chest_boat
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18, 19, 20, 21, 22,
+        ], // minecraft:panda
+        &[
+            255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+        ], // minecraft:parched
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 255, 19,
+        ], // minecraft:parrot
+        &[], // minecraft:phantom
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 18, 255, 255,
+        ], // minecraft:pig
+        &[], // minecraft:piglin
+        &[], // minecraft:piglin_brute
+        &[], // minecraft:pillager
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17,
+        ], // minecraft:polar_bear
+        &[255, 255, 255, 255, 255, 255, 255, 255, 255], // minecraft:splash_potion
+        &[255, 255, 255, 255, 255, 255, 255, 255, 255], // minecraft:lingering_potion
+        &[], // minecraft:pufferfish
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17,
+        ], // minecraft:rabbit
+        &[], // minecraft:ravager
+        &[], // minecraft:salmon
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17,
+        ], // minecraft:sheep
+        &[], // minecraft:shulker
+        &[], // minecraft:shulker_bullet
+        &[], // minecraft:silverfish
+        &[], // minecraft:skeleton
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17,
+        ], // minecraft:skeleton_horse
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 255, 255, 16,
+        ], // minecraft:slime
+        &[], // minecraft:small_fireball
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18,
+        ], // minecraft:sniffer
+        &[], // minecraft:snowball
+        &[], // minecraft:snow_golem
+        &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 255, 12], // minecraft:spawner_minecart
+        &[], // minecraft:spectral_arrow
+        &[], // minecraft:spider
+        &[], // minecraft:spruce_boat
+        &[], // minecraft:spruce_chest_boat
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255,
+        ], // minecraft:squid
+        &[], // minecraft:stray
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18,
+        ], // minecraft:strider
+        &[
+            255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+            255, 255, 255, 255,
+        ], // minecraft:sulfur_cube
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255,
+        ], // minecraft:tadpole
+        &[], // minecraft:text_display
+        &[], // minecraft:tnt
+        &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 255, 12], // minecraft:tnt_minecart
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18, 19, 20,
+        ], // minecraft:trader_llama
+        &[], // minecraft:trident
+        &[], // minecraft:tropical_fish
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 18, 19,
+        ], // minecraft:turtle
+        &[], // minecraft:vex
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18, 255,
+        ], // minecraft:villager
+        &[], // minecraft:vindicator
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17,
+        ], // minecraft:wandering_trader
+        &[], // minecraft:warden
+        &[], // minecraft:wind_charge
+        &[], // minecraft:witch
+        &[], // minecraft:wither
+        &[], // minecraft:wither_skeleton
+        &[], // minecraft:wither_skull
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 255, 19, 20, 255,
+            22, 255,
+        ], // minecraft:wolf
+        &[], // minecraft:zoglin
+        &[], // minecraft:zombie
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17,
+        ], // minecraft:zombie_horse
+        &[
+            255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+            255, 255, 255, 255, 255,
+        ], // minecraft:zombie_nautilus
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 255,
+        ], // minecraft:zombie_villager
+        &[], // minecraft:zombified_piglin
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 255, 17, 15, 16, 255, 255,
+        ], // minecraft:player
+        &[], // minecraft:fishing_bobber
+    ],
+    // 1.21.5
+    [
+        &[], // minecraft:acacia_boat
+        &[], // minecraft:acacia_chest_boat
+        &[], // minecraft:allay
+        &[], // minecraft:area_effect_cloud
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17,
+        ], // minecraft:armadillo
+        &[], // minecraft:armor_stand
+        &[], // minecraft:arrow
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18, 19,
+        ], // minecraft:axolotl
+        &[], // minecraft:bamboo_chest_raft
+        &[], // minecraft:bamboo_raft
+        &[], // minecraft:bat
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 255,
+        ], // minecraft:bee
+        &[], // minecraft:birch_boat
+        &[], // minecraft:birch_chest_boat
+        &[], // minecraft:blaze
+        &[], // minecraft:block_display
+        &[], // minecraft:bogged
+        &[], // minecraft:breeze
+        &[], // minecraft:breeze_wind_charge
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18, 19,
+        ], // minecraft:camel
+        &[
+            255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+            255, 255, 255, 255,
+        ], // minecraft:camel_husk
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18, 19, 20, 21, 22,
+            255,
+        ], // minecraft:cat
+        &[], // minecraft:cave_spider
+        &[], // minecraft:cherry_boat
+        &[], // minecraft:cherry_chest_boat
+        &[], // minecraft:chest_minecart
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 255,
+        ], // minecraft:chicken
+        &[], // minecraft:cod
+        &[
+            255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+            255,
+        ], // minecraft:copper_golem
+        &[], // minecraft:command_block_minecart
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 255,
+        ], // minecraft:cow
+        &[], // minecraft:creaking
+        &[], // minecraft:creeper
+        &[], // minecraft:dark_oak_boat
+        &[], // minecraft:dark_oak_chest_boat
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18,
+        ], // minecraft:dolphin
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18,
+        ], // minecraft:donkey
+        &[], // minecraft:dragon_fireball
+        &[], // minecraft:drowned
+        &[], // minecraft:egg
+        &[], // minecraft:elder_guardian
+        &[], // minecraft:enderman
+        &[], // minecraft:endermite
+        &[], // minecraft:ender_dragon
+        &[], // minecraft:ender_pearl
+        &[], // minecraft:end_crystal
+        &[], // minecraft:evoker
+        &[], // minecraft:evoker_fangs
+        &[], // minecraft:experience_bottle
+        &[], // minecraft:experience_orb
+        &[], // minecraft:eye_of_ender
+        &[], // minecraft:falling_block
+        &[], // minecraft:fireball
+        &[], // minecraft:firework_rocket
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18, 19, 20,
+        ], // minecraft:fox
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18,
+        ], // minecraft:frog
+        &[], // minecraft:furnace_minecart
+        &[], // minecraft:ghast
+        &[
+            255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+            255, 255, 255,
+        ], // minecraft:happy_ghast
+        &[], // minecraft:giant
+        &[0, 1, 2, 3, 4, 5, 6, 7, 255, 8, 9], // minecraft:glow_item_frame
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17,
+        ], // minecraft:glow_squid
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18, 19,
+        ], // minecraft:goat
+        &[], // minecraft:guardian
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17,
+        ], // minecraft:hoglin
+        &[], // minecraft:hopper_minecart
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18,
+        ], // minecraft:horse
+        &[], // minecraft:husk
+        &[], // minecraft:illusioner
+        &[], // minecraft:interaction
+        &[], // minecraft:iron_golem
+        &[], // minecraft:item
+        &[], // minecraft:item_display
+        &[0, 1, 2, 3, 4, 5, 6, 7, 255, 8, 9], // minecraft:item_frame
+        &[], // minecraft:jungle_boat
+        &[], // minecraft:jungle_chest_boat
+        &[], // minecraft:leash_knot
+        &[], // minecraft:lightning_bolt
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18, 19, 20,
+        ], // minecraft:llama
+        &[], // minecraft:llama_spit
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 255, 255, 16,
+        ], // minecraft:magma_cube
+        &[], // minecraft:mangrove_boat
+        &[], // minecraft:mangrove_chest_boat
+        &[
+            255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+            255, 255, 255,
+        ], // minecraft:mannequin
+        &[], // minecraft:marker
+        &[], // minecraft:minecart
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17,
+        ], // minecraft:mooshroom
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18,
+        ], // minecraft:mule
+        &[
+            255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+            255, 255, 255, 255,
+        ], // minecraft:nautilus
+        &[], // minecraft:oak_boat
+        &[], // minecraft:oak_chest_boat
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17,
+        ], // minecraft:ocelot
+        &[], // minecraft:ominous_item_spawner
+        &[0, 1, 2, 3, 4, 5, 6, 7, 255, 8], // minecraft:painting
+        &[], // minecraft:pale_oak_boat
+        &[], // minecraft:pale_oak_chest_boat
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18, 19, 20, 21, 22,
+        ], // minecraft:panda
+        &[
+            255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+        ], // minecraft:parched
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18, 19,
+        ], // minecraft:parrot
+        &[], // minecraft:phantom
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18, 255,
+        ], // minecraft:pig
+        &[], // minecraft:piglin
+        &[], // minecraft:piglin_brute
+        &[], // minecraft:pillager
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17,
+        ], // minecraft:polar_bear
+        &[], // minecraft:splash_potion
+        &[], // minecraft:lingering_potion
+        &[], // minecraft:pufferfish
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17,
+        ], // minecraft:rabbit
+        &[], // minecraft:ravager
+        &[], // minecraft:salmon
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17,
+        ], // minecraft:sheep
+        &[], // minecraft:shulker
+        &[], // minecraft:shulker_bullet
+        &[], // minecraft:silverfish
+        &[], // minecraft:skeleton
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17,
+        ], // minecraft:skeleton_horse
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 255, 255, 16,
+        ], // minecraft:slime
+        &[], // minecraft:small_fireball
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18,
+        ], // minecraft:sniffer
+        &[], // minecraft:snowball
+        &[], // minecraft:snow_golem
+        &[], // minecraft:spawner_minecart
+        &[], // minecraft:spectral_arrow
+        &[], // minecraft:spider
+        &[], // minecraft:spruce_boat
+        &[], // minecraft:spruce_chest_boat
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255,
+        ], // minecraft:squid
+        &[], // minecraft:stray
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18,
+        ], // minecraft:strider
+        &[
+            255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+            255, 255, 255, 255,
+        ], // minecraft:sulfur_cube
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255,
+        ], // minecraft:tadpole
+        &[], // minecraft:text_display
+        &[], // minecraft:tnt
+        &[], // minecraft:tnt_minecart
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18, 19, 20,
+        ], // minecraft:trader_llama
+        &[], // minecraft:trident
+        &[], // minecraft:tropical_fish
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18,
+        ], // minecraft:turtle
+        &[], // minecraft:vex
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18, 255,
+        ], // minecraft:villager
+        &[], // minecraft:vindicator
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17,
+        ], // minecraft:wandering_trader
+        &[], // minecraft:warden
+        &[], // minecraft:wind_charge
+        &[], // minecraft:witch
+        &[], // minecraft:wither
+        &[], // minecraft:wither_skeleton
+        &[], // minecraft:wither_skull
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18, 19, 20, 255, 22,
+            23,
+        ], // minecraft:wolf
+        &[], // minecraft:zoglin
+        &[], // minecraft:zombie
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17,
+        ], // minecraft:zombie_horse
+        &[
+            255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+            255, 255, 255, 255, 255,
+        ], // minecraft:zombie_nautilus
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 255,
+        ], // minecraft:zombie_villager
+        &[], // minecraft:zombified_piglin
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 255, 17, 15, 16, 255, 255,
+        ], // minecraft:player
+        &[], // minecraft:fishing_bobber
+    ],
+    // 1.21.6
+    [
+        &[], // minecraft:acacia_boat
+        &[], // minecraft:acacia_chest_boat
+        &[], // minecraft:allay
+        &[], // minecraft:area_effect_cloud
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17,
+        ], // minecraft:armadillo
+        &[], // minecraft:armor_stand
+        &[], // minecraft:arrow
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18, 19,
+        ], // minecraft:axolotl
+        &[], // minecraft:bamboo_chest_raft
+        &[], // minecraft:bamboo_raft
+        &[], // minecraft:bat
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 255,
+        ], // minecraft:bee
+        &[], // minecraft:birch_boat
+        &[], // minecraft:birch_chest_boat
+        &[], // minecraft:blaze
+        &[], // minecraft:block_display
+        &[], // minecraft:bogged
+        &[], // minecraft:breeze
+        &[], // minecraft:breeze_wind_charge
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18, 19,
+        ], // minecraft:camel
+        &[
+            255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+            255, 255, 255, 255,
+        ], // minecraft:camel_husk
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18, 19, 20, 21, 22,
+            255,
+        ], // minecraft:cat
+        &[], // minecraft:cave_spider
+        &[], // minecraft:cherry_boat
+        &[], // minecraft:cherry_chest_boat
+        &[], // minecraft:chest_minecart
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 255,
+        ], // minecraft:chicken
+        &[], // minecraft:cod
+        &[
+            255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+            255,
+        ], // minecraft:copper_golem
+        &[], // minecraft:command_block_minecart
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 255,
+        ], // minecraft:cow
+        &[], // minecraft:creaking
+        &[], // minecraft:creeper
+        &[], // minecraft:dark_oak_boat
+        &[], // minecraft:dark_oak_chest_boat
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18,
+        ], // minecraft:dolphin
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18,
+        ], // minecraft:donkey
+        &[], // minecraft:dragon_fireball
+        &[], // minecraft:drowned
+        &[], // minecraft:egg
+        &[], // minecraft:elder_guardian
+        &[], // minecraft:enderman
+        &[], // minecraft:endermite
+        &[], // minecraft:ender_dragon
+        &[], // minecraft:ender_pearl
+        &[], // minecraft:end_crystal
+        &[], // minecraft:evoker
+        &[], // minecraft:evoker_fangs
+        &[], // minecraft:experience_bottle
+        &[], // minecraft:experience_orb
+        &[], // minecraft:eye_of_ender
+        &[], // minecraft:falling_block
+        &[], // minecraft:fireball
+        &[], // minecraft:firework_rocket
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18, 19, 20,
+        ], // minecraft:fox
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18,
+        ], // minecraft:frog
+        &[], // minecraft:furnace_minecart
+        &[], // minecraft:ghast
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18,
+        ], // minecraft:happy_ghast
+        &[], // minecraft:giant
+        &[], // minecraft:glow_item_frame
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17,
+        ], // minecraft:glow_squid
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18, 19,
+        ], // minecraft:goat
+        &[], // minecraft:guardian
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17,
+        ], // minecraft:hoglin
+        &[], // minecraft:hopper_minecart
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18,
+        ], // minecraft:horse
+        &[], // minecraft:husk
+        &[], // minecraft:illusioner
+        &[], // minecraft:interaction
+        &[], // minecraft:iron_golem
+        &[], // minecraft:item
+        &[], // minecraft:item_display
+        &[], // minecraft:item_frame
+        &[], // minecraft:jungle_boat
+        &[], // minecraft:jungle_chest_boat
+        &[], // minecraft:leash_knot
+        &[], // minecraft:lightning_bolt
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18, 19, 20,
+        ], // minecraft:llama
+        &[], // minecraft:llama_spit
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 255, 255, 16,
+        ], // minecraft:magma_cube
+        &[], // minecraft:mangrove_boat
+        &[], // minecraft:mangrove_chest_boat
+        &[
+            255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+            255, 255, 255,
+        ], // minecraft:mannequin
+        &[], // minecraft:marker
+        &[], // minecraft:minecart
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17,
+        ], // minecraft:mooshroom
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18,
+        ], // minecraft:mule
+        &[
+            255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+            255, 255, 255, 255,
+        ], // minecraft:nautilus
+        &[], // minecraft:oak_boat
+        &[], // minecraft:oak_chest_boat
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17,
+        ], // minecraft:ocelot
+        &[], // minecraft:ominous_item_spawner
+        &[], // minecraft:painting
+        &[], // minecraft:pale_oak_boat
+        &[], // minecraft:pale_oak_chest_boat
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18, 19, 20, 21, 22,
+        ], // minecraft:panda
+        &[
+            255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+        ], // minecraft:parched
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18, 19,
+        ], // minecraft:parrot
+        &[], // minecraft:phantom
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18, 255,
+        ], // minecraft:pig
+        &[], // minecraft:piglin
+        &[], // minecraft:piglin_brute
+        &[], // minecraft:pillager
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17,
+        ], // minecraft:polar_bear
+        &[], // minecraft:splash_potion
+        &[], // minecraft:lingering_potion
+        &[], // minecraft:pufferfish
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17,
+        ], // minecraft:rabbit
+        &[], // minecraft:ravager
+        &[], // minecraft:salmon
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17,
+        ], // minecraft:sheep
+        &[], // minecraft:shulker
+        &[], // minecraft:shulker_bullet
+        &[], // minecraft:silverfish
+        &[], // minecraft:skeleton
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17,
+        ], // minecraft:skeleton_horse
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 255, 255, 16,
+        ], // minecraft:slime
+        &[], // minecraft:small_fireball
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18,
+        ], // minecraft:sniffer
+        &[], // minecraft:snowball
+        &[], // minecraft:snow_golem
+        &[], // minecraft:spawner_minecart
+        &[], // minecraft:spectral_arrow
+        &[], // minecraft:spider
+        &[], // minecraft:spruce_boat
+        &[], // minecraft:spruce_chest_boat
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255,
+        ], // minecraft:squid
+        &[], // minecraft:stray
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18,
+        ], // minecraft:strider
+        &[
+            255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+            255, 255, 255, 255,
+        ], // minecraft:sulfur_cube
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255,
+        ], // minecraft:tadpole
+        &[], // minecraft:text_display
+        &[], // minecraft:tnt
+        &[], // minecraft:tnt_minecart
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18, 19, 20,
+        ], // minecraft:trader_llama
+        &[], // minecraft:trident
+        &[], // minecraft:tropical_fish
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18,
+        ], // minecraft:turtle
+        &[], // minecraft:vex
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18, 255,
+        ], // minecraft:villager
+        &[], // minecraft:vindicator
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17,
+        ], // minecraft:wandering_trader
+        &[], // minecraft:warden
+        &[], // minecraft:wind_charge
+        &[], // minecraft:witch
+        &[], // minecraft:wither
+        &[], // minecraft:wither_skeleton
+        &[], // minecraft:wither_skull
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18, 19, 20, 255, 22,
+            23,
+        ], // minecraft:wolf
+        &[], // minecraft:zoglin
+        &[], // minecraft:zombie
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17,
+        ], // minecraft:zombie_horse
+        &[
+            255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+            255, 255, 255, 255, 255,
+        ], // minecraft:zombie_nautilus
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 255,
+        ], // minecraft:zombie_villager
+        &[], // minecraft:zombified_piglin
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 255, 17, 15, 16, 255, 255,
+        ], // minecraft:player
+        &[], // minecraft:fishing_bobber
+    ],
+    // 1.21.8
+    [
+        &[], // minecraft:acacia_boat
+        &[], // minecraft:acacia_chest_boat
+        &[], // minecraft:allay
+        &[], // minecraft:area_effect_cloud
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17,
+        ], // minecraft:armadillo
+        &[], // minecraft:armor_stand
+        &[], // minecraft:arrow
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18, 19,
+        ], // minecraft:axolotl
+        &[], // minecraft:bamboo_chest_raft
+        &[], // minecraft:bamboo_raft
+        &[], // minecraft:bat
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 255,
+        ], // minecraft:bee
+        &[], // minecraft:birch_boat
+        &[], // minecraft:birch_chest_boat
+        &[], // minecraft:blaze
+        &[], // minecraft:block_display
+        &[], // minecraft:bogged
+        &[], // minecraft:breeze
+        &[], // minecraft:breeze_wind_charge
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18, 19,
+        ], // minecraft:camel
+        &[
+            255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+            255, 255, 255, 255,
+        ], // minecraft:camel_husk
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18, 19, 20, 21, 22,
+            255,
+        ], // minecraft:cat
+        &[], // minecraft:cave_spider
+        &[], // minecraft:cherry_boat
+        &[], // minecraft:cherry_chest_boat
+        &[], // minecraft:chest_minecart
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 255,
+        ], // minecraft:chicken
+        &[], // minecraft:cod
+        &[
+            255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+            255,
+        ], // minecraft:copper_golem
+        &[], // minecraft:command_block_minecart
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 255,
+        ], // minecraft:cow
+        &[], // minecraft:creaking
+        &[], // minecraft:creeper
+        &[], // minecraft:dark_oak_boat
+        &[], // minecraft:dark_oak_chest_boat
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18,
+        ], // minecraft:dolphin
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18,
+        ], // minecraft:donkey
+        &[], // minecraft:dragon_fireball
+        &[], // minecraft:drowned
+        &[], // minecraft:egg
+        &[], // minecraft:elder_guardian
+        &[], // minecraft:enderman
+        &[], // minecraft:endermite
+        &[], // minecraft:ender_dragon
+        &[], // minecraft:ender_pearl
+        &[], // minecraft:end_crystal
+        &[], // minecraft:evoker
+        &[], // minecraft:evoker_fangs
+        &[], // minecraft:experience_bottle
+        &[], // minecraft:experience_orb
+        &[], // minecraft:eye_of_ender
+        &[], // minecraft:falling_block
+        &[], // minecraft:fireball
+        &[], // minecraft:firework_rocket
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18, 19, 20,
+        ], // minecraft:fox
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18,
+        ], // minecraft:frog
+        &[], // minecraft:furnace_minecart
+        &[], // minecraft:ghast
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18,
+        ], // minecraft:happy_ghast
+        &[], // minecraft:giant
+        &[], // minecraft:glow_item_frame
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17,
+        ], // minecraft:glow_squid
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18, 19,
+        ], // minecraft:goat
+        &[], // minecraft:guardian
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17,
+        ], // minecraft:hoglin
+        &[], // minecraft:hopper_minecart
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18,
+        ], // minecraft:horse
+        &[], // minecraft:husk
+        &[], // minecraft:illusioner
+        &[], // minecraft:interaction
+        &[], // minecraft:iron_golem
+        &[], // minecraft:item
+        &[], // minecraft:item_display
+        &[], // minecraft:item_frame
+        &[], // minecraft:jungle_boat
+        &[], // minecraft:jungle_chest_boat
+        &[], // minecraft:leash_knot
+        &[], // minecraft:lightning_bolt
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18, 19, 20,
+        ], // minecraft:llama
+        &[], // minecraft:llama_spit
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 255, 255, 16,
+        ], // minecraft:magma_cube
+        &[], // minecraft:mangrove_boat
+        &[], // minecraft:mangrove_chest_boat
+        &[
+            255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+            255, 255, 255,
+        ], // minecraft:mannequin
+        &[], // minecraft:marker
+        &[], // minecraft:minecart
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17,
+        ], // minecraft:mooshroom
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18,
+        ], // minecraft:mule
+        &[
+            255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+            255, 255, 255, 255,
+        ], // minecraft:nautilus
+        &[], // minecraft:oak_boat
+        &[], // minecraft:oak_chest_boat
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17,
+        ], // minecraft:ocelot
+        &[], // minecraft:ominous_item_spawner
+        &[], // minecraft:painting
+        &[], // minecraft:pale_oak_boat
+        &[], // minecraft:pale_oak_chest_boat
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18, 19, 20, 21, 22,
+        ], // minecraft:panda
+        &[
+            255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+        ], // minecraft:parched
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18, 19,
+        ], // minecraft:parrot
+        &[], // minecraft:phantom
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18, 255,
+        ], // minecraft:pig
+        &[], // minecraft:piglin
+        &[], // minecraft:piglin_brute
+        &[], // minecraft:pillager
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17,
+        ], // minecraft:polar_bear
+        &[], // minecraft:splash_potion
+        &[], // minecraft:lingering_potion
+        &[], // minecraft:pufferfish
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17,
+        ], // minecraft:rabbit
+        &[], // minecraft:ravager
+        &[], // minecraft:salmon
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17,
+        ], // minecraft:sheep
+        &[], // minecraft:shulker
+        &[], // minecraft:shulker_bullet
+        &[], // minecraft:silverfish
+        &[], // minecraft:skeleton
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17,
+        ], // minecraft:skeleton_horse
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 255, 255, 16,
+        ], // minecraft:slime
+        &[], // minecraft:small_fireball
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18,
+        ], // minecraft:sniffer
+        &[], // minecraft:snowball
+        &[], // minecraft:snow_golem
+        &[], // minecraft:spawner_minecart
+        &[], // minecraft:spectral_arrow
+        &[], // minecraft:spider
+        &[], // minecraft:spruce_boat
+        &[], // minecraft:spruce_chest_boat
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255,
+        ], // minecraft:squid
+        &[], // minecraft:stray
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18,
+        ], // minecraft:strider
+        &[
+            255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+            255, 255, 255, 255,
+        ], // minecraft:sulfur_cube
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255,
+        ], // minecraft:tadpole
+        &[], // minecraft:text_display
+        &[], // minecraft:tnt
+        &[], // minecraft:tnt_minecart
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18, 19, 20,
+        ], // minecraft:trader_llama
+        &[], // minecraft:trident
+        &[], // minecraft:tropical_fish
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18,
+        ], // minecraft:turtle
+        &[], // minecraft:vex
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18, 255,
+        ], // minecraft:villager
+        &[], // minecraft:vindicator
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17,
+        ], // minecraft:wandering_trader
+        &[], // minecraft:warden
+        &[], // minecraft:wind_charge
+        &[], // minecraft:witch
+        &[], // minecraft:wither
+        &[], // minecraft:wither_skeleton
+        &[], // minecraft:wither_skull
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18, 19, 20, 255, 22,
+            23,
+        ], // minecraft:wolf
+        &[], // minecraft:zoglin
+        &[], // minecraft:zombie
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17,
+        ], // minecraft:zombie_horse
+        &[
+            255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+            255, 255, 255, 255, 255,
+        ], // minecraft:zombie_nautilus
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 255,
+        ], // minecraft:zombie_villager
+        &[], // minecraft:zombified_piglin
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 255, 17, 15, 16, 255, 255,
+        ], // minecraft:player
+        &[], // minecraft:fishing_bobber
+    ],
+    // 1.21.9
+    [
+        &[], // minecraft:acacia_boat
+        &[], // minecraft:acacia_chest_boat
+        &[], // minecraft:allay
+        &[], // minecraft:area_effect_cloud
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17,
+        ], // minecraft:armadillo
+        &[], // minecraft:armor_stand
+        &[], // minecraft:arrow
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18, 19,
+        ], // minecraft:axolotl
+        &[], // minecraft:bamboo_chest_raft
+        &[], // minecraft:bamboo_raft
+        &[], // minecraft:bat
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 255,
+        ], // minecraft:bee
+        &[], // minecraft:birch_boat
+        &[], // minecraft:birch_chest_boat
+        &[], // minecraft:blaze
+        &[], // minecraft:block_display
+        &[], // minecraft:bogged
+        &[], // minecraft:breeze
+        &[], // minecraft:breeze_wind_charge
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18, 19,
+        ], // minecraft:camel
+        &[
+            255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+            255, 255, 255, 255,
+        ], // minecraft:camel_husk
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18, 19, 20, 21, 22,
+            255,
+        ], // minecraft:cat
+        &[], // minecraft:cave_spider
+        &[], // minecraft:cherry_boat
+        &[], // minecraft:cherry_chest_boat
+        &[], // minecraft:chest_minecart
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 255,
+        ], // minecraft:chicken
+        &[], // minecraft:cod
+        &[], // minecraft:copper_golem
+        &[], // minecraft:command_block_minecart
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 255,
+        ], // minecraft:cow
+        &[], // minecraft:creaking
+        &[], // minecraft:creeper
+        &[], // minecraft:dark_oak_boat
+        &[], // minecraft:dark_oak_chest_boat
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18,
+        ], // minecraft:dolphin
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18,
+        ], // minecraft:donkey
+        &[], // minecraft:dragon_fireball
+        &[], // minecraft:drowned
+        &[], // minecraft:egg
+        &[], // minecraft:elder_guardian
+        &[], // minecraft:enderman
+        &[], // minecraft:endermite
+        &[], // minecraft:ender_dragon
+        &[], // minecraft:ender_pearl
+        &[], // minecraft:end_crystal
+        &[], // minecraft:evoker
+        &[], // minecraft:evoker_fangs
+        &[], // minecraft:experience_bottle
+        &[], // minecraft:experience_orb
+        &[], // minecraft:eye_of_ender
+        &[], // minecraft:falling_block
+        &[], // minecraft:fireball
+        &[], // minecraft:firework_rocket
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18, 19, 20,
+        ], // minecraft:fox
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18,
+        ], // minecraft:frog
+        &[], // minecraft:furnace_minecart
+        &[], // minecraft:ghast
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18,
+        ], // minecraft:happy_ghast
+        &[], // minecraft:giant
+        &[], // minecraft:glow_item_frame
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17,
+        ], // minecraft:glow_squid
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18, 19,
+        ], // minecraft:goat
+        &[], // minecraft:guardian
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17,
+        ], // minecraft:hoglin
+        &[], // minecraft:hopper_minecart
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18,
+        ], // minecraft:horse
+        &[], // minecraft:husk
+        &[], // minecraft:illusioner
+        &[], // minecraft:interaction
+        &[], // minecraft:iron_golem
+        &[], // minecraft:item
+        &[], // minecraft:item_display
+        &[], // minecraft:item_frame
+        &[], // minecraft:jungle_boat
+        &[], // minecraft:jungle_chest_boat
+        &[], // minecraft:leash_knot
+        &[], // minecraft:lightning_bolt
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18, 19, 20,
+        ], // minecraft:llama
+        &[], // minecraft:llama_spit
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 255, 255, 16,
+        ], // minecraft:magma_cube
+        &[], // minecraft:mangrove_boat
+        &[], // minecraft:mangrove_chest_boat
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 255, 16, 17, 18, 19,
+        ], // minecraft:mannequin
+        &[], // minecraft:marker
+        &[], // minecraft:minecart
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17,
+        ], // minecraft:mooshroom
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18,
+        ], // minecraft:mule
+        &[
+            255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+            255, 255, 255, 255,
+        ], // minecraft:nautilus
+        &[], // minecraft:oak_boat
+        &[], // minecraft:oak_chest_boat
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17,
+        ], // minecraft:ocelot
+        &[], // minecraft:ominous_item_spawner
+        &[], // minecraft:painting
+        &[], // minecraft:pale_oak_boat
+        &[], // minecraft:pale_oak_chest_boat
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18, 19, 20, 21, 22,
+        ], // minecraft:panda
+        &[
+            255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+        ], // minecraft:parched
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18, 19,
+        ], // minecraft:parrot
+        &[], // minecraft:phantom
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18, 255,
+        ], // minecraft:pig
+        &[], // minecraft:piglin
+        &[], // minecraft:piglin_brute
+        &[], // minecraft:pillager
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17,
+        ], // minecraft:polar_bear
+        &[], // minecraft:splash_potion
+        &[], // minecraft:lingering_potion
+        &[], // minecraft:pufferfish
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17,
+        ], // minecraft:rabbit
+        &[], // minecraft:ravager
+        &[], // minecraft:salmon
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17,
+        ], // minecraft:sheep
+        &[], // minecraft:shulker
+        &[], // minecraft:shulker_bullet
+        &[], // minecraft:silverfish
+        &[], // minecraft:skeleton
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17,
+        ], // minecraft:skeleton_horse
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 255, 255, 16,
+        ], // minecraft:slime
+        &[], // minecraft:small_fireball
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18,
+        ], // minecraft:sniffer
+        &[], // minecraft:snowball
+        &[], // minecraft:snow_golem
+        &[], // minecraft:spawner_minecart
+        &[], // minecraft:spectral_arrow
+        &[], // minecraft:spider
+        &[], // minecraft:spruce_boat
+        &[], // minecraft:spruce_chest_boat
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255,
+        ], // minecraft:squid
+        &[], // minecraft:stray
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18,
+        ], // minecraft:strider
+        &[
+            255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+            255, 255, 255, 255,
+        ], // minecraft:sulfur_cube
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255,
+        ], // minecraft:tadpole
+        &[], // minecraft:text_display
+        &[], // minecraft:tnt
+        &[], // minecraft:tnt_minecart
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18, 19, 20,
+        ], // minecraft:trader_llama
+        &[], // minecraft:trident
+        &[], // minecraft:tropical_fish
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18,
+        ], // minecraft:turtle
+        &[], // minecraft:vex
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18, 255,
+        ], // minecraft:villager
+        &[], // minecraft:vindicator
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17,
+        ], // minecraft:wandering_trader
+        &[], // minecraft:warden
+        &[], // minecraft:wind_charge
+        &[], // minecraft:witch
+        &[], // minecraft:wither
+        &[], // minecraft:wither_skeleton
+        &[], // minecraft:wither_skull
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18, 19, 20, 255, 22,
+            23,
+        ], // minecraft:wolf
+        &[], // minecraft:zoglin
+        &[], // minecraft:zombie
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17,
+        ], // minecraft:zombie_horse
+        &[
+            255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+            255, 255, 255, 255, 255,
+        ], // minecraft:zombie_nautilus
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 255,
+        ], // minecraft:zombie_villager
+        &[], // minecraft:zombified_piglin
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 255, 16, 17, 18, 19, 20,
+        ], // minecraft:player
+        &[], // minecraft:fishing_bobber
+    ],
+    // 1.21.11
+    [
+        &[], // minecraft:acacia_boat
+        &[], // minecraft:acacia_chest_boat
+        &[], // minecraft:allay
+        &[], // minecraft:area_effect_cloud
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17,
+        ], // minecraft:armadillo
+        &[], // minecraft:armor_stand
+        &[], // minecraft:arrow
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18, 19,
+        ], // minecraft:axolotl
+        &[], // minecraft:bamboo_chest_raft
+        &[], // minecraft:bamboo_raft
+        &[], // minecraft:bat
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18,
+        ], // minecraft:bee
+        &[], // minecraft:birch_boat
+        &[], // minecraft:birch_chest_boat
+        &[], // minecraft:blaze
+        &[], // minecraft:block_display
+        &[], // minecraft:bogged
+        &[], // minecraft:breeze
+        &[], // minecraft:breeze_wind_charge
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18, 19,
+        ], // minecraft:camel
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18, 19,
+        ], // minecraft:camel_husk
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18, 19, 20, 21, 22,
+            255,
+        ], // minecraft:cat
+        &[], // minecraft:cave_spider
+        &[], // minecraft:cherry_boat
+        &[], // minecraft:cherry_chest_boat
+        &[], // minecraft:chest_minecart
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 255,
+        ], // minecraft:chicken
+        &[], // minecraft:cod
+        &[], // minecraft:copper_golem
+        &[], // minecraft:command_block_minecart
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 255,
+        ], // minecraft:cow
+        &[], // minecraft:creaking
+        &[], // minecraft:creeper
+        &[], // minecraft:dark_oak_boat
+        &[], // minecraft:dark_oak_chest_boat
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18,
+        ], // minecraft:dolphin
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18,
+        ], // minecraft:donkey
+        &[], // minecraft:dragon_fireball
+        &[], // minecraft:drowned
+        &[], // minecraft:egg
+        &[], // minecraft:elder_guardian
+        &[], // minecraft:enderman
+        &[], // minecraft:endermite
+        &[], // minecraft:ender_dragon
+        &[], // minecraft:ender_pearl
+        &[], // minecraft:end_crystal
+        &[], // minecraft:evoker
+        &[], // minecraft:evoker_fangs
+        &[], // minecraft:experience_bottle
+        &[], // minecraft:experience_orb
+        &[], // minecraft:eye_of_ender
+        &[], // minecraft:falling_block
+        &[], // minecraft:fireball
+        &[], // minecraft:firework_rocket
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18, 19, 20,
+        ], // minecraft:fox
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18,
+        ], // minecraft:frog
+        &[], // minecraft:furnace_minecart
+        &[], // minecraft:ghast
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18,
+        ], // minecraft:happy_ghast
+        &[], // minecraft:giant
+        &[], // minecraft:glow_item_frame
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17,
+        ], // minecraft:glow_squid
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18, 19,
+        ], // minecraft:goat
+        &[], // minecraft:guardian
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17,
+        ], // minecraft:hoglin
+        &[], // minecraft:hopper_minecart
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18,
+        ], // minecraft:horse
+        &[], // minecraft:husk
+        &[], // minecraft:illusioner
+        &[], // minecraft:interaction
+        &[], // minecraft:iron_golem
+        &[], // minecraft:item
+        &[], // minecraft:item_display
+        &[], // minecraft:item_frame
+        &[], // minecraft:jungle_boat
+        &[], // minecraft:jungle_chest_boat
+        &[], // minecraft:leash_knot
+        &[], // minecraft:lightning_bolt
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18, 19, 20,
+        ], // minecraft:llama
+        &[], // minecraft:llama_spit
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 255, 255, 16,
+        ], // minecraft:magma_cube
+        &[], // minecraft:mangrove_boat
+        &[], // minecraft:mangrove_chest_boat
+        &[], // minecraft:mannequin
+        &[], // minecraft:marker
+        &[], // minecraft:minecart
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17,
+        ], // minecraft:mooshroom
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18,
+        ], // minecraft:mule
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18, 19,
+        ], // minecraft:nautilus
+        &[], // minecraft:oak_boat
+        &[], // minecraft:oak_chest_boat
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17,
+        ], // minecraft:ocelot
+        &[], // minecraft:ominous_item_spawner
+        &[], // minecraft:painting
+        &[], // minecraft:pale_oak_boat
+        &[], // minecraft:pale_oak_chest_boat
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18, 19, 20, 21, 22,
+        ], // minecraft:panda
+        &[], // minecraft:parched
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18, 19,
+        ], // minecraft:parrot
+        &[], // minecraft:phantom
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18, 255,
+        ], // minecraft:pig
+        &[], // minecraft:piglin
+        &[], // minecraft:piglin_brute
+        &[], // minecraft:pillager
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17,
+        ], // minecraft:polar_bear
+        &[], // minecraft:splash_potion
+        &[], // minecraft:lingering_potion
+        &[], // minecraft:pufferfish
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17,
+        ], // minecraft:rabbit
+        &[], // minecraft:ravager
+        &[], // minecraft:salmon
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17,
+        ], // minecraft:sheep
+        &[], // minecraft:shulker
+        &[], // minecraft:shulker_bullet
+        &[], // minecraft:silverfish
+        &[], // minecraft:skeleton
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17,
+        ], // minecraft:skeleton_horse
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 255, 255, 16,
+        ], // minecraft:slime
+        &[], // minecraft:small_fireball
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18,
+        ], // minecraft:sniffer
+        &[], // minecraft:snowball
+        &[], // minecraft:snow_golem
+        &[], // minecraft:spawner_minecart
+        &[], // minecraft:spectral_arrow
+        &[], // minecraft:spider
+        &[], // minecraft:spruce_boat
+        &[], // minecraft:spruce_chest_boat
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255,
+        ], // minecraft:squid
+        &[], // minecraft:stray
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18,
+        ], // minecraft:strider
+        &[
+            255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+            255, 255, 255, 255,
+        ], // minecraft:sulfur_cube
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255,
+        ], // minecraft:tadpole
+        &[], // minecraft:text_display
+        &[], // minecraft:tnt
+        &[], // minecraft:tnt_minecart
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18, 19, 20,
+        ], // minecraft:trader_llama
+        &[], // minecraft:trident
+        &[], // minecraft:tropical_fish
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18,
+        ], // minecraft:turtle
+        &[], // minecraft:vex
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18, 255,
+        ], // minecraft:villager
+        &[], // minecraft:vindicator
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17,
+        ], // minecraft:wandering_trader
+        &[], // minecraft:warden
+        &[], // minecraft:wind_charge
+        &[], // minecraft:witch
+        &[], // minecraft:wither
+        &[], // minecraft:wither_skeleton
+        &[], // minecraft:wither_skull
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18, 19, 20, 21, 22,
+            23,
+        ], // minecraft:wolf
+        &[], // minecraft:zoglin
+        &[], // minecraft:zombie
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17,
+        ], // minecraft:zombie_horse
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 255, 17, 18, 19, 20,
+        ], // minecraft:zombie_nautilus
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 255,
+        ], // minecraft:zombie_villager
+        &[], // minecraft:zombified_piglin
+        &[], // minecraft:player
+        &[], // minecraft:fishing_bobber
+    ],
+    // 26.1
+    [
+        &[], // minecraft:acacia_boat
+        &[], // minecraft:acacia_chest_boat
+        &[], // minecraft:allay
+        &[], // minecraft:area_effect_cloud
+        &[], // minecraft:armadillo
+        &[], // minecraft:armor_stand
+        &[], // minecraft:arrow
+        &[], // minecraft:axolotl
+        &[], // minecraft:bamboo_chest_raft
+        &[], // minecraft:bamboo_raft
+        &[], // minecraft:bat
+        &[], // minecraft:bee
+        &[], // minecraft:birch_boat
+        &[], // minecraft:birch_chest_boat
+        &[], // minecraft:blaze
+        &[], // minecraft:block_display
+        &[], // minecraft:bogged
+        &[], // minecraft:breeze
+        &[], // minecraft:breeze_wind_charge
+        &[], // minecraft:camel
+        &[], // minecraft:camel_husk
+        &[], // minecraft:cat
+        &[], // minecraft:cave_spider
+        &[], // minecraft:cherry_boat
+        &[], // minecraft:cherry_chest_boat
+        &[], // minecraft:chest_minecart
+        &[], // minecraft:chicken
+        &[], // minecraft:cod
+        &[], // minecraft:copper_golem
+        &[], // minecraft:command_block_minecart
+        &[], // minecraft:cow
+        &[], // minecraft:creaking
+        &[], // minecraft:creeper
+        &[], // minecraft:dark_oak_boat
+        &[], // minecraft:dark_oak_chest_boat
+        &[], // minecraft:dolphin
+        &[], // minecraft:donkey
+        &[], // minecraft:dragon_fireball
+        &[], // minecraft:drowned
+        &[], // minecraft:egg
+        &[], // minecraft:elder_guardian
+        &[], // minecraft:enderman
+        &[], // minecraft:endermite
+        &[], // minecraft:ender_dragon
+        &[], // minecraft:ender_pearl
+        &[], // minecraft:end_crystal
+        &[], // minecraft:evoker
+        &[], // minecraft:evoker_fangs
+        &[], // minecraft:experience_bottle
+        &[], // minecraft:experience_orb
+        &[], // minecraft:eye_of_ender
+        &[], // minecraft:falling_block
+        &[], // minecraft:fireball
+        &[], // minecraft:firework_rocket
+        &[], // minecraft:fox
+        &[], // minecraft:frog
+        &[], // minecraft:furnace_minecart
+        &[], // minecraft:ghast
+        &[], // minecraft:happy_ghast
+        &[], // minecraft:giant
+        &[], // minecraft:glow_item_frame
+        &[], // minecraft:glow_squid
+        &[], // minecraft:goat
+        &[], // minecraft:guardian
+        &[], // minecraft:hoglin
+        &[], // minecraft:hopper_minecart
+        &[], // minecraft:horse
+        &[], // minecraft:husk
+        &[], // minecraft:illusioner
+        &[], // minecraft:interaction
+        &[], // minecraft:iron_golem
+        &[], // minecraft:item
+        &[], // minecraft:item_display
+        &[], // minecraft:item_frame
+        &[], // minecraft:jungle_boat
+        &[], // minecraft:jungle_chest_boat
+        &[], // minecraft:leash_knot
+        &[], // minecraft:lightning_bolt
+        &[], // minecraft:llama
+        &[], // minecraft:llama_spit
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 255, 255, 16,
+        ], // minecraft:magma_cube
+        &[], // minecraft:mangrove_boat
+        &[], // minecraft:mangrove_chest_boat
+        &[], // minecraft:mannequin
+        &[], // minecraft:marker
+        &[], // minecraft:minecart
+        &[], // minecraft:mooshroom
+        &[], // minecraft:mule
+        &[], // minecraft:nautilus
+        &[], // minecraft:oak_boat
+        &[], // minecraft:oak_chest_boat
+        &[], // minecraft:ocelot
+        &[], // minecraft:ominous_item_spawner
+        &[], // minecraft:painting
+        &[], // minecraft:pale_oak_boat
+        &[], // minecraft:pale_oak_chest_boat
+        &[], // minecraft:panda
+        &[], // minecraft:parched
+        &[], // minecraft:parrot
+        &[], // minecraft:phantom
+        &[], // minecraft:pig
+        &[], // minecraft:piglin
+        &[], // minecraft:piglin_brute
+        &[], // minecraft:pillager
+        &[], // minecraft:polar_bear
+        &[], // minecraft:splash_potion
+        &[], // minecraft:lingering_potion
+        &[], // minecraft:pufferfish
+        &[], // minecraft:rabbit
+        &[], // minecraft:ravager
+        &[], // minecraft:salmon
+        &[], // minecraft:sheep
+        &[], // minecraft:shulker
+        &[], // minecraft:shulker_bullet
+        &[], // minecraft:silverfish
+        &[], // minecraft:skeleton
+        &[], // minecraft:skeleton_horse
+        &[
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 255, 255, 16,
+        ], // minecraft:slime
+        &[], // minecraft:small_fireball
+        &[], // minecraft:sniffer
+        &[], // minecraft:snowball
+        &[], // minecraft:snow_golem
+        &[], // minecraft:spawner_minecart
+        &[], // minecraft:spectral_arrow
+        &[], // minecraft:spider
+        &[], // minecraft:spruce_boat
+        &[], // minecraft:spruce_chest_boat
+        &[], // minecraft:squid
+        &[], // minecraft:stray
+        &[], // minecraft:strider
+        &[
+            255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+            255, 255, 255, 255,
+        ], // minecraft:sulfur_cube
+        &[], // minecraft:tadpole
+        &[], // minecraft:text_display
+        &[], // minecraft:tnt
+        &[], // minecraft:tnt_minecart
+        &[], // minecraft:trader_llama
+        &[], // minecraft:trident
+        &[], // minecraft:tropical_fish
+        &[], // minecraft:turtle
+        &[], // minecraft:vex
+        &[], // minecraft:villager
+        &[], // minecraft:vindicator
+        &[], // minecraft:wandering_trader
+        &[], // minecraft:warden
+        &[], // minecraft:wind_charge
+        &[], // minecraft:witch
+        &[], // minecraft:wither
+        &[], // minecraft:wither_skeleton
+        &[], // minecraft:wither_skull
+        &[], // minecraft:wolf
+        &[], // minecraft:zoglin
+        &[], // minecraft:zombie
+        &[], // minecraft:zombie_horse
+        &[], // minecraft:zombie_nautilus
+        &[], // minecraft:zombie_villager
+        &[], // minecraft:zombified_piglin
+        &[], // minecraft:player
+        &[], // minecraft:fishing_bobber
+    ],
+    // 26.2
+    [
+        &[], // minecraft:acacia_boat
+        &[], // minecraft:acacia_chest_boat
+        &[], // minecraft:allay
+        &[], // minecraft:area_effect_cloud
+        &[], // minecraft:armadillo
+        &[], // minecraft:armor_stand
+        &[], // minecraft:arrow
+        &[], // minecraft:axolotl
+        &[], // minecraft:bamboo_chest_raft
+        &[], // minecraft:bamboo_raft
+        &[], // minecraft:bat
+        &[], // minecraft:bee
+        &[], // minecraft:birch_boat
+        &[], // minecraft:birch_chest_boat
+        &[], // minecraft:blaze
+        &[], // minecraft:block_display
+        &[], // minecraft:bogged
+        &[], // minecraft:breeze
+        &[], // minecraft:breeze_wind_charge
+        &[], // minecraft:camel
+        &[], // minecraft:camel_husk
+        &[], // minecraft:cat
+        &[], // minecraft:cave_spider
+        &[], // minecraft:cherry_boat
+        &[], // minecraft:cherry_chest_boat
+        &[], // minecraft:chest_minecart
+        &[], // minecraft:chicken
+        &[], // minecraft:cod
+        &[], // minecraft:copper_golem
+        &[], // minecraft:command_block_minecart
+        &[], // minecraft:cow
+        &[], // minecraft:creaking
+        &[], // minecraft:creeper
+        &[], // minecraft:dark_oak_boat
+        &[], // minecraft:dark_oak_chest_boat
+        &[], // minecraft:dolphin
+        &[], // minecraft:donkey
+        &[], // minecraft:dragon_fireball
+        &[], // minecraft:drowned
+        &[], // minecraft:egg
+        &[], // minecraft:elder_guardian
+        &[], // minecraft:enderman
+        &[], // minecraft:endermite
+        &[], // minecraft:ender_dragon
+        &[], // minecraft:ender_pearl
+        &[], // minecraft:end_crystal
+        &[], // minecraft:evoker
+        &[], // minecraft:evoker_fangs
+        &[], // minecraft:experience_bottle
+        &[], // minecraft:experience_orb
+        &[], // minecraft:eye_of_ender
+        &[], // minecraft:falling_block
+        &[], // minecraft:fireball
+        &[], // minecraft:firework_rocket
+        &[], // minecraft:fox
+        &[], // minecraft:frog
+        &[], // minecraft:furnace_minecart
+        &[], // minecraft:ghast
+        &[], // minecraft:happy_ghast
+        &[], // minecraft:giant
+        &[], // minecraft:glow_item_frame
+        &[], // minecraft:glow_squid
+        &[], // minecraft:goat
+        &[], // minecraft:guardian
+        &[], // minecraft:hoglin
+        &[], // minecraft:hopper_minecart
+        &[], // minecraft:horse
+        &[], // minecraft:husk
+        &[], // minecraft:illusioner
+        &[], // minecraft:interaction
+        &[], // minecraft:iron_golem
+        &[], // minecraft:item
+        &[], // minecraft:item_display
+        &[], // minecraft:item_frame
+        &[], // minecraft:jungle_boat
+        &[], // minecraft:jungle_chest_boat
+        &[], // minecraft:leash_knot
+        &[], // minecraft:lightning_bolt
+        &[], // minecraft:llama
+        &[], // minecraft:llama_spit
+        &[], // minecraft:magma_cube
+        &[], // minecraft:mangrove_boat
+        &[], // minecraft:mangrove_chest_boat
+        &[], // minecraft:mannequin
+        &[], // minecraft:marker
+        &[], // minecraft:minecart
+        &[], // minecraft:mooshroom
+        &[], // minecraft:mule
+        &[], // minecraft:nautilus
+        &[], // minecraft:oak_boat
+        &[], // minecraft:oak_chest_boat
+        &[], // minecraft:ocelot
+        &[], // minecraft:ominous_item_spawner
+        &[], // minecraft:painting
+        &[], // minecraft:pale_oak_boat
+        &[], // minecraft:pale_oak_chest_boat
+        &[], // minecraft:panda
+        &[], // minecraft:parched
+        &[], // minecraft:parrot
+        &[], // minecraft:phantom
+        &[], // minecraft:pig
+        &[], // minecraft:piglin
+        &[], // minecraft:piglin_brute
+        &[], // minecraft:pillager
+        &[], // minecraft:polar_bear
+        &[], // minecraft:splash_potion
+        &[], // minecraft:lingering_potion
+        &[], // minecraft:pufferfish
+        &[], // minecraft:rabbit
+        &[], // minecraft:ravager
+        &[], // minecraft:salmon
+        &[], // minecraft:sheep
+        &[], // minecraft:shulker
+        &[], // minecraft:shulker_bullet
+        &[], // minecraft:silverfish
+        &[], // minecraft:skeleton
+        &[], // minecraft:skeleton_horse
+        &[], // minecraft:slime
+        &[], // minecraft:small_fireball
+        &[], // minecraft:sniffer
+        &[], // minecraft:snowball
+        &[], // minecraft:snow_golem
+        &[], // minecraft:spawner_minecart
+        &[], // minecraft:spectral_arrow
+        &[], // minecraft:spider
+        &[], // minecraft:spruce_boat
+        &[], // minecraft:spruce_chest_boat
+        &[], // minecraft:squid
+        &[], // minecraft:stray
+        &[], // minecraft:strider
+        &[], // minecraft:sulfur_cube
+        &[], // minecraft:tadpole
+        &[], // minecraft:text_display
+        &[], // minecraft:tnt
+        &[], // minecraft:tnt_minecart
+        &[], // minecraft:trader_llama
+        &[], // minecraft:trident
+        &[], // minecraft:tropical_fish
+        &[], // minecraft:turtle
+        &[], // minecraft:vex
+        &[], // minecraft:villager
+        &[], // minecraft:vindicator
+        &[], // minecraft:wandering_trader
+        &[], // minecraft:warden
+        &[], // minecraft:wind_charge
+        &[], // minecraft:witch
+        &[], // minecraft:wither
+        &[], // minecraft:wither_skeleton
+        &[], // minecraft:wither_skull
+        &[], // minecraft:wolf
+        &[], // minecraft:zoglin
+        &[], // minecraft:zombie
+        &[], // minecraft:zombie_horse
+        &[], // minecraft:zombie_nautilus
+        &[], // minecraft:zombie_villager
+        &[], // minecraft:zombified_piglin
+        &[], // minecraft:player
+        &[], // minecraft:fishing_bobber
+    ],
 ];
 
 /// Where a field of `kind` sits for a client speaking `version`, or [`ABSENT`].
-///
-/// The server holds one entity in the newest version's terms, so a field's place for an
-/// older client is a translation. Only the types that moved carry a table. Versions
-/// older than the ones that could be read are given the oldest known layout, which is
-/// right wherever nothing moved and is the only answer available otherwise.
 #[must_use]
 pub fn place_of(kind: EntityType, index: u8, version: ProtocolVersion) -> u8 {
-    if version >= ProtocolVersion::V26_2 {
+    let row = PLACES[version.index()][kind as usize];
+    if row.is_empty() {
         return index;
     }
-    match MOVED_IN_26_1.iter().find(|(moved, _)| *moved == kind) {
-        Some((_, places)) => places.get(index as usize).copied().unwrap_or(ABSENT),
-        None => index,
-    }
+    row.get(index as usize).copied().unwrap_or(ABSENT)
 }
 
 /// Every field a client reads, named the way the game names it and grouped by the class
