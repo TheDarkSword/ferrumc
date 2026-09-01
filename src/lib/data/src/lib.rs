@@ -84,3 +84,70 @@ mod damage_type_wire_tests {
         }
     }
 }
+
+#[cfg(test)]
+mod item_tests {
+    use crate::generated::items::Item;
+
+    /// The numbers items travel as come from the registry the client is sent, so the two cannot
+    /// disagree. The dump this replaced had 1389 of 1416 wrong.
+    #[test]
+    fn an_items_number_is_the_registrys_own() {
+        let sword = Item::from_registry_key("minecraft:diamond_sword").expect("it is an item");
+        assert_eq!(sword.id, Item::DIAMOND_SWORD.id);
+        assert_eq!(
+            Item::from_id(Item::DIAMOND_SWORD.id).map(|item| item.registry_key),
+            Some("minecraft:diamond_sword"),
+            "the number and the name have to agree in both directions"
+        );
+    }
+
+    /// The kinds added most recently, which the dump did not have at all.
+    #[test]
+    fn the_items_the_newest_version_added_are_here() {
+        for name in [
+            "minecraft:copper_sword",
+            "minecraft:copper_axe",
+            "minecraft:cinnabar",
+            "minecraft:bamboo_shelf",
+        ] {
+            assert!(Item::from_registry_key(name).is_some(), "{name}");
+        }
+    }
+}
+
+#[cfg(test)]
+mod attribute_tests {
+    use crate::attributes::Attribute;
+
+    /// The numbers attributes travel as are the registry's own, and the registry grew by five.
+    #[test]
+    fn every_attribute_the_game_has_is_here() {
+        for name in [
+            "minecraft:air_drag_modifier",
+            "minecraft:below_name_distance",
+            "minecraft:bounciness",
+            "minecraft:friction_modifier",
+            "minecraft:name_tag_distance",
+        ] {
+            assert!(Attribute::from_name(name).is_some(), "{name}");
+        }
+        assert_eq!(Attribute::from_name("gravity").map(|a| a.id), Some(18));
+    }
+
+    /// Written out in full rather than rounded: gravity used to read as 0.1.
+    #[test]
+    fn a_default_is_not_rounded_off() {
+        let gravity = Attribute::from_name("gravity").expect("gravity is an attribute");
+        assert!((gravity.default_value - 0.08).abs() < 1e-12, "{gravity:?}");
+    }
+
+    /// An attribute holds a value to its own range, which is what stops a modifier going silly.
+    #[test]
+    fn an_attribute_holds_a_value_to_its_own_range() {
+        let armour = Attribute::from_name("armor").expect("armour is an attribute");
+        assert_eq!(armour.clamp(-5.0), 0.0);
+        assert_eq!(armour.clamp(100.0), 30.0);
+        assert_eq!(armour.clamp(12.0), 12.0);
+    }
+}

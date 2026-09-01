@@ -398,12 +398,52 @@ impl quote::ToTokens for AttributeModifierSlot {
     }
 }
 
-pub(crate) fn build() -> TokenStream {
-    println!("cargo:rerun-if-changed=../../../assets/extracted/items.json");
+/// Where the game publishes what every item is made of, one file per item.
+const COMPONENTS: &str = "../../../assets/extracted/26.2/reports/minecraft/components/item";
 
-    let items: BTreeMap<String, Item> =
-        serde_json::from_str(&fs::read_to_string("../../../assets/extracted/items.json").unwrap())
-            .expect("Failed to parse items.json");
+/// Where it publishes the number each of them travels as.
+const REGISTRIES: &str = "../../../assets/data/registries.json";
+
+/// One item's file, which holds its components and nothing else — the number is in the registry.
+#[derive(Deserialize, Clone)]
+struct ItemFile {
+    components: ItemComponents,
+}
+
+pub(crate) fn build() -> TokenStream {
+    println!("cargo:rerun-if-changed={COMPONENTS}");
+    println!("cargo:rerun-if-changed={REGISTRIES}");
+
+    // Read from the report the game writes rather than from a dump beside it. The dump this
+    // replaced was 121 items short and had 1389 of its 1416 numbers wrong, and nothing noticed
+    // because nothing outside this crate reads them yet.
+    let registries: serde_json::Value =
+        serde_json::from_str(&fs::read_to_string(REGISTRIES).expect("the item registry"))
+            .expect("the registry is valid json");
+    let numbers = registries["minecraft:item"]["entries"]
+        .as_object()
+        .expect("the registry names every item");
+
+    let items: BTreeMap<String, Item> = numbers
+        .iter()
+        .map(|(name, entry)| {
+            let short = name.strip_prefix("minecraft:").unwrap_or(name);
+            let file = fs::read_to_string(format!("{COMPONENTS}/{short}.json"))
+                .unwrap_or_else(|_| panic!("no components published for {name}"));
+            let file: ItemFile = serde_json::from_str(&file)
+                .unwrap_or_else(|err| panic!("could not read the components of {name}: {err}"));
+            let id = entry["protocol_id"]
+                .as_u64()
+                .expect("every item has a number");
+            (
+                short.to_string(),
+                Item {
+                    id: u16::try_from(id).expect("an item number fits in a short"),
+                    components: file.components,
+                },
+            )
+        })
+        .collect();
 
     let mut type_from_raw_id_arms = TokenStream::new();
     let mut type_from_name = TokenStream::new();
@@ -484,6 +524,25 @@ pub(crate) fn build() -> TokenStream {
                     #type_from_name
                     _ => None
                 }
+            }
+
+            /// What holding this changes about whoever holds it.
+            ///
+            /// A weapon's damage and its recharge live here rather than on any list of weapons,
+            /// which is why an item that is not a weapon simply has none.
+            #[must_use]
+            pub fn attribute_modifiers(&self) -> &'static [Modifier] {
+                self.components
+                    .iter()
+                    .find_map(|(id, data)| {
+                        (id == &DataComponent::AttributeModifiers).then(|| {
+                            data.as_any()
+                                .downcast_ref::<AttributeModifiersImpl>()
+                                .map(|held| held.attribute_modifiers)
+                        })
+                    })
+                    .flatten()
+                    .unwrap_or(&[])
             }
 
             #[doc = "Try to parse an item from a raw id."]

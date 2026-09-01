@@ -8,16 +8,15 @@
 
 use bevy_ecs::prelude::Res;
 use ferrumc_net::{
-    AttackEntityReceiver, ChangeDifficultyReceiver, ChatCommandSignedReceiver,
-    ClientTickEndPacketReceiver, InteractEntityReceiver, MovePlayerStatusOnlyReceiver,
-    MoveVehicleReceiver, PickItemFromEntityReceiver, PlaceRecipeReceiver,
-    RecipeBookSeenRecipeReceiver, RenameItemReceiver, UseItemReceiver,
+    ChangeDifficultyReceiver, ChatCommandSignedReceiver, ClientTickEndPacketReceiver,
+    InteractEntityReceiver, MovePlayerStatusOnlyReceiver, MoveVehicleReceiver,
+    PickItemFromEntityReceiver, PlaceRecipeReceiver, RecipeBookSeenRecipeReceiver,
+    RenameItemReceiver, UseItemReceiver,
 };
 
 /// Empties every channel with no reader. `try_iter` takes what is queued and returns.
 #[expect(clippy::too_many_arguments)]
 pub fn handle(
-    attack: Res<AttackEntityReceiver>,
     change_difficulty: Res<ChangeDifficultyReceiver>,
     chat_command_signed: Res<ChatCommandSignedReceiver>,
     client_tick_end: Res<ClientTickEndPacketReceiver>,
@@ -30,7 +29,6 @@ pub fn handle(
     rename_item: Res<RenameItemReceiver>,
     use_item: Res<UseItemReceiver>,
 ) {
-    attack.0.try_iter().for_each(drop);
     change_difficulty.0.try_iter().for_each(drop);
     chat_command_signed.0.try_iter().for_each(drop);
     client_tick_end.0.try_iter().for_each(drop);

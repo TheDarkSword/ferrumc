@@ -26,7 +26,7 @@ use ferrumc_entities::synced_data::SyncedData;
 use ferrumc_inventories::inventory::Inventory;
 use ferrumc_inventories::item::ItemID;
 use ferrumc_inventories::slot::InventorySlot;
-use ferrumc_messages::BlockBrokenEvent;
+use ferrumc_messages::{BlockBrokenEvent, EntityDied};
 use ferrumc_net::connection::StreamWriter;
 use ferrumc_net::packets::outgoing::remove_entities::RemoveEntitiesPacket;
 use ferrumc_net_codec::net_types::var_int::VarInt;
@@ -84,6 +84,51 @@ pub fn drop_what_a_block_left(
                 f64::from(event.position.pos.y) + DROP_HEIGHT,
                 f64::from(event.position.pos.z) + 0.5,
             );
+        }
+    }
+}
+
+/// Puts what a killed thing leaves behind on the ground.
+///
+/// Same machinery as a broken block: the loot table decides, and what it decides depends on what
+/// killed it. Whether a player was holding a sword with looting on it is Phase 5.10's; for now a
+/// mob drops what it drops.
+pub fn drop_what_a_mob_left(
+    mut deaths: MessageReader<EntityDied>,
+    dead: Query<(&Position, &EntityType), Without<PlayerIdentity>>,
+    packs: Res<Datapacks>,
+    mut commands: Commands,
+) {
+    let mut rng = rand::thread_rng();
+    for death in deaths.read() {
+        let Ok((at, kind)) = dead.get(death.entity) else {
+            continue;
+        };
+        let table = format!("minecraft:entities/{}", kind.name());
+        let Ok(table) = ferrumc_datapack::Identifier::parse(&table) else {
+            continue;
+        };
+
+        let mut context = LootContext::new(
+            LootParams {
+                origin: Some(Origin {
+                    x: at.x,
+                    y: at.y,
+                    z: at.z,
+                }),
+                ..LootParams::default()
+            },
+            &mut rng,
+        );
+        context.predicates = Some(&packs.predicates);
+
+        for stack in packs.loot.roll(&table, &mut context) {
+            let slot = InventorySlot {
+                item_id: Some(ItemID(VarInt(stack.item))),
+                count: VarInt(stack.count),
+                ..Default::default()
+            };
+            spawn_drop(&mut commands, DroppedItem::new(slot), at.x, at.y, at.z);
         }
     }
 }

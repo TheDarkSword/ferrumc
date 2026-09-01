@@ -97,6 +97,9 @@ pub fn register_game_systems(schedule: &mut bevy_ecs::schedule::Schedule) {
         (
             damage::hurt_by_the_world,
             damage::apply_damage,
+            // What a killed thing leaves behind is read off it while it is still there, so this
+            // comes before the death that takes it out of the world.
+            drops::drop_what_a_mob_left,
             damage::something_died,
             damage::tick_reeling,
         )

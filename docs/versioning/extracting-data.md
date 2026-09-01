@@ -55,3 +55,20 @@ Regenerate an older version and compare against what the repository already had.
 `registry_packets.json` from a 1.21.8 extraction reproduces 13 of the 15 registries committed for
 that version byte for byte; the two that differ are entries missing from the older file, not
 generator mistakes.
+
+## Attributes
+
+`scripts/extract_attributes.py` asks the game for every attribute: the number it travels as, what
+it starts at, the range it is held to, and whether a client is told about it. None of that is in any
+report — the number is, but the rest lives on the attribute object.
+
+Output is `assets/extracted/attributes.json`, read at build time by `ferrumc-data`.
+
+## Items
+
+Item components are **not** extracted. The game's own `--reports` writes one file per item under
+`reports/minecraft/components/item/`, and `ferrumc-data` reads those together with
+`assets/data/registries.json` for the numbers.
+
+Reading a dump beside the reports instead is how the table went 121 items short with 1389 of its
+1416 numbers wrong, unnoticed, because nothing outside that crate reads them yet.

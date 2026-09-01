@@ -9,9 +9,11 @@
 //! cent off": heavy blows cut through armour, which is why a diamond-clad player still dies to an
 //! anvil. Nothing here touches the world; what softens a blow is passed in.
 
+pub mod combat;
 pub mod vitals;
 
 use bevy_ecs::prelude::{Component, Resource};
+pub use combat::{Blow, Swing, Weapon};
 use ferrumc_data::generated::damage_types::{DamageType, Scaling};
 pub use vitals::Vitals;
 

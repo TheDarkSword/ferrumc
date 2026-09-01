@@ -107,3 +107,65 @@ to come back to yet.
 See `internal_docs/deferred.md` under Phase 5.1. The short version: nothing carries armour yet
 (attributes), resistance does nothing (effects), protection does nothing (enchantments), and no blow
 has anyone to blame (combat) — so difficulty scaling never engages and no knockback is dealt.
+
+# Combat
+
+What a swing is worth, in `ferrumc-damage`'s `combat` module, wired up by
+`src/bin/src/packet_handlers/play_packets/attack.rs`.
+
+## A hit is not the weapon's damage
+
+```
+damage = weapon_damage * (0.2 + charge² * 0.8)   the recharge
+       * 1.5                                      if it was a critical
+```
+
+The charge curve is the part worth knowing: **half recharged is 40% of the blow, not half of it.**
+Waiting for the last part of the bar is worth far more than the first.
+
+A swing counts as full strength above 0.9 — vanilla lets the last twentieth go, so a swing timed by
+eye still counts.
+
+## What a weapon is worth comes off the item
+
+Not a list of weapons. An item carries modifiers to whoever holds it, and a sword's six points of
+damage and its slower recharge are two of them:
+
+```rust
+Weapon::in_hand(Item::from_registry_key("minecraft:diamond_sword"))
+// attack_damage 7.0  — one from the arm plus six from the sword
+// attack_speed  1.6  — four from the arm less 2.4 from the sword
+```
+
+Which means a datapack that adds a weapon gets the right numbers without anything here changing.
+
+## Three kinds of swing, and they are exclusive
+
+| | needs |
+|---|---|
+| **knockback hit** | sprinting, full strength |
+| **critical** | full strength, falling, feet off the ground, not in water, not on a ladder, not riding, not sprinting, target lives |
+| **sweep** | full strength, not a critical, not a knockback hit, on the ground, holding a sword, moving no faster than a walk |
+
+A critical adds half again. A knockback hit adds 0.5 to the push. A sweep catches everything within
+a block of what was hit and three blocks of the attacker, for a share of the blow scaled by the
+charge a second time.
+
+Which items sweep is the packs' `#minecraft:swords` tag, not a list here.
+
+## Knockback
+
+`ferrumc_physics::knockback`, which is vanilla's: halve what the target already had, subtract the
+push, and — only if the target is standing on something — lift it to at most 0.4.
+
+The direction is where the attacker is *facing*, not where they are standing. That is what makes
+knockback aimable.
+
+A pushed player is sent `set_entity_motion`, because a client drives its own player and will
+otherwise not move.
+
+## What is not here
+
+See `internal_docs/deferred.md` under Phase 5.2. The short version: shields do nothing (item-use
+state), enchantments change nothing (5.10), the client draws a fist's cooldown bar for a sword
+(attribute sync, 5.3), nothing is worth any experience, and only a player can swing.

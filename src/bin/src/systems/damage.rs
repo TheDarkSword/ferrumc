@@ -187,6 +187,7 @@ pub fn apply_damage(
     mut blows: MessageReader<EntityDamaged>,
     mut victims: Query<Victim>,
     watchers: Query<&StreamWriter>,
+    players: Query<(), With<PlayerIdentity>>,
     difficulty: Res<Difficulty>,
     mut died: MessageWriter<EntityDied>,
 ) {
@@ -212,9 +213,11 @@ pub fn apply_damage(
             continue;
         }
 
-        // How hard a mob hits moves with the difficulty; nothing else does. Whether a mob is
-        // behind a blow is Phase 5.2's to say, so until a fight can name one, nothing is.
-        let amount = scale_for(blow.amount, blow.kind, blow.cause.is_some(), *difficulty);
+        // How hard a mob hits moves with the difficulty; a player's blow and the world's own
+        // hazards do not. What is behind a blow is a mob when something is to blame for it and
+        // that something is not a player.
+        let by_a_mob = blow.cause.is_some_and(|cause| players.get(cause).is_err());
+        let amount = scale_for(blow.amount, blow.kind, by_a_mob, *difficulty);
         let landed = resolve(
             Hit {
                 kind: blow.kind,
