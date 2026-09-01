@@ -1,23 +1,44 @@
 use bevy_ecs::prelude::{Entity, Message};
+use ferrumc_data::generated::damage_types::DamageType;
 
-/// Fired when a player should take damage.
+/// Something is to be hurt.
 ///
-/// * Fired by: Physics (fall damage), Hunger System (starvation), Combat.
-/// * Listened for by: A `health_system` that will decrease the `Health` component.
+/// * Fired by: the world (falling, drowning, burning, the void), and combat.
+/// * Listened for by: the system that puts it through the damage pipeline and takes the health off.
+///
+/// The amount here is what the blow is worth before anything softens it. What actually lands is
+/// worked out where it is applied, since that is where the armour and the invulnerability frames
+/// are.
 #[derive(Message)]
-#[allow(unused)]
-pub struct PlayerDamaged {
-    pub player: Entity,
+pub struct EntityDamaged {
+    pub entity: Entity,
+    pub kind: DamageType,
     pub amount: f32,
-    // TODO: add a `DamageSource` enum here later
+    /// Whoever is to blame, where anything is.
+    pub cause: Option<Entity>,
 }
 
-/// Fired by the `health_system` when a player's health reaches <= 0.
+impl EntityDamaged {
+    /// A blow from the world itself, which nothing is to blame for.
+    #[must_use]
+    pub const fn from_the_world(entity: Entity, kind: DamageType, amount: f32) -> Self {
+        Self {
+            entity,
+            kind,
+            amount,
+            cause: None,
+        }
+    }
+}
+
+/// Something's health has reached nothing.
 ///
-/// * Fired by: `health_system`.
-/// * Listened for by: `respawn_system`, `player_leave_system` (to broadcast death msg).
+/// * Fired by: the system that applies damage.
+/// * Listened for by: respawning, death messages, and whatever a thing leaves behind.
 #[derive(Message)]
-#[allow(unused)]
-pub struct PlayerDied {
-    pub player: Entity,
+pub struct EntityDied {
+    pub entity: Entity,
+    /// What finished it, which is what a death message is written from.
+    pub kind: DamageType,
+    pub cause: Option<Entity>,
 }

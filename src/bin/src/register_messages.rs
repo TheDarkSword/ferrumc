@@ -6,7 +6,7 @@ use ferrumc_messages::chunk_calc::ChunkCalc;
 use ferrumc_messages::particle::SendParticle;
 use ferrumc_messages::teleport_player::TeleportPlayer;
 use ferrumc_messages::{
-    BlockBrokenEvent, PlayerCancelledDigging, PlayerDamaged, PlayerDied, PlayerEating,
+    BlockBrokenEvent, EntityDamaged, EntityDied, PlayerCancelledDigging, PlayerEating,
     PlayerFinishedDigging, PlayerGainedXP, PlayerGameModeChanged, PlayerJoined, PlayerLeft,
     PlayerLeveledUp, PlayerStartedDigging, SpawnEntityCommand, SpawnEntityEvent,
 };
@@ -21,8 +21,8 @@ pub fn register_messages(world: &mut World) {
 
     MessageRegistry::register_message::<PlayerLeft>(world);
     MessageRegistry::register_message::<PlayerJoined>(world);
-    MessageRegistry::register_message::<PlayerDamaged>(world);
-    MessageRegistry::register_message::<PlayerDied>(world);
+    MessageRegistry::register_message::<EntityDamaged>(world);
+    MessageRegistry::register_message::<EntityDied>(world);
     MessageRegistry::register_message::<PlayerStartedDigging>(world);
     MessageRegistry::register_message::<PlayerCancelledDigging>(world);
     MessageRegistry::register_message::<PlayerFinishedDigging>(world);

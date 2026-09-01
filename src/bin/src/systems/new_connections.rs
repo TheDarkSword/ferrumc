@@ -9,6 +9,7 @@ use ferrumc_core::{
     chunks::chunk_receiver::ChunkReceiver, conn::keepalive::KeepAliveTracker,
     transform::grounded::OnGround,
 };
+use ferrumc_damage::{Defence, Reeling, Vitals};
 use ferrumc_entities::entity_type::EntityType;
 use ferrumc_entities::synced_data::SyncedData;
 use ferrumc_inventories::hotbar::Hotbar;
@@ -60,6 +61,9 @@ pub fn accept_new_connections(
             hotbar: Hotbar::default(),
             ender_chest: player_data.ender_chest,
             health: player_data.health,
+            defence: Defence::default(),
+            reeling: Reeling::default(),
+            vitals: Vitals::default(),
             hunger: player_data.hunger,
             experience: player_data.experience,
             active_effects: player_data.active_effects,

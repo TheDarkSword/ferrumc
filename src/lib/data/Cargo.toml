@@ -5,6 +5,7 @@ edition = "2021"
 build = "build/build.rs"
 
 [dependencies]
+ferrumc-net-codec = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 heck = { workspace = true }
@@ -14,6 +15,7 @@ syn = { workspace = true, features = ["extra-traits"] }
 rayon = { workspace = true }
 
 [build-dependencies]
+indexmap = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 heck = { workspace = true }

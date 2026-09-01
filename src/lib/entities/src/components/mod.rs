@@ -3,12 +3,10 @@
 //! Everything the game says about a *type* lives on the type itself; these are the things that
 //! differ between two entities of the same kind.
 
-pub mod combat;
 pub mod physical;
 pub mod tracked;
 
 // Re-exports
-pub use combat::CombatProperties;
 pub use physical::{BoundingBox, PhysicalProperties};
 pub use tracked::{Change, Tracked, to_angle};
 

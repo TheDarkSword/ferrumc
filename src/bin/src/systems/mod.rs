@@ -7,6 +7,7 @@ pub mod chunk_levels;
 mod chunk_sending;
 pub mod chunk_unloader;
 pub mod connection_killer;
+pub mod damage;
 pub mod datapacks;
 pub mod day_cycle;
 pub mod drops;
@@ -85,6 +86,19 @@ pub fn register_game_systems(schedule: &mut bevy_ecs::schedule::Schedule) {
             drops::pick_up_what_is_walked_over,
             drops::merge_what_is_lying_about,
             drops::age_what_is_lying_about,
+        )
+            .chain(),
+    );
+
+    // What the world does to whatever is standing in it. The blows are raised first and settled
+    // after, so a tick's worth of them is worked out against one set of invulnerability frames
+    // rather than against whatever order the systems happened to run in.
+    schedule.add_systems(
+        (
+            damage::hurt_by_the_world,
+            damage::apply_damage,
+            damage::something_died,
+            damage::tick_reeling,
         )
             .chain(),
     );

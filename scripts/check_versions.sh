@@ -8,12 +8,14 @@
 # Usage: scripts/check_versions.sh [version ...]     (default: every supported version)
 #   PROFILE=release   which cargo profile's binary to run (default: quick)
 #   WORLD_SEED=n      pin terrain, so two runs see the same chunks
+#   FERRUMC_MATRIX_LOGS=dir  keep the server, proxy and bot logs there instead of a temp dir
 set -uo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 PROXY="${VIAPROXY_JAR:-$HOME/.minecraft/azalea-viaversion/ViaProxy-3.4.12.jar}"
 PROFILE="${PROFILE:-quick}"
-WORK="$(mktemp -d)"
+WORK="${FERRUMC_MATRIX_LOGS:-$(mktemp -d)}"
+mkdir -p "$WORK"
 VERSIONS=("$@")
 [ ${#VERSIONS[@]} -eq 0 ] && VERSIONS=(1.21 1.21.3 1.21.4 1.21.5 1.21.6 1.21.8 1.21.10 1.21.11 26.1 26.2)
 
@@ -31,7 +33,8 @@ cleanup() {
   for pid in "${PROXY_PIDS[@]:-}"; do [ -n "$pid" ] && kill "$pid" 2>/dev/null; done
   [ -n "${SERVER_PID:-}" ] && kill "$SERVER_PID" 2>/dev/null
   [ -f "$WORK/config.backup" ] && cp "$WORK/config.backup" "$CONFIG"
-  rm -rf "$WORK"
+  # Logs are kept when a place for them was named, so a run that reported an error can be read.
+  [ -n "${FERRUMC_MATRIX_LOGS:-}" ] || rm -rf "$WORK"
 }
 trap cleanup EXIT INT TERM
 

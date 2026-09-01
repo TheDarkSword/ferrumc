@@ -39,6 +39,10 @@ fn default_simulation_distance() -> u32 {
     10
 }
 
+fn default_difficulty() -> String {
+    "normal".to_string()
+}
+
 /// - `chunk_render_distance`: The render distance of the chunks. This is the number of chunks that will be
 ///   loaded around the player.
 #[derive(Debug, Deserialize, Serialize, Default)]
@@ -66,6 +70,10 @@ pub struct ServerConfig {
     #[serde(default = "default_simulation_distance")]
     pub simulation_distance: u32,
     pub default_gamemode: String,
+    /// How hard the world hits: peaceful, easy, normal or hard. Only what a mob does moves with it;
+    /// falling, drowning and the void land the same whatever it is set to.
+    #[serde(default = "default_difficulty")]
+    pub difficulty: String,
     pub dashboard: DashboardConfig,
     pub performance: PerformanceConfig,
     #[serde(default)]

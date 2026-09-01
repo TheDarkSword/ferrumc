@@ -1,10 +1,12 @@
 use bevy_ecs::prelude::*;
+use ferrumc_components::health::Health;
 use ferrumc_core::identity::entity_identity::EntityIdentity;
 use ferrumc_core::transform::grounded::OnGround;
 use ferrumc_core::transform::position::Position;
 use ferrumc_core::transform::rotation::Rotation;
 use ferrumc_core::transform::velocity::Velocity;
-use ferrumc_entities::components::{CombatProperties, Tracked};
+use ferrumc_damage::{Defence, Reeling, Vitals};
+use ferrumc_entities::components::Tracked;
 use ferrumc_entities::entity_type::EntityType;
 use ferrumc_entities::markers::entity_types::*;
 use ferrumc_entities::markers::HasCollisions;
@@ -123,7 +125,9 @@ pub fn handle_spawn_entity(mut events: MessageReader<SpawnEntityEvent>, mut comm
         let mut entity = commands.spawn((
             identity,
             kind,
-            CombatProperties::default(),
+            Defence::default(),
+            Reeling::default(),
+            Vitals::default(),
             event.position,
             Rotation::default(),
             Velocity::zero(),
@@ -132,6 +136,12 @@ pub fn handle_spawn_entity(mut events: MessageReader<SpawnEntityEvent>, mut comm
             HasCollisions,
             SyncedData::new(kind),
         ));
+
+        // What a kind is worth in hearts is the kind's own answer, and a kind with no answer —
+        // an arrow, a dropped item — is not something that can be hurt at all.
+        if let Some(max) = kind.max_health() {
+            entity.insert(Health { current: max, max });
+        }
 
         // The two kinds that are more than where they are: one carries a stack, the other an
         // amount. Spawning either by hand makes a real one rather than an empty shell.

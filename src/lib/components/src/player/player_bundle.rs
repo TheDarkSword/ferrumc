@@ -12,6 +12,7 @@ use ferrumc_core::{
     identity::player_identity::PlayerIdentity,
     transform::{grounded::OnGround, position::Position, rotation::Rotation},
 };
+use ferrumc_damage::{Defence, Reeling, Vitals};
 use ferrumc_inventories::{hotbar::Hotbar, inventory::Inventory};
 /// A Bevy Bundle containing all components required for a player entity.
 /// This groups all 17+ components into a single, spawnable unit.
@@ -37,6 +38,11 @@ pub struct PlayerBundle {
 
     // Survival Stats
     pub health: Health,
+    /// What softens a blow, how long the last one is still felt, and the counters that turn
+    /// falling, drowning and burning into blows in the first place.
+    pub defence: Defence,
+    pub reeling: Reeling,
+    pub vitals: Vitals,
     pub hunger: Hunger,
     pub experience: Experience,
     pub active_effects: ActiveEffects,

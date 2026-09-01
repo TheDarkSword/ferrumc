@@ -3,6 +3,7 @@ use bevy_ecs::schedule::Schedule;
 mod change_game_mode;
 mod chat_message;
 mod chunk_batch_ack;
+mod client_command;
 mod command;
 mod command_suggestions;
 mod confirm_player_teleport;
@@ -31,6 +32,7 @@ pub fn register_packet_handlers(schedule: &mut Schedule) {
     schedule.add_systems(player_action::handle);
     schedule.add_systems(player_command::handle);
     schedule.add_systems(player_input::handle);
+    schedule.add_systems(client_command::handle);
     schedule.add_systems(set_player_position::handle);
     schedule.add_systems(set_player_position_and_rotation::handle);
     schedule.add_systems(set_player_rotation::handle);

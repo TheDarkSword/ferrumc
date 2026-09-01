@@ -10,6 +10,7 @@ bevy_math = { workspace = true }
 
 ferrumc-components = { workspace = true }
 ferrumc-core = { workspace = true }
+ferrumc-data = { workspace = true }
 ferrumc-net-codec = { workspace = true }
 ferrumc-inventories = { workspace = true }
 uuid = { workspace = true }

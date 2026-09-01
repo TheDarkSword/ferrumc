@@ -22,6 +22,10 @@ pub fn register_resources(
     world.insert_resource(WorldSyncTracker {
         last_synced: std::time::Instant::now(),
     });
+    // How hard the world hits, which an operator sets and nothing else changes yet.
+    world.insert_resource(
+        ferrumc_damage::Difficulty::from_name(&get_global_config().difficulty).unwrap_or_default(),
+    );
     world.insert_resource(WorldTime::default());
     world.insert_resource(TickCounter::new());
     world.insert_resource(FluidScheduler::default());
