@@ -84,6 +84,20 @@ impl BiomeSpawns {
     }
 }
 
+/// The world as the spawn questions want to ask it, ready to be asked.
+pub fn world_around<'a>(
+    state: &'a GlobalState,
+    spawns: &'a BiomeSpawns,
+    players: &'a [(f64, f64, f64)],
+) -> impl SpawnWorld + 'a {
+    Around {
+        state,
+        spawns,
+        players,
+        surfaces: std::cell::RefCell::default(),
+    }
+}
+
 /// The world as the spawn questions want to ask it.
 struct Around<'a> {
     state: &'a GlobalState,
@@ -214,12 +228,7 @@ pub fn spawn_mobs(
     }
 
     let mut rng = rand::thread_rng();
-    let world = Around {
-        state: &state.0,
-        spawns: &spawns,
-        players: &where_players_are,
-        surfaces: std::cell::RefCell::default(),
-    };
+    let world = world_around(&state.0, &spawns, &where_players_are);
 
     for category in SPAWNING_CATEGORIES {
         if !counts.has_room_in_the_world(category) {
@@ -230,10 +239,10 @@ pub fn spawn_mobs(
                 continue;
             }
             for put in spawn_in_chunk(&world, &mut counts, category, x, z, &mut rng) {
-                events.write(SpawnEntityEvent {
-                    entity_type: put.kind,
-                    position: Position::from(bevy_math::DVec3::new(put.x, put.y, put.z)),
-                });
+                events.write(SpawnEntityEvent::fresh(
+                    put.kind,
+                    Position::from(bevy_math::DVec3::new(put.x, put.y, put.z)),
+                ));
             }
         }
     }

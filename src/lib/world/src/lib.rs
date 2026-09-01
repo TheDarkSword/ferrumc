@@ -9,6 +9,7 @@ pub mod chunk;
 pub mod chunk_level;
 mod db_functions;
 pub mod dimension;
+pub mod entities;
 pub mod errors;
 pub mod fluid;
 mod importing;

@@ -293,6 +293,9 @@ fn build_timed_scheduler() -> Scheduler {
     // Uses Skip behavior - if we miss a sync, just wait for the next one.
     let build_world_sync = |s: &mut Schedule| {
         s.add_systems(crate::systems::world_sync::sync_world);
+        // Entities are written with the world for the same reason the world is written at all: a
+        // crash between one save and the next should cost seconds rather than a session.
+        s.add_systems(crate::systems::mobs::persistence::save_all_entities);
     };
     timed.register(
         TimedSchedule::new("world_sync", Duration::from_secs(15), build_world_sync)

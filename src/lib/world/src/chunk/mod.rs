@@ -31,6 +31,12 @@ pub struct Chunk {
     /// A loaded chunk's ticks live in the scheduler, where they can be ordered against every other
     /// chunk's.
     scheduled_ticks: Vec<crate::scheduler::SavedTick>,
+
+    /// Whether this chunk has already been given the animals it is born with.
+    ///
+    /// A chunk is populated once, when it is first made. Without a mark that says so, a restart
+    /// would hand every chunk a second herd, and the world would fill up with cows.
+    populated: bool,
 }
 
 impl Chunk {
@@ -60,6 +66,7 @@ impl Chunk {
                 .into_boxed_slice(),
             height,
             heightmaps: None,
+            populated: false,
             block_entities: Vec::new(),
             scheduled_ticks: Vec::new(),
         }
@@ -86,6 +93,7 @@ impl Chunk {
             sections: sections.to_vec().into_boxed_slice(),
             height,
             heightmaps: None,
+            populated: false,
             block_entities: Vec::new(),
             scheduled_ticks: Vec::new(),
         }
@@ -265,6 +273,17 @@ impl Chunk {
         }
     }
 
+    /// Whether this chunk has already been given the animals it is born with.
+    #[must_use]
+    pub const fn populated(&self) -> bool {
+        self.populated
+    }
+
+    /// Marks it as having been, so a later run does not do it again.
+    pub const fn mark_populated(&mut self) {
+        self.populated = true;
+    }
+
     /// The biome at a position.
     #[must_use]
     pub fn get_biome(&self, pos: ChunkBlockPos) -> crate::chunk::section::biome::BiomeType {
@@ -362,6 +381,8 @@ impl TryFrom<&VanillaChunk> for Chunk {
             // `internal_docs/deferred.md`.
             block_entities: Vec::new(),
             scheduled_ticks: Vec::new(),
+            // An imported world already has its animals in it, saved beside the chunk.
+            populated: true,
         })
     }
 }

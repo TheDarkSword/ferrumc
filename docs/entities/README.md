@@ -180,6 +180,23 @@ rather than nowhere.
 Whether a block may be stood on is the block's own answer, extracted per state: the default is a
 sturdy top face giving off little light, and a few blocks differ.
 
+## What survives a restart
+
+An entity belongs to the chunk it stands in and is written with it, in a table of its own rather
+than beside the blocks — the same separation vanilla keeps, so that adding to one cannot cost the
+other.
+
+A chunk coming into view brings back what was standing in it, keeping the name each mob had. A
+chunk nobody is near any more is written out and its entities let go of. Everything loaded is also
+written on the same timer the world is, so a crash costs seconds rather than a session.
+
+A chunk that has never been seen has nothing saved and has never been populated, so that is when it
+is given the animals it is born with. It carries a mark saying so afterwards: without one, a restart
+would hand every chunk a second herd.
+
+What is written is where a mob is and how it is moving. What it is beyond that belongs to the mob,
+and no mob has any of its own yet.
+
 ## Regenerating
 
 ```bash

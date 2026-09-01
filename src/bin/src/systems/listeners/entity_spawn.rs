@@ -101,10 +101,7 @@ pub fn spawn_command_processor(
             // Calculate spawn position 2 blocks in front of the player
             let spawn_pos = pos.offset_forward(rot, 2.0);
 
-            spawn_events.write(SpawnEntityEvent {
-                entity_type: command.entity_type,
-                position: spawn_pos,
-            });
+            spawn_events.write(SpawnEntityEvent::fresh(command.entity_type, spawn_pos));
         } else {
             warn!(
                 "Failed to get position for entity {:?}",
@@ -119,8 +116,12 @@ pub fn spawn_command_processor(
 pub fn handle_spawn_entity(mut events: MessageReader<SpawnEntityEvent>, mut commands: Commands) {
     for event in events.read() {
         let kind = event.entity_type;
+        // One coming back keeps the name it had; one appearing for the first time is given one.
+        let identity = event
+            .uuid
+            .map_or_else(EntityIdentity::new, EntityIdentity::with_uuid);
         let mut entity = commands.spawn((
-            EntityIdentity::new(),
+            identity,
             kind,
             CombatProperties::default(),
             event.position,

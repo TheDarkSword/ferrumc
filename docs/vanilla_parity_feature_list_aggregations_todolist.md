@@ -72,7 +72,7 @@
 ### **File I/O & Storage**
 - [/] **Level.dat** — Seed reading from `level.dat` NBT. **Missing:** World settings, time, spawn point persistence.
 - [x] **Region Files (.mca)** — Full Anvil format import in [`src/lib/world/src/importing.rs`](../src/lib/world/src/importing.rs) and [`vanilla_chunk_format.rs`](../src/lib/world/src/vanilla_chunk_format.rs). Supports Zlib, GZip compression via [`src/lib/storage/src/compressors/`](../src/lib/storage/src/compressors/). **DEVIATION:** Uses LMDB (heed) for runtime storage instead of region files. See [`src/lib/storage/src/lmdb.rs`](../src/lib/storage/src/lmdb.rs).
-- [ ] **Player Data (.dat)** — Not implemented. No per-player NBT persistence.
+- [x] **Player Data** — [`src/lib/world/src/player.rs`](../src/lib/world/src/player.rs), written when a player leaves. Abilities, gamemode, position, rotation, inventory, ender chest, health, hunger, experience and effects; advancements in a table of their own, as vanilla keeps them in a file of their own. **DEVIATION:** bitcode in LMDB rather than NBT files. **Missing:** spawn point, statistics and recipe book, none of which exist yet to save.
 
 ### **Chunk System**
 - [x] **Chunk Structure** — [`src/lib/world/src/chunk_format.rs`](../src/lib/world/src/chunk_format.rs). 16x384x16 columns (Y range -64 to 320 for 1.18+).
@@ -133,13 +133,17 @@
 - [x] **Mob caps** — both of vanilla's: one against how much of the world is loaded, one against the chunks around a place.
 - [x] **Spawn placement** — where a kind may stand and what the place has to be like, both extracted from the game. Seven conditions cover fifty types; the rest belong to a mob each and are refused until it exists.
 - [x] **Despawning** — by the category's despawn distance, with the roll vanilla gives a mob between the two distances.
-- [/] **Chunk-generation spawning** — the algorithm exists and is tested; hooking it needs a mark on the chunk saying it has been populated. See `internal_docs/deferred.md`.
+- [x] **Chunk-generation spawning** — a chunk is given its animals the first time a player sees it, and carries a mark saying so. Not at generation, which happens off the tick thread where nothing can be spawned.
 - [ ] **Spawner blocks** — Not implemented. Rules of their own, and they need block entities that tick.
 
 ### **AI (Mob Brains)**
 - [ ] **Pathfinding** — Not implemented.
 - [ ] **Goal Selector** — Not implemented.
 - [ ] **Sensing** — Not implemented.
+
+### **Persistence**
+- [x] **Entity storage** — [`src/lib/world/src/entities.rs`](../src/lib/world/src/entities.rs) and [`src/bin/src/systems/mobs/persistence.rs`](../src/bin/src/systems/mobs/persistence.rs). Entities are written with the chunk they stand in, in a table of their own; a chunk coming into view brings them back with the names they had. **Missing:** what a mob is beyond where it is, since no mob has any state of its own yet.
+- [ ] **Vanilla entity import** — Not implemented. An imported world's chunks come across and its mobs do not.
 
 ### **Entity Categories**
 - [/] **Living** — `Health` component in [`src/lib/components/src/health.rs`](../src/lib/components/src/health.rs). **Missing:** Potions, armor, hand items.

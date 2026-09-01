@@ -236,7 +236,7 @@ impl World {
 /// unreadable instead, and an unreadable chunk is generated again.
 ///
 /// Raise it whenever the shape of `Chunk` or anything in it changes.
-const CHUNK_FORMAT_VERSION: u32 = 2;
+const CHUNK_FORMAT_VERSION: u32 = 3;
 
 /// A chunk, ready to store: its format version and then the chunk.
 fn encode_chunk(chunk: &Chunk) -> Vec<u8> {
@@ -362,7 +362,7 @@ pub(crate) fn sync_internal(world: &World) -> Result<(), WorldError> {
     Ok(())
 }
 
-fn create_key(dimension: &str, pos: ChunkPos) -> u128 {
+pub(crate) fn create_key(dimension: &str, pos: ChunkPos) -> u128 {
     let mut hasher = wyhash::WyHash::with_seed(0);
     hasher.write(dimension.as_bytes());
     hasher.write_u8(0xFF);

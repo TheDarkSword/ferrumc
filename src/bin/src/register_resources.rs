@@ -34,6 +34,7 @@ pub fn register_resources(
     let datapacks =
         crate::systems::datapacks::Datapacks::load().expect("the built-in datapack should open");
     // What lives in each biome, read off the packs once rather than looked up per attempt.
+    world.insert_resource(crate::systems::mobs::persistence::LiveChunks::default());
     world.insert_resource(crate::systems::mobs::natural::BiomeSpawns::load(
         &datapacks.worldgen,
     ));

@@ -20,4 +20,19 @@ pub struct SpawnEntityCommand {
 pub struct SpawnEntityEvent {
     pub entity_type: EntityType,
     pub position: Position,
+    /// The name it already had, for one that is coming back rather than appearing. A new entity
+    /// carries nothing here and is given a name of its own.
+    pub uuid: Option<uuid::Uuid>,
+}
+
+impl SpawnEntityEvent {
+    /// A new entity, which has never existed before.
+    #[must_use]
+    pub const fn fresh(entity_type: EntityType, position: Position) -> Self {
+        Self {
+            entity_type,
+            position,
+            uuid: None,
+        }
+    }
 }
