@@ -36,6 +36,7 @@ ferrumc-default-commands = { workspace = true }
 ferrumc-world-gen = { workspace = true }
 ferrumc-threadpool = { workspace = true }
 ferrumc-inventories = { workspace = true }
+ferrumc-attributes = { workspace = true }
 ferrumc-damage = { workspace = true }
 ferrumc-data = { workspace = true }
 ferrumc-datapack = { workspace = true }

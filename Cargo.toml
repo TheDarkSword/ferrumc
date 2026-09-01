@@ -47,6 +47,7 @@ members = [
     "src/lib/components",
     "src/lib/messages",
     "src/lib/data",
+    "src/lib/attributes",
     "src/lib/damage",
     "src/lib/datapack",
     "src/lib/advancements",
@@ -156,6 +157,7 @@ ferrumc-world-gen = { path = "src/lib/world_gen" }
 ferrumc-worldgen-data = { path = "src/lib/worldgen_data" }
 ferrumc-inventories = { path = "src/lib/inventories" }
 ferrumc-data = { path = "src/lib/data" }
+ferrumc-attributes = { path = "src/lib/attributes" }
 ferrumc-damage = { path = "src/lib/damage" }
 ferrumc-datapack = { path = "src/lib/datapack" }
 ferrumc-advancements = { path = "src/lib/advancements" }

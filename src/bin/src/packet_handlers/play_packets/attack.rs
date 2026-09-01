@@ -7,6 +7,7 @@
 
 use bevy_ecs::prelude::*;
 use bevy_math::Vec2;
+use ferrumc_attributes::Attributes;
 use ferrumc_components::player::hunger::Hunger;
 use ferrumc_core::identity::entity_identity::EntityIdentity;
 use ferrumc_core::identity::player_identity::PlayerIdentity;
@@ -19,6 +20,7 @@ use ferrumc_damage::combat::{
     SWEEP_REACH_VERTICAL, SWING_EXHAUSTION,
 };
 use ferrumc_damage::{Swing, Vitals};
+use ferrumc_data::attributes::Attribute;
 use ferrumc_data::generated::damage_types::DamageType;
 use ferrumc_data::generated::items::Item;
 use ferrumc_entities::entity_type::EntityType;
@@ -51,6 +53,7 @@ type Named<'a> = (
 type Pushed<'a> = (
     &'a mut Velocity,
     &'a OnGround,
+    Option<&'a Attributes>,
     Option<&'a EntityIdentity>,
     Option<&'a PlayerIdentity>,
 );
@@ -67,6 +70,7 @@ type Attacker<'a> = (
     &'a Vitals,
     &'a Inventory,
     &'a Hotbar,
+    Option<&'a Attributes>,
 );
 
 // A system's arguments are the state it needs, and this one needs the attacker, the target, who is
@@ -86,7 +90,8 @@ pub fn handle(
     mut hurt: MessageWriter<EntityDamaged>,
 ) {
     for (packet, attacker) in attacks.0.try_iter() {
-        let Ok((at, facing, grounded, data, vitals, inventory, hotbar)) = attackers.get(attacker)
+        let Ok((at, facing, grounded, data, vitals, inventory, hotbar, attributes)) =
+            attackers.get(attacker)
         else {
             continue;
         };
@@ -98,7 +103,18 @@ pub fn handle(
         }
 
         let held = held_item(inventory, hotbar);
-        let weapon = Weapon::in_hand(held);
+        // What the swing is worth is the attacker's own numbers, which whatever is in their hand
+        // has already moved: `systems::attributes` puts an item's modifiers on when it is picked
+        // up and takes them off when it is put down.
+        let weapon = attributes.map_or_else(
+            || Weapon::in_hand(held),
+            |attributes| Weapon {
+                attack_damage: attributes.value(&Attribute::ATTACK_DAMAGE),
+                attack_speed: attributes.value(&Attribute::ATTACK_SPEED),
+                attack_knockback: attributes.value(&Attribute::ATTACK_KNOCKBACK),
+                sweeping_ratio: attributes.value(&Attribute::SWEEPING_DAMAGE_RATIO),
+            },
+        );
         let charge = swings
             .get(attacker)
             .map_or(1.0, |swing| swing.charge(weapon.attack_speed));
@@ -119,7 +135,9 @@ pub fn handle(
                 // How fast a player is actually going is theirs to report and nothing checks it,
                 // so a swing is treated as taken at a standstill.
                 speed: 0.0,
-                walking_speed: WALKING_SPEED,
+                walking_speed: attributes.map_or(WALKING_SPEED, |attributes| {
+                    attributes.value(&Attribute::MOVEMENT_SPEED)
+                }),
                 holding_a_sword: is_a_sword(held),
             },
             Target { living },
@@ -213,7 +231,7 @@ fn push(
     if power <= 0.0 {
         return;
     }
-    let Ok((mut velocity, grounded, identity, player)) = pushed.get_mut(target) else {
+    let Ok((mut velocity, grounded, attributes, identity, player)) = pushed.get_mut(target) else {
         return;
     };
     let facing = Vec2::new(yaw.to_radians().sin(), -yaw.to_radians().cos());
@@ -222,8 +240,10 @@ fn push(
     } else {
         Footing::None
     };
-    // Knockback resistance is an attribute, and nothing has attributes yet.
-    **velocity = knockback(**velocity, power, facing, 0.0, footing);
+    let resistance = attributes.map_or(0.0, |attributes| {
+        attributes.value(&Attribute::KNOCKBACK_RESISTANCE) as f32
+    });
+    **velocity = knockback(**velocity, power, facing, resistance, footing);
 
     // A client drives its own player, so being pushed has to be sent to it or it simply will not
     // move. Everyone else reads the push off the position updates that follow.

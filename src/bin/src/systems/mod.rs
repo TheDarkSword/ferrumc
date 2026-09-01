@@ -1,5 +1,6 @@
 use bevy_ecs::schedule::IntoScheduleConfigs;
 pub mod advancements;
+pub mod attributes;
 pub mod block_ticks;
 pub mod block_world;
 mod chunk_calculator;
@@ -86,6 +87,17 @@ pub fn register_game_systems(schedule: &mut bevy_ecs::schedule::Schedule) {
             drops::pick_up_what_is_walked_over,
             drops::merge_what_is_lying_about,
             drops::age_what_is_lying_about,
+        )
+            .chain(),
+    );
+
+    // What is worn decides what the numbers are, and the numbers decide what a blow comes to and
+    // what a swing is worth — so this runs before either, and what changed is sent after.
+    schedule.add_systems(
+        (
+            attributes::apply_what_is_worn,
+            attributes::follow_max_health,
+            attributes::send_changed_attributes,
         )
             .chain(),
     );

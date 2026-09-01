@@ -6,6 +6,7 @@ mod attributes;
 mod biomes;
 mod blocks;
 mod damage_types;
+mod default_attributes;
 mod effects;
 mod enchantments;
 mod fluids;
@@ -36,6 +37,7 @@ pub fn main() {
         (particles::build, "particles.rs"),
         (sounds::build, "sounds.rs"),
         (attributes::build, "attributes.rs"),
+        (default_attributes::build, "default_attributes.rs"),
         (damage_types::build, "damage_types.rs"),
         (fluids::build, "fluids.rs"),
         (effects::build, "effects.rs"),

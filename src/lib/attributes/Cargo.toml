@@ -1,0 +1,14 @@
+[package]
+name = "ferrumc-attributes"
+edition.workspace = true
+version.workspace = true
+
+[dependencies]
+bevy_ecs = { workspace = true }
+ferrumc-data = { workspace = true }
+
+[dev-dependencies]
+serde_json = { workspace = true }
+
+[lints]
+workspace = true

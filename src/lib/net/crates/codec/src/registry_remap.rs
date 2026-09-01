@@ -83,6 +83,7 @@ static ENTITY_TYPE: [&[u8]; 10] = tables!("entity_type");
 static SOUND: [&[u8]; 10] = tables!("sound_event");
 static PARTICLE: [&[u8]; 10] = tables!("particle_type");
 static MOB_EFFECT: [&[u8]; 10] = tables!("mob_effect");
+static ATTRIBUTE: [&[u8]; 10] = tables!("attribute");
 
 fn lookup(tables: &[&[u8]; 10], id: u32, version: ProtocolVersion) -> Option<u32> {
     let table = tables[version.index()];
@@ -127,6 +128,17 @@ pub fn particle_for(particle: u32, version: ProtocolVersion) -> Option<u32> {
 #[must_use]
 pub fn mob_effect_for(effect: u32, version: ProtocolVersion) -> Option<u32> {
     lookup(&MOB_EFFECT, effect, version)
+}
+
+/// The id `attribute` has in `version`. `None` means the version has no such attribute, and the
+/// snapshot carrying it is left out rather than named as another one: a client told the wrong
+/// attribute applies a modifier to the wrong number.
+///
+/// 1.21 filed these under the group they belonged to — `generic.armor` rather than `armor` — so
+/// the tables follow that rename exactly rather than guessing at a stand-in.
+#[must_use]
+pub fn attribute_for(attribute: u32, version: ProtocolVersion) -> Option<u32> {
+    lookup(&ATTRIBUTE, attribute, version)
 }
 
 /// The id every version gives to air, which reads as an empty slot.
@@ -210,6 +222,44 @@ network_id!(
     "mob effect",
     refuse("mob effect")
 );
+
+/// An attribute, written the way a registry entry is: its place plus one, since zero means the
+/// entry follows inline.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct NetworkAttribute(pub u32);
+
+impl NetworkAttribute {
+    /// Whether the reader's version has this attribute at all.
+    #[must_use]
+    pub fn known_to(self, version: ProtocolVersion) -> bool {
+        attribute_for(self.0, version).is_some()
+    }
+}
+
+impl NetEncode for NetworkAttribute {
+    fn encode<W: std::io::Write>(
+        &self,
+        writer: &mut W,
+        opts: &NetEncodeOpts,
+    ) -> Result<(), NetEncodeError> {
+        let id = attribute_for(self.0, opts.version).ok_or(NetEncodeError::NoSuchId {
+            registry: "attribute",
+            id: self.0,
+            version: opts.version,
+        })?;
+        VarInt::new(id as i32 + 1).encode(writer, opts)
+    }
+
+    async fn encode_async<W: tokio::io::AsyncWrite + Unpin>(
+        &self,
+        writer: &mut W,
+        opts: &NetEncodeOpts,
+    ) -> Result<(), NetEncodeError> {
+        let mut buffer = Vec::new();
+        self.encode(&mut buffer, opts)?;
+        buffer.encode_async(writer, opts).await
+    }
+}
 
 #[cfg(test)]
 mod tests {

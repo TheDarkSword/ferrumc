@@ -1,5 +1,6 @@
 use bevy_ecs::prelude::{Commands, Res, Resource};
 use crossbeam_channel::Receiver;
+use ferrumc_attributes::Attributes;
 use ferrumc_components::player::teleport_tracker::TeleportTracker;
 use ferrumc_components::player::{
     gamemode::GameModeComponent, offline_player_data::OfflinePlayerData,
@@ -65,6 +66,7 @@ pub fn accept_new_connections(
             reeling: Reeling::default(),
             vitals: Vitals::default(),
             swing: Swing::default(),
+            attributes: Attributes::for_entity(EntityType::Player.protocol_id()),
             hunger: player_data.hunger,
             experience: player_data.experience,
             active_effects: player_data.active_effects,

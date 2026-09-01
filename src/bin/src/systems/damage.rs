@@ -11,17 +11,20 @@
 
 use bevy_ecs::prelude::*;
 use bevy_math::IVec3;
+use ferrumc_attributes::Attributes;
 use ferrumc_components::health::Health;
 use ferrumc_core::identity::entity_identity::EntityIdentity;
 use ferrumc_core::identity::player_identity::PlayerIdentity;
 use ferrumc_core::transform::grounded::OnGround;
 use ferrumc_core::transform::position::Position;
 use ferrumc_damage::vitals::{
-    Vitals, FIRE_BURNS_FOR, FIRE_DAMAGE, LAVA_BURNS_FOR, LAVA_DAMAGE, VOID_BELOW, VOID_DAMAGE,
+    Vitals, FIRE_BURNS_FOR, FIRE_DAMAGE, LAVA_BURNS_FOR, LAVA_DAMAGE, SAFE_FALL, VOID_BELOW,
+    VOID_DAMAGE,
 };
 use ferrumc_damage::{
     can_be_hurt, resolve, scale_for, Defence, Difficulty, Hit, Immunities, Reeling,
 };
+use ferrumc_data::attributes::Attribute;
 use ferrumc_data::generated::damage_types::DamageType;
 use ferrumc_entities::components::Tracked;
 use ferrumc_entities::entity_type::EntityType;
@@ -57,6 +60,7 @@ type InTheWorld<'a> = (
     &'a Health,
     &'a mut Vitals,
     &'a mut SyncedData,
+    Option<&'a Attributes>,
 );
 
 /// Only things with health are asked. A dropped item carries the counters too, since everything
@@ -70,7 +74,9 @@ pub fn hurt_by_the_world(
     state: Res<GlobalStateResource>,
     mut hurt: MessageWriter<EntityDamaged>,
 ) {
-    for (entity, position, grounded, kind, health, mut vitals, mut data) in &mut entities {
+    for (entity, position, grounded, kind, health, mut vitals, mut data, attributes) in
+        &mut entities
+    {
         if health.current <= 0.0 {
             continue;
         }
@@ -92,7 +98,15 @@ pub fn hurt_by_the_world(
             vitals.fell(dropped, feet == Standing::In(Fluid::Water));
         }
         if grounded.0 {
-            let fall = vitals.land();
+            // How far is safe and how hard the landing lands are attributes, so feather falling
+            // and a slow-falling potion move them rather than being special cases here.
+            let (safe, multiplier) = attributes.map_or((SAFE_FALL, 1.0), |attributes| {
+                (
+                    attributes.value(&Attribute::SAFE_FALL_DISTANCE),
+                    attributes.value(&Attribute::FALL_DAMAGE_MULTIPLIER),
+                )
+            });
+            let fall = vitals.land(safe, multiplier);
             if fall > 0.0 {
                 blow(DamageType::Fall, fall);
             }
@@ -117,7 +131,12 @@ pub fn hurt_by_the_world(
         }
 
         // Breathing. What counts is where the eyes are, not where the feet are.
-        let drowning = vitals.breathe(eyes == Standing::In(Fluid::Water));
+        // Respiration lets a tick of holding cost nothing, more often the higher it is. The roll
+        // is vanilla's: an oxygen bonus of one skips half the ticks, of two skips two thirds.
+        let oxygen =
+            attributes.map_or(0.0, |attributes| attributes.value(&Attribute::OXYGEN_BONUS));
+        let held_longer = oxygen > 0.0 && rand::random::<f64>() >= 1.0 / (oxygen + 1.0);
+        let drowning = vitals.breathe(eyes == Standing::In(Fluid::Water), held_longer);
         if drowning > 0.0 {
             blow(DamageType::Drown, drowning);
         }
@@ -177,6 +196,7 @@ type Victim<'a> = (
     &'a mut Defence,
     &'a mut Reeling,
     &'a EntityType,
+    Option<&'a Attributes>,
     Option<&'a EntityIdentity>,
     Option<&'a StreamWriter>,
     Option<&'a Tracked>,
@@ -192,7 +212,7 @@ pub fn apply_damage(
     mut died: MessageWriter<EntityDied>,
 ) {
     for blow in blows.read() {
-        let Ok((mut health, mut defence, mut reeling, kind, identity, writer, tracked)) =
+        let Ok((mut health, mut defence, mut reeling, kind, attributes, identity, writer, tracked)) =
             victims.get_mut(blow.entity)
         else {
             continue;
@@ -218,6 +238,13 @@ pub fn apply_damage(
         // that something is not a player.
         let by_a_mob = blow.cause.is_some_and(|cause| players.get(cause).is_err());
         let amount = scale_for(blow.amount, blow.kind, by_a_mob, *difficulty);
+        // What armour is worn is an attribute rather than a count of pieces, so it is read fresh
+        // each time: a piece put on between one blow and the next counts on the next.
+        if let Some(attributes) = attributes {
+            defence.armour = attributes.value(&Attribute::ARMOR) as f32;
+            defence.toughness = attributes.value(&Attribute::ARMOR_TOUGHNESS) as f32;
+        }
+
         let landed = resolve(
             Hit {
                 kind: blow.kind,

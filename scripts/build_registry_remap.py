@@ -38,6 +38,9 @@ NATIVE = "26.2"
 # No id in the target version means the same thing. Callers drop what carries it.
 NO_EQUIVALENT = 0xFFFF
 
+# The groups attributes were filed under before 1.21.2 renamed them all.
+RENAMED_GROUPS = ("generic.", "player.", "zombie.")
+
 # Registries that travel on the wire as bare ids, and whether a missing name may be substituted.
 REGISTRIES = {
     "minecraft:item": {"dir": "item", "substitute": True},
@@ -45,6 +48,11 @@ REGISTRIES = {
     "minecraft:sound_event": {"dir": "sound_event", "substitute": False},
     "minecraft:particle_type": {"dir": "particle_type", "substitute": False},
     "minecraft:mob_effect": {"dir": "mob_effect", "substitute": False},
+    # Attributes were renamed once, in 1.21.2: before that each carried the group it belonged to in
+    # front of it. That is a rename with a known shape, so it is followed exactly rather than
+    # guessed at by name — a stand-in item is a wrong icon, but a stand-in attribute would apply a
+    # modifier to the wrong number.
+    "minecraft:attribute": {"dir": "attribute", "substitute": False, "renamed": RENAMED_GROUPS},
 }
 
 
@@ -98,6 +106,22 @@ def entries(version: str, registry: str) -> dict[str, int]:
     return {name: value["protocol_id"] for name, value in data[registry]["entries"].items()}
 
 
+def renamed(name: str, available: dict[str, int], groups: tuple[str, ...] | None) -> str | None:
+    """Find a name under one of the prefixes it used to be filed under.
+
+    Unlike `substitute` this is exact: the only thing that changed is which group the name sat in,
+    so `minecraft:armor` and `minecraft:generic.armor` are the same attribute and nothing else is.
+    """
+    if not groups:
+        return None
+    namespace, _, path = name.partition(":")
+    for group in groups:
+        candidate = f"{namespace}:{group}{path}"
+        if candidate in available:
+            return candidate
+    return None
+
+
 def build(version: str) -> None:
     for registry, options in REGISTRIES.items():
         native = entries(NATIVE, registry)
@@ -106,12 +130,18 @@ def build(version: str) -> None:
             raise SystemExit(f"{NATIVE} has no {registry}")
 
         table = [NO_EQUIVALENT] * (max(native.values()) + 1)
-        missing = substituted = 0
+        missing = substituted = followed = 0
         for name, native_id in native.items():
             if name in target:
                 table[native_id] = target[name]
                 continue
-            stand_in = substitute(name, target) if options["substitute"] else None
+            stand_in = renamed(name, target, options.get("renamed"))
+            if stand_in is not None:
+                table[native_id] = target[stand_in]
+                followed += 1
+                continue
+            if options["substitute"]:
+                stand_in = substitute(name, target)
             if stand_in is None:
                 missing += 1
             else:
@@ -122,8 +152,9 @@ def build(version: str) -> None:
         out_dir.mkdir(parents=True, exist_ok=True)
         out = out_dir / f"{version}.bin"
         out.write_bytes(struct.pack(f"<{len(table)}H", *table))
+        renames = f"{followed} renamed, " if followed else ""
         print(
-            f"{version} {registry}: {len(table)} ids, "
+            f"{version} {registry}: {len(table)} ids, {renames}"
             f"{substituted} substituted, {missing} without an equivalent -> {out.name}"
         )
 

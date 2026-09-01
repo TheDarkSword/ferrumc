@@ -88,20 +88,29 @@ impl Vitals {
     /// What landing costs, and clears what was fallen.
     ///
     /// Vanilla adds a millionth of a block before flooring, so a fall of exactly the safe distance
-    /// plus one block costs one rather than nothing.
-    pub fn land(&mut self) -> f32 {
-        let hurt = (self.fallen + 1e-6 - SAFE_FALL).floor().max(0.0);
+    /// plus one block costs one rather than nothing. How far is safe and how hard the landing is
+    /// are both attributes, so feather falling and a slow-falling potion move them rather than
+    /// touching this.
+    pub fn land(&mut self, safe: f64, multiplier: f64) -> f32 {
+        let hurt = ((self.fallen + 1e-6 - safe).max(0.0) * multiplier)
+            .floor()
+            .max(0.0);
         self.fallen = 0.0;
         hurt as f32
     }
 
     /// A breath taken, or one held. Returns what a held breath costs this tick.
-    pub fn breathe(&mut self, underwater: bool) -> f32 {
+    ///
+    /// `held_longer` is the chance a tick of holding costs nothing, which is what respiration is:
+    /// an oxygen bonus of one skips half the ticks, of two skips two thirds.
+    pub fn breathe(&mut self, underwater: bool, held_longer: bool) -> f32 {
         if !underwater {
             self.air = (self.air + BREATH).min(FULL_LUNGS);
             return 0.0;
         }
-        self.air -= 1;
+        if !held_longer {
+            self.air -= 1;
+        }
         if self.air <= DROWNING_AT {
             self.air = 0;
             return DROWNING_DAMAGE;
@@ -143,18 +152,55 @@ mod tests {
     use super::*;
 
     #[test]
+    fn a_bigger_safe_distance_takes_the_sting_out_of_a_fall() {
+        // What feather falling and a slow-falling potion do: move the attribute, not the code.
+        let mut vitals = Vitals {
+            fallen: 10.0,
+            ..Vitals::default()
+        };
+        assert_eq!(vitals.land(SAFE_FALL, 1.0), 7.0);
+
+        vitals.fallen = 10.0;
+        assert_eq!(vitals.land(SAFE_FALL + 4.0, 1.0), 3.0);
+
+        vitals.fallen = 10.0;
+        assert_eq!(
+            vitals.land(SAFE_FALL, 0.5),
+            3.0,
+            "and half as hard a landing"
+        );
+
+        vitals.fallen = 10.0;
+        assert_eq!(vitals.land(SAFE_FALL, 0.0), 0.0, "or none at all");
+    }
+
+    #[test]
+    fn holding_a_breath_longer_costs_no_air_that_tick() {
+        // Respiration: the ticks it skips are the whole of the effect.
+        let mut vitals = Vitals::default();
+        for _ in 0..10 {
+            assert_eq!(vitals.breathe(true, true), 0.0);
+        }
+        assert_eq!(vitals.air, FULL_LUNGS, "not one tick of air went");
+    }
+
+    #[test]
     fn a_short_fall_costs_nothing_and_a_long_one_costs_a_heart_a_block() {
         let mut vitals = Vitals {
             fallen: 3.0,
             ..Vitals::default()
         };
-        assert_eq!(vitals.land(), 0.0, "three blocks is the free one");
+        assert_eq!(
+            vitals.land(SAFE_FALL, 1.0),
+            0.0,
+            "three blocks is the free one"
+        );
 
         vitals.fallen = 4.0;
-        assert_eq!(vitals.land(), 1.0);
+        assert_eq!(vitals.land(SAFE_FALL, 1.0), 1.0);
 
         vitals.fallen = 10.0;
-        assert_eq!(vitals.land(), 7.0);
+        assert_eq!(vitals.land(SAFE_FALL, 1.0), 7.0);
     }
 
     #[test]
@@ -163,9 +209,13 @@ mod tests {
             fallen: 20.0,
             ..Vitals::default()
         };
-        let _ = vitals.land();
+        let _ = vitals.land(SAFE_FALL, 1.0);
         assert_eq!(vitals.fallen, 0.0);
-        assert_eq!(vitals.land(), 0.0, "and the next step is not a fall");
+        assert_eq!(
+            vitals.land(SAFE_FALL, 1.0),
+            0.0,
+            "and the next step is not a fall"
+        );
     }
 
     #[test]
@@ -186,27 +236,27 @@ mod tests {
         let mut vitals = Vitals::default();
         // Down to nothing costs nothing at all.
         for _ in 0..FULL_LUNGS {
-            assert_eq!(vitals.breathe(true), 0.0);
+            assert_eq!(vitals.breathe(true, false), 0.0);
         }
         assert_eq!(vitals.air, 0);
 
         // And then a further second of holding on before the first mouthful.
         for _ in 0..-DROWNING_AT - 1 {
-            assert_eq!(vitals.breathe(true), 0.0);
+            assert_eq!(vitals.breathe(true, false), 0.0);
         }
-        assert_eq!(vitals.breathe(true), DROWNING_DAMAGE);
+        assert_eq!(vitals.breathe(true, false), DROWNING_DAMAGE);
     }
 
     #[test]
     fn surfacing_fills_the_lungs_four_times_as_fast_as_holding_empties_them() {
         let mut vitals = Vitals::default();
         for _ in 0..40 {
-            let _ = vitals.breathe(true);
+            let _ = vitals.breathe(true, false);
         }
         assert_eq!(vitals.air, FULL_LUNGS - 40);
 
         for _ in 0..10 {
-            assert_eq!(vitals.breathe(false), 0.0);
+            assert_eq!(vitals.breathe(false, false), 0.0);
         }
         assert_eq!(vitals.air, FULL_LUNGS);
     }

@@ -1,4 +1,5 @@
 use bevy_ecs::prelude::*;
+use ferrumc_attributes::Attributes;
 use ferrumc_components::health::Health;
 use ferrumc_core::identity::entity_identity::EntityIdentity;
 use ferrumc_core::transform::grounded::OnGround;
@@ -141,6 +142,13 @@ pub fn handle_spawn_entity(mut events: MessageReader<SpawnEntityEvent>, mut comm
         // an arrow, a dropped item — is not something that can be hurt at all.
         if let Some(max) = kind.max_health() {
             entity.insert(Health { current: max, max });
+        }
+
+        // What a kind of entity is born with, which is where its health, speed and armour come
+        // from once anything can change them.
+        let attributes = Attributes::for_entity(kind.protocol_id());
+        if !attributes.is_empty() {
+            entity.insert(attributes);
         }
 
         // The two kinds that are more than where they are: one carries a stack, the other an

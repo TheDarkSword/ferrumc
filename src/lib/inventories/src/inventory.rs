@@ -22,6 +22,18 @@ impl Default for Inventory {
 impl Inventory {
     pub const DEFAULT_PLAYER_SIZE: usize = 46;
 
+    /// Where the four pieces of armour sit, head first.
+    ///
+    /// The layout is the wire's own and every version shares it: a crafting result, a two by two
+    /// grid, the armour, the main store, the hotbar, and the off hand last.
+    pub const ARMOUR_SLOTS: [usize; 4] = [5, 6, 7, 8];
+
+    /// Where what is held in the other hand sits.
+    pub const OFFHAND_SLOT: usize = 45;
+
+    /// What each armour slot is called, in the same order, which is how an item says where it goes.
+    pub const ARMOUR_SLOT_NAMES: [&'static str; 4] = ["head", "chest", "legs", "feet"];
+
     pub fn new(size: usize) -> Self {
         Self {
             slots: vec![None; size].into_boxed_slice(),

@@ -7,6 +7,7 @@ use crate::{
     },
 };
 use bevy_ecs::prelude::Bundle;
+use ferrumc_attributes::Attributes;
 use ferrumc_core::{
     chunks::chunk_receiver::ChunkReceiver,
     identity::player_identity::PlayerIdentity,
@@ -44,6 +45,8 @@ pub struct PlayerBundle {
     pub reeling: Reeling,
     pub vitals: Vitals,
     pub swing: Swing,
+    /// Every number a player has that armour, an effect or a command can change.
+    pub attributes: Attributes,
     pub hunger: Hunger,
     pub experience: Experience,
     pub active_effects: ActiveEffects,
