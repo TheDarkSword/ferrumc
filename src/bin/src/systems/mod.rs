@@ -20,11 +20,11 @@ pub mod new_connections;
 mod particles;
 pub mod physics;
 mod player_swimming;
-mod send_entity_updates;
 pub mod shutdown_systems;
 pub mod synced_data;
 pub mod tick_counter;
 pub mod tps_broadcast;
+pub mod tracking;
 pub(crate) mod update_player_ping;
 pub mod world_sync;
 
@@ -64,7 +64,16 @@ pub fn register_game_systems(schedule: &mut bevy_ecs::schedule::Schedule) {
     schedule.add_systems(fluids::settle_loaded_fluids);
     schedule.add_systems(fluids::process_fluid_ticks);
 
-    schedule.add_systems(send_entity_updates::handle);
+    // Who is told about what, and how it has moved since they were last told. A player who has
+    // left is forgotten first, so nothing spends the round looking for a connection that is gone.
+    schedule.add_systems(
+        (
+            tracking::forget_players_who_left,
+            tracking::update_who_sees_what,
+            tracking::send_entity_changes,
+        )
+            .chain(),
+    );
 
     schedule.add_systems(day_cycle::tick_daylight_cycle);
 

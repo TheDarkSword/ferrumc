@@ -141,6 +141,12 @@
 - [ ] **Goal Selector** — Not implemented.
 - [ ] **Sensing** — Not implemented.
 
+### **Tracking**
+- [x] **Per-type range** — [`src/bin/src/systems/tracking.rs`](../src/bin/src/systems/tracking.rs). A client is told about what is near it at the range the entity's kind decides, measured along the ground as vanilla measures it. **Missing:** falling back to the client's own view distance, and checking the entity's chunk is one it tracks.
+- [x] **Per-type update rate** — the kind's own interval; a thing that never moves is placed once and not mentioned again.
+- [x] **Relative and absolute split** — [`src/lib/entities/src/components/tracked.rs`](../src/lib/entities/src/components/tracked.rs). Changes are worked out in the wire's own fixed point, so nothing drifts; an outright position goes out when the change cannot be carried, when the entity lands, and every four hundred rounds regardless.
+- [/] **Players** — spawned for each other on join at any distance, with movement on a path of its own. Not yet through the same tracker as everything else.
+
 ### **Persistence**
 - [x] **Entity storage** — [`src/lib/world/src/entities.rs`](../src/lib/world/src/entities.rs) and [`src/bin/src/systems/mobs/persistence.rs`](../src/bin/src/systems/mobs/persistence.rs). Entities are written with the chunk they stand in, in a table of their own; a chunk coming into view brings them back with the names they had. **Missing:** what a mob is beyond where it is, since no mob has any state of its own yet.
 - [ ] **Vanilla entity import** — Not implemented. An imported world's chunks come across and its mobs do not.

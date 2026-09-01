@@ -15,12 +15,10 @@ pub fn handle(mut query: Query<(&Velocity, &mut Position)>) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use bevy_ecs::message::MessageRegistry;
     use bevy_ecs::prelude::*;
     use bevy_math::Vec3A;
     use ferrumc_core::transform::position::Position;
     use ferrumc_core::transform::velocity::Velocity;
-    use ferrumc_messages::entity_update::SendEntityUpdate;
 
     #[test]
     fn test_velocity_updates_position() {
@@ -35,7 +33,6 @@ mod tests {
                 },
             ))
             .id();
-        MessageRegistry::register_message::<SendEntityUpdate>(&mut world);
 
         let mut schedule = Schedule::default();
         schedule.add_systems(handle);
@@ -63,8 +60,6 @@ mod tests {
             ))
             .id();
 
-        MessageRegistry::register_message::<SendEntityUpdate>(&mut world);
-
         let mut schedule = Schedule::default();
         schedule.add_systems(handle);
 
@@ -80,18 +75,6 @@ mod tests {
             world.get::<Position>(entity).unwrap().coords,
             Vec3A::ZERO.as_dvec3(),
             "Position should remain unchanged"
-        );
-
-        let reader = world.get_resource::<Messages<SendEntityUpdate>>().unwrap();
-        let mut cursor = reader.get_cursor();
-        let mut messages = vec![];
-        for msg in cursor.read(reader) {
-            messages.push(msg);
-        }
-        assert_eq!(
-            messages.len(),
-            0,
-            "No SendEntityUpdate message should be sent when unchanged"
         );
     }
 

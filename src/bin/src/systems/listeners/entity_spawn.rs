@@ -4,7 +4,7 @@ use ferrumc_core::transform::grounded::OnGround;
 use ferrumc_core::transform::position::Position;
 use ferrumc_core::transform::rotation::Rotation;
 use ferrumc_core::transform::velocity::Velocity;
-use ferrumc_entities::components::{CombatProperties, LastSyncedPosition};
+use ferrumc_entities::components::{CombatProperties, Tracked};
 use ferrumc_entities::entity_type::EntityType;
 use ferrumc_entities::markers::entity_types::*;
 use ferrumc_entities::markers::HasCollisions;
@@ -128,7 +128,7 @@ pub fn handle_spawn_entity(mut events: MessageReader<SpawnEntityEvent>, mut comm
             Rotation::default(),
             Velocity::zero(),
             OnGround(false),
-            LastSyncedPosition::from_position(&event.position),
+            Tracked::starting_at(event.position.coords, 0.0, 0.0, false),
             HasCollisions,
             SyncedData::new(kind),
         ));

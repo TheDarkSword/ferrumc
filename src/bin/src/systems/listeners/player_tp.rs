@@ -3,7 +3,6 @@ use ferrumc_components::player::teleport_tracker::TeleportTracker;
 use ferrumc_core::identity::player_identity::PlayerIdentity;
 use ferrumc_core::transform::position::Position;
 use ferrumc_messages::chunk_calc::ChunkCalc;
-use ferrumc_messages::entity_update::SendEntityUpdate;
 use ferrumc_messages::teleport_player::TeleportPlayer;
 use ferrumc_net::connection::StreamWriter;
 use ferrumc_net::packets::outgoing::entity_position_sync::TeleportEntityPacket;
@@ -15,7 +14,6 @@ pub fn teleport_player(
     id_query: Query<&PlayerIdentity>,
     mut message_reader: MessageReader<TeleportPlayer>,
     mut chunk_calc_msg: MessageWriter<ChunkCalc>,
-    mut player_update_msg: MessageWriter<SendEntityUpdate>,
 ) {
     for message in message_reader.read() {
         let message_entity = message.entity;
@@ -73,8 +71,30 @@ pub fn teleport_player(
             }
         }
 
-        // Notify the player update system to send the new position to the client
-        player_update_msg.write(SendEntityUpdate(message_entity));
+        // Everyone else is told outright rather than as a change: a teleport is exactly the case
+        // a change cannot carry.
+        {
+            let moved = TeleportEntityPacket {
+                entity_id: id.short_uuid.into(),
+                x: message.x,
+                y: message.y,
+                z: message.z,
+                vel_x: 0.0,
+                vel_y: 0.0,
+                vel_z: 0.0,
+                yaw: message.yaw,
+                pitch: message.pitch,
+                on_ground: false,
+            };
+            for (entity, conn, _, _) in query.iter() {
+                if entity == message_entity {
+                    continue;
+                }
+                if let Err(err) = conn.send_packet_ref(&moved) {
+                    error!("Failed to tell a player where another went: {}", err);
+                }
+            }
+        }
 
         // Notify the chunk calculation system to recalculate chunks for this player
         chunk_calc_msg.write(ChunkCalc(message_entity));

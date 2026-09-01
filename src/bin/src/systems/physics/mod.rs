@@ -24,7 +24,6 @@ pub fn register_physics(schedule: &mut bevy_ecs::schedule::Schedule) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use bevy_ecs::message::MessageRegistry;
     use bevy_ecs::prelude::*;
     use bevy_math::DVec3;
     use ferrumc_core::identity::entity_identity::EntityIdentity;
@@ -34,7 +33,6 @@ mod tests {
     use ferrumc_entities::entity_type::EntityType;
     use ferrumc_entities::markers::HasCollisions;
     use ferrumc_macros::block;
-    use ferrumc_messages::entity_update::SendEntityUpdate;
     use ferrumc_state::{create_test_state, GlobalStateResource};
     use ferrumc_world::block_state_id::BlockStateId;
     use ferrumc_world::pos::{ChunkBlockPos, ChunkPos};
@@ -58,7 +56,6 @@ mod tests {
         let (state, _temp) = create_test_state();
         floor(&state);
         world.insert_resource(state);
-        MessageRegistry::register_message::<SendEntityUpdate>(&mut world);
 
         let entity = world
             .spawn((

@@ -4,13 +4,13 @@
 //! differ between two entities of the same kind.
 
 pub mod combat;
-pub mod last_synced_position;
 pub mod physical;
+pub mod tracked;
 
 // Re-exports
 pub use combat::CombatProperties;
-pub use last_synced_position::LastSyncedPosition;
 pub use physical::{BoundingBox, PhysicalProperties};
+pub use tracked::{Change, Tracked, to_angle};
 
 // Marker component for baby entities
 use bevy_ecs::prelude::Component;

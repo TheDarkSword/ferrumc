@@ -8,8 +8,7 @@
 //! a carpet and a flower share a block position with whoever walks through them.
 
 use bevy_ecs::change_detection::Ref;
-use bevy_ecs::message::MessageWriter;
-use bevy_ecs::prelude::{DetectChanges, Entity, Has, Query, Res, With};
+use bevy_ecs::prelude::{DetectChanges, Has, Query, Res, With};
 use bevy_ecs::world::Mut;
 use bevy_math::{DVec3, IVec3};
 use ferrumc_core::transform::grounded::OnGround;
@@ -18,14 +17,12 @@ use ferrumc_core::transform::velocity::Velocity;
 use ferrumc_entities::components::Baby;
 use ferrumc_entities::entity_type::EntityType;
 use ferrumc_entities::markers::HasCollisions;
-use ferrumc_messages::entity_update::SendEntityUpdate;
 use ferrumc_state::{GlobalState, GlobalStateResource};
 use ferrumc_world::block_shape::{Aabb, VoxelShape};
 use ferrumc_world::block_state::Axis;
 use ferrumc_world::pos::{ChunkBlockPos, ChunkPos};
 
 type CollisionQueryItem<'a> = (
-    Entity,
     Mut<'a, Velocity>,
     Ref<'a, Position>,
     &'a EntityType,
@@ -35,10 +32,9 @@ type CollisionQueryItem<'a> = (
 
 pub fn handle(
     query: Query<CollisionQueryItem, With<HasCollisions>>,
-    mut writer: MessageWriter<SendEntityUpdate>,
     state: Res<GlobalStateResource>,
 ) {
-    for (eid, mut vel, pos, kind, is_baby, mut grounded) in query {
+    for (mut vel, pos, kind, is_baby, mut grounded) in query {
         if !pos.is_changed() && !vel.is_changed() {
             continue;
         }
@@ -86,8 +82,6 @@ pub fn handle(
         if allowed.z != movement.z {
             vel.z = 0.0;
         }
-
-        writer.write(SendEntityUpdate(eid));
     }
 }
 

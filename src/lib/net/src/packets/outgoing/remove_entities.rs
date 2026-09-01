@@ -10,6 +10,19 @@ pub struct RemoveEntitiesPacket {
 }
 
 impl RemoveEntitiesPacket {
+    /// Tells a client to forget entities by the numbers it knows them by.
+    ///
+    /// Not everything a client is told to forget is a player, so this takes the numbers rather than
+    /// the players holding them.
+    #[must_use]
+    pub fn of(entity_ids: &[i32]) -> Self {
+        Self {
+            entity_ids: LengthPrefixedVec::new(
+                entity_ids.iter().copied().map(VarInt::new).collect(),
+            ),
+        }
+    }
+
     pub fn from_entities<T>(entity_ids: T) -> Self
     where
         T: IntoIterator<Item = PlayerIdentity>,

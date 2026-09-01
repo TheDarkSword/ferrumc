@@ -180,6 +180,31 @@ rather than nowhere.
 Whether a block may be stood on is the block's own answer, extracted per state: the default is a
 sturdy top face giving off little light, and a few blocks differ.
 
+## Who is told about what
+
+A client is not told about everything. It is told about what is near it, at a range the entity's
+own kind decides — ten chunks for most things, and the game's own number for each — measured along
+the ground only, so something far below a player is still near it. Come into range and the client
+is sent a spawn and the whole row it reads the entity by; leave and it is told to forget it.
+
+How often it is told again is also the kind's own number: an arrow every tick, a painting never.
+
+### Why the position is not sent
+
+Between one update and the next what goes out is the change — three sixteen-bit numbers in
+sixteenths of a thousandth of a block rather than three doubles. That only works if both ends agree
+on where the entity was, and they only agree if the change is worked out the way the wire carries
+it: rounding the old and the new positions to the wire's precision and subtracting *those*.
+
+Subtracting first and rounding after loses a fraction every round. Nothing looks wrong — the entity
+simply drifts until it is standing somewhere it is not. There is a test that walks an entity a
+thousand uneven steps and checks the client ends up holding it exactly where it is.
+
+A round that sends only a turn must not move the position the next change is measured from, or
+everything after it is measured from somewhere the client was never told about. An outright position
+goes out when the change is too large to carry, when the entity lands or leaves the ground, and
+every four hundred rounds regardless — a client that missed a packet has no other way back.
+
 ## What survives a restart
 
 An entity belongs to the chunk it stands in and is written with it, in a table of its own rather
