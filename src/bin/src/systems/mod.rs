@@ -9,6 +9,7 @@ pub mod chunk_unloader;
 pub mod connection_killer;
 pub mod datapacks;
 pub mod day_cycle;
+pub mod drops;
 pub mod emit_player_joined;
 pub mod fluids;
 pub mod keep_alive_system;
@@ -71,6 +72,19 @@ pub fn register_game_systems(schedule: &mut bevy_ecs::schedule::Schedule) {
             tracking::forget_players_who_left,
             tracking::update_who_sees_what,
             tracking::send_entity_changes,
+        )
+            .chain(),
+    );
+
+    // What a broken block leaves behind, and what becomes of it. Ageing comes after picking up, so
+    // something taken on the tick it would have expired is taken rather than lost.
+    schedule.add_systems(
+        (
+            drops::drop_what_a_block_left,
+            drops::pull_orbs_to_players,
+            drops::pick_up_what_is_walked_over,
+            drops::merge_what_is_lying_about,
+            drops::age_what_is_lying_about,
         )
             .chain(),
     );

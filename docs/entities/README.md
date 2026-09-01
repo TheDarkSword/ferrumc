@@ -222,6 +222,22 @@ would hand every chunk a second herd.
 What is written is where a mob is and how it is moving. What it is beyond that belongs to the mob,
 and no mob has any of its own yet.
 
+## What a broken block leaves behind
+
+Breaking a block asks its own loot table what it drops, so a stone mined without a pickaxe leaves
+nothing. What comes back is put on the ground as an ordinary entity: it falls, it is tracked, it is
+written out with its chunk. What makes it a dropped thing rather than a mob is only that it waits
+before anyone may take it, joins its neighbours, gives up after five minutes, and goes into whoever
+walks over it.
+
+Experience is the same shape with different arithmetic. An amount does not become one orb but a
+handful, largest first, in the sizes the game gives it — 2477, 1237, 617, 307, 149, 73, 37, 17, 7,
+3, 1 — which is why killing something scatters several. An orb is pulled towards whoever is nearest
+within eight blocks, harder the closer it is, rather than waiting to be walked over.
+
+Merging matters more than it sounds: a floor covered in cobblestone is otherwise a thousand
+entities, each tracked to every client near it and each written out with its chunk.
+
 ## Regenerating
 
 ```bash

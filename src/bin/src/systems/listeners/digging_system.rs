@@ -281,11 +281,16 @@ fn break_block(
     let pos: BlockPos = position.clone().into();
     let mut chunk = ferrumc_utils::world::load_or_generate_mut(&state.0, pos.chunk(), "overworld")
         .expect("Failed to load or generate chunk");
+    // Read before it goes: what a block leaves behind depends on which it was.
+    let was = chunk.get_block(pos.chunk_block_pos());
     chunk.set_block(pos.chunk_block_pos(), BlockStateId::default());
 
     // Send block broken event for un-grounding system
     debug!("Sending BlockBrokenEvent for block at {:?}", pos.pos);
-    block_break_writer.write(ferrumc_messages::BlockBrokenEvent { position: pos });
+    block_break_writer.write(ferrumc_messages::BlockBrokenEvent {
+        position: pos,
+        state: was,
+    });
 
     // Broadcast the block break to all players
     let block_update_packet = BlockUpdate {

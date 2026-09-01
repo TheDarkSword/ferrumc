@@ -133,6 +133,20 @@ pub fn handle_spawn_entity(mut events: MessageReader<SpawnEntityEvent>, mut comm
             SyncedData::new(kind),
         ));
 
+        // The two kinds that are more than where they are: one carries a stack, the other an
+        // amount. Spawning either by hand makes a real one rather than an empty shell.
+        match kind {
+            EntityType::Item => {
+                entity.insert(ferrumc_entities::drops::DroppedItem::new(
+                    ferrumc_inventories::slot::InventorySlot::empty(),
+                ));
+            }
+            EntityType::ExperienceOrb => {
+                entity.insert(ferrumc_entities::drops::ExperienceOrb::new(1));
+            }
+            _ => {}
+        }
+
         // The marker a system may filter an archetype on, for the kinds that have one.
         match kind {
             EntityType::Allay => entity.insert(Allay),

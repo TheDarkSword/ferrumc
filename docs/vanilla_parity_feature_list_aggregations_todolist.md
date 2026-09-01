@@ -156,7 +156,8 @@
 - [/] **Mobs** — every type exists and can be spawned, naturally or by command, with the physics and synced data the game gives it. **Missing:** behaviour, and the thirty-three types whose spawn condition is their own.
 - [ ] **Projectiles** — Not implemented.
 - [ ] **Vehicles** — Not implemented.
-- [ ] **Items** — Not implemented. No item entities.
+- [x] **Items** — [`src/lib/entities/src/drops.rs`](../src/lib/entities/src/drops.rs) and [`src/bin/src/systems/drops.rs`](../src/bin/src/systems/drops.rs). A broken block drops what its loot table says; the drop falls, waits, merges with its neighbours, gives up after five minutes and goes into whoever walks over it. **Missing:** what was on the stack, since slots carry no components yet.
+- [x] **Experience orbs** — same place. An amount breaks into the sizes the game gives it and each orb is pulled towards whoever is nearest. **Missing:** anything that awards experience, and anywhere for it to go once taken.
 - [ ] **Displays** — Not implemented.
 
 ---

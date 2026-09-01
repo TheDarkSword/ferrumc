@@ -56,6 +56,8 @@ pub fn handle(
                         "overworld",
                     )
                     .expect("Failed to load or generate chunk");
+                    // Read before it goes: what a block leaves behind depends on which it was.
+                    let was = chunk.get_block(pos.chunk_block_pos());
                     chunk.set_block(pos.chunk_block_pos(), BlockStateId::default());
                     // The guard has to go before the neighbours are told: they read and write
                     // blocks of their own, and two guards on one shard deadlock the tick thread.
@@ -74,7 +76,10 @@ pub fn handle(
                     let lit = crate::systems::world_light::relight_around(&state.0, pos);
 
                     // Send block broken event for un-grounding system
-                    block_break_events.write(BlockBrokenEvent { position: pos });
+                    block_break_events.write(BlockBrokenEvent {
+                        position: pos,
+                        state: was,
+                    });
 
                     // Broadcast the change
                     for (eid, conn) in &broadcast_query {
