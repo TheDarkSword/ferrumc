@@ -12,6 +12,7 @@ ferrumc-inventories = { workspace = true }
 ferrumc-core = { workspace = true }
 ferrumc-attributes = { workspace = true }
 ferrumc-damage = { workspace = true }
+ferrumc-effects = { workspace = true }
 ferrumc-net-codec = { workspace = true }
 ferrumc-config = { workspace = true }
 bitcode = { workspace = true }

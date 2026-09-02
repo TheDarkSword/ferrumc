@@ -49,6 +49,7 @@ members = [
     "src/lib/data",
     "src/lib/attributes",
     "src/lib/damage",
+    "src/lib/effects",
     "src/lib/datapack",
     "src/lib/advancements",
     "src/lib/loot",
@@ -159,6 +160,7 @@ ferrumc-inventories = { path = "src/lib/inventories" }
 ferrumc-data = { path = "src/lib/data" }
 ferrumc-attributes = { path = "src/lib/attributes" }
 ferrumc-damage = { path = "src/lib/damage" }
+ferrumc-effects = { path = "src/lib/effects" }
 ferrumc-datapack = { path = "src/lib/datapack" }
 ferrumc-advancements = { path = "src/lib/advancements" }
 ferrumc-loot = { path = "src/lib/loot" }

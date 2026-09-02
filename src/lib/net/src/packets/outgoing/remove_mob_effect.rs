@@ -10,3 +10,13 @@ pub struct RemoveMobEffect {
     pub entity_id: VarInt,
     pub effect: NetworkMobEffect,
 }
+
+impl RemoveMobEffect {
+    #[must_use]
+    pub const fn new(entity_id: i32, effect: u32) -> Self {
+        Self {
+            entity_id: VarInt::new(entity_id),
+            effect: NetworkMobEffect(effect),
+        }
+    }
+}

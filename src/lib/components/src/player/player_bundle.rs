@@ -1,5 +1,4 @@
 use crate::{
-    active_effects::ActiveEffects,
     health::Health,
     player::{
         abilities::PlayerAbilities, experience::Experience, gamemode::GameModeComponent,
@@ -14,6 +13,7 @@ use ferrumc_core::{
     transform::{grounded::OnGround, position::Position, rotation::Rotation},
 };
 use ferrumc_damage::{Defence, Reeling, Swing, Vitals};
+use ferrumc_effects::ActiveEffects;
 use ferrumc_inventories::{hotbar::Hotbar, inventory::Inventory};
 /// A Bevy Bundle containing all components required for a player entity.
 /// This groups all 17+ components into a single, spawnable unit.

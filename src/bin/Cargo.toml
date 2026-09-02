@@ -38,6 +38,7 @@ ferrumc-threadpool = { workspace = true }
 ferrumc-inventories = { workspace = true }
 ferrumc-attributes = { workspace = true }
 ferrumc-damage = { workspace = true }
+ferrumc-effects = { workspace = true }
 ferrumc-data = { workspace = true }
 ferrumc-datapack = { workspace = true }
 ferrumc-advancements = { workspace = true }

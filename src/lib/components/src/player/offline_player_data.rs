@@ -1,4 +1,3 @@
-use crate::active_effects::ActiveEffects;
 use crate::health::Health;
 use crate::player::abilities::PlayerAbilities;
 use crate::player::experience::Experience;
@@ -7,6 +6,7 @@ use crate::player::gameplay_state::ender_chest::EnderChest;
 use crate::player::hunger::Hunger;
 use bitcode_derive::{Decode, Encode};
 use ferrumc_core::transform::rotation::Rotation;
+use ferrumc_effects::ActiveEffects;
 use ferrumc_inventories::inventory::Inventory;
 
 #[derive(Clone, Debug, Encode, Decode, Default)]

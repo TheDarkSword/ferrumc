@@ -26,6 +26,8 @@ use ferrumc_damage::{
 };
 use ferrumc_data::attributes::Attribute;
 use ferrumc_data::generated::damage_types::DamageType;
+use ferrumc_data::generated::effects::Effect;
+use ferrumc_effects::ActiveEffects;
 use ferrumc_entities::components::Tracked;
 use ferrumc_entities::entity_type::EntityType;
 use ferrumc_entities::synced_data::{fields, EntityFlag, SyncedData};
@@ -197,6 +199,7 @@ type Victim<'a> = (
     &'a mut Reeling,
     &'a EntityType,
     Option<&'a Attributes>,
+    Option<&'a ActiveEffects>,
     Option<&'a EntityIdentity>,
     Option<&'a StreamWriter>,
     Option<&'a Tracked>,
@@ -212,8 +215,17 @@ pub fn apply_damage(
     mut died: MessageWriter<EntityDied>,
 ) {
     for blow in blows.read() {
-        let Ok((mut health, mut defence, mut reeling, kind, attributes, identity, writer, tracked)) =
-            victims.get_mut(blow.entity)
+        let Ok((
+            mut health,
+            mut defence,
+            mut reeling,
+            kind,
+            attributes,
+            effects,
+            identity,
+            writer,
+            tracked,
+        )) = victims.get_mut(blow.entity)
         else {
             continue;
         };
@@ -226,7 +238,9 @@ pub fn apply_damage(
         // own answer and are here.
         let immune = Immunities {
             invulnerable: false,
-            fire: kind.fire_immune(),
+            // Being unburnable is either what the kind is or what it has drunk.
+            fire: kind.fire_immune()
+                || effects.is_some_and(|held| held.has(Effect::FireResistance)),
             falling: false,
         };
         if !can_be_hurt(blow.kind, immune) {
@@ -244,6 +258,9 @@ pub fn apply_damage(
             defence.armour = attributes.value(&Attribute::ARMOR) as f32;
             defence.toughness = attributes.value(&Attribute::ARMOR_TOUGHNESS) as f32;
         }
+        defence.resistance = effects
+            .and_then(|held| held.level(Effect::Resistance))
+            .unwrap_or(0);
 
         let landed = resolve(
             Hit {

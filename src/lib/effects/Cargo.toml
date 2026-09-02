@@ -1,0 +1,13 @@
+[package]
+name = "ferrumc-effects"
+edition.workspace = true
+version.workspace = true
+
+[dependencies]
+bevy_ecs = { workspace = true }
+bitcode = { workspace = true }
+bitcode_derive = { workspace = true }
+ferrumc-data = { workspace = true }
+
+[lints]
+workspace = true

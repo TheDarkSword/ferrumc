@@ -12,6 +12,7 @@ pub mod damage;
 pub mod datapacks;
 pub mod day_cycle;
 pub mod drops;
+pub mod effects;
 pub mod emit_player_joined;
 pub mod fluids;
 pub mod keep_alive_system;
@@ -98,6 +99,17 @@ pub fn register_game_systems(schedule: &mut bevy_ecs::schedule::Schedule) {
             attributes::apply_what_is_worn,
             attributes::follow_max_health,
             attributes::send_changed_attributes,
+        )
+            .chain(),
+    );
+
+    // What anyone is under the influence of, ticked before the damage it may cause is settled.
+    // The modifiers go on before a client is told, so what is sent is what is actually in force.
+    schedule.add_systems(
+        (
+            effects::tick_effects,
+            effects::apply_effect_modifiers,
+            effects::send_effect_changes,
         )
             .chain(),
     );

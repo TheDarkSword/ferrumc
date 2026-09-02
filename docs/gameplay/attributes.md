@@ -85,3 +85,47 @@ how often a tick underwater costs no air; `attack_damage`, `attack_speed`, `atta
 See `internal_docs/deferred.md` under Phase 5.3. The short version: effects and enchantments add no
 modifiers yet, `/attribute` does not exist, the physics still reads speed and gravity off the entity
 type rather than the attributes, and a player's base values are not saved.
+
+# Status effects
+
+What a potion does, in `ferrumc-effects`, ticked by `src/bin/src/systems/effects.rs`.
+
+## Most of an effect is just attribute modifiers
+
+Twelve of the forty move a number and nothing else: speed moves `movement_speed`, strength moves
+`attack_damage`, health boost moves `max_health`. Those are put on when the effect lands and taken
+off when it runs out, and the attribute system does the rest without being asked.
+
+The amount an effect carries is what **one level** is worth, so speed II is exactly twice speed I
+rather than a separate modifier.
+
+## Five do something on a tick
+
+| effect | how often | what |
+|---|---|---|
+| regeneration | every `50 >> level` ticks | heals 1 |
+| poison | every `25 >> level` ticks | hurts 1, never to death |
+| wither | every `40 >> level` ticks | hurts 1, which does kill |
+| hunger | every tick | `0.005 × level` exhaustion |
+
+The interval halves with each level, so at level six and above they act every tick.
+
+## Three land all at once and are never held
+
+Healing (`4 << level`), harming (`6 << level`) and saturation. They do their work on being applied
+and are gone. Absorption is held but does its work once — it tops up the extra health and then lasts
+exactly as long as that health does.
+
+## Applying the same effect twice
+
+A stronger but shorter application does not replace a weaker longer one — it **hides** it, and the
+weaker one comes back when the stronger runs out. Drinking a splash of swiftness II over a long
+swiftness I leaves the swiftness I still running afterwards.
+
+The chain is a stack, so three applications come back strongest first. It is flat rather than a
+chain of boxes, which is also what lets it be written out with a player.
+
+## What is not here
+
+See `internal_docs/deferred.md` under Phase 5.4. Chiefly: nothing applies an effect yet — no potion
+is drinkable, no beacon exists, and there is no `/effect`.

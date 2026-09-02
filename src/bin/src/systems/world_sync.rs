@@ -1,6 +1,5 @@
 #![expect(clippy::type_complexity)]
 use bevy_ecs::prelude::{Query, Res, ResMut};
-use ferrumc_components::active_effects::ActiveEffects;
 use ferrumc_components::health::Health;
 use ferrumc_components::player::abilities::PlayerAbilities;
 use ferrumc_components::player::experience::Experience;
@@ -12,6 +11,7 @@ use ferrumc_core::chunks::world_sync_tracker::WorldSyncTracker;
 use ferrumc_core::identity::player_identity::PlayerIdentity;
 use ferrumc_core::transform::position::Position;
 use ferrumc_core::transform::rotation::Rotation;
+use ferrumc_effects::ActiveEffects;
 use ferrumc_inventories::inventory::Inventory;
 use ferrumc_state::GlobalStateResource;
 use tracing::warn;

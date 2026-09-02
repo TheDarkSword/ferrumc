@@ -23,6 +23,7 @@ pub fn register_messages(world: &mut World) {
     MessageRegistry::register_message::<PlayerJoined>(world);
     MessageRegistry::register_message::<EntityDamaged>(world);
     MessageRegistry::register_message::<EntityDied>(world);
+    MessageRegistry::register_message::<crate::systems::effects::EffectChanged>(world);
     MessageRegistry::register_message::<PlayerStartedDigging>(world);
     MessageRegistry::register_message::<PlayerCancelledDigging>(world);
     MessageRegistry::register_message::<PlayerFinishedDigging>(world);

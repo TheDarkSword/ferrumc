@@ -5,6 +5,8 @@ edition = "2021"
 build = "build/build.rs"
 
 [dependencies]
+bitcode = { workspace = true }
+bitcode_derive = { workspace = true }
 ferrumc-net-codec = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
