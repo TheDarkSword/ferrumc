@@ -1,3 +1,4 @@
+pub mod components;
 pub mod defined_slots;
 pub mod errors;
 pub mod hotbar;

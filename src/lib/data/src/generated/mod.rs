@@ -2,6 +2,7 @@
 
 pub mod attributes;
 pub mod biomes;
+pub mod components;
 // blocks module is now generated in build script
 pub mod damage_types;
 pub mod default_attributes;

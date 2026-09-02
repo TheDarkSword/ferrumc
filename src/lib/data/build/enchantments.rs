@@ -9,6 +9,8 @@ use syn::LitInt;
 #[derive(Deserialize, Clone, Debug)]
 #[allow(dead_code)]
 pub struct Enchantment {
+    /// Filled in from where it sits in the registry rather than read from the file.
+    #[serde(skip)]
     pub id: u16,
     pub description: Description,
     pub min_cost: Cost,
@@ -35,25 +37,45 @@ pub struct Cost {
     pub per_level_above_first: f32,
 }
 
-pub(crate) fn build() -> TokenStream {
-    println!("cargo:rerun-if-changed=../../../assets/extracted/enchantments.json");
+/// Where the packs define what each enchantment is.
+const ENCHANTMENTS: &str = "../../../assets/extracted/26.2/data/minecraft/enchantment";
 
-    let enchantments: BTreeMap<String, Enchantment> = serde_json::from_str(
-        &fs::read_to_string("../../../assets/extracted/enchantments.json").unwrap(),
-    )
-    .expect("Failed to parse enchantments.json");
+pub(crate) fn build() -> TokenStream {
+    println!("cargo:rerun-if-changed={ENCHANTMENTS}");
+    println!("cargo:rerun-if-changed={REGISTRY_PACKETS}");
+
+    // Read from the packs rather than from a dump beside them, and numbered by where each one sits
+    // in the registry the client is actually sent — which is the only numbering that means
+    // anything, and the numbering `wire_id` below is indexed by.
+    let order = order_in_registry(REGISTRY_PAYLOADS[REGISTRY_PAYLOADS.len() - 1]);
+    let mut enchantments: BTreeMap<String, Enchantment> = BTreeMap::new();
+    for entry in fs::read_dir(ENCHANTMENTS).expect("the enchantments the packs define") {
+        let path = entry.expect("a readable directory entry").path();
+        if path.extension().is_none_or(|kind| kind != "json") {
+            continue;
+        }
+        let name = path
+            .file_stem()
+            .and_then(|stem| stem.to_str())
+            .expect("a name")
+            .to_string();
+        let mut enchantment: Enchantment =
+            serde_json::from_str(&fs::read_to_string(&path).expect("a readable enchantment"))
+                .unwrap_or_else(|err| panic!("could not read the enchantment {name}: {err}"));
+        enchantment.id = order
+            .iter()
+            .position(|known| *known == name)
+            .and_then(|at| u16::try_from(at).ok())
+            .unwrap_or_else(|| panic!("{name} is not in the registry the client is sent"));
+        enchantments.insert(name, enchantment);
+    }
 
     let mut constants = TokenStream::new();
     let mut type_from_id_arms = TokenStream::new();
     let mut type_from_name = TokenStream::new();
 
     for (name, enchantment) in enchantments.iter() {
-        let const_ident = format_ident!(
-            "{}",
-            name.strip_prefix("minecraft:")
-                .unwrap_or(name)
-                .to_shouty_snake_case()
-        );
+        let const_ident = format_ident!("{}", name.to_shouty_snake_case());
         let id_lit = LitInt::new(&enchantment.id.to_string(), Span::call_site());
 
         let translate = &enchantment.description.translate;
@@ -113,6 +135,10 @@ pub(crate) fn build() -> TokenStream {
             #name => Some(&Self::#const_ident),
         });
     }
+
+    // An enchantment's number is a place in the reader's own registry, and `lunge` was added in
+    // 26.1 in the middle of the alphabet — which moved twenty-one of the forty-two after it.
+    let wire_ids = wire_ids(&order);
 
     quote! {
         #[derive(Debug, Clone, Copy, PartialEq)]
@@ -178,6 +204,99 @@ pub(crate) fn build() -> TokenStream {
             pub const fn max_cost(&self, level: u8) -> f32 {
                 self.max_cost.base + self.max_cost.per_level_above_first * (level - 1) as f32
             }
+
+            /// The number a client speaking `version` reads this as, if it knows it at all.
+            ///
+            /// [`None`] means the enchantment was added after that version.
+            #[must_use]
+            pub const fn wire_id(
+                &self,
+                version: ferrumc_net_codec::version::ProtocolVersion,
+            ) -> Option<u16> {
+                match ENCHANTMENT_IDS[version.index()][self.id as usize] {
+                    -1 => None,
+                    id => Some(id as u16),
+                }
+            }
+
+            /// Which enchantment a client speaking `version` means by a number.
+            #[must_use]
+            pub fn from_wire_id(
+                id: u16,
+                version: ferrumc_net_codec::version::ProtocolVersion,
+            ) -> Option<&'static Self> {
+                let theirs = &ENCHANTMENT_IDS[version.index()];
+                let at = theirs.iter().position(|known| *known == i32::from(id))?;
+                Self::from_id(u16::try_from(at).ok()?)
+            }
         }
+
+        #wire_ids
+    }
+}
+
+/// Where the payload each version's client is actually sent lives.
+const REGISTRY_PACKETS: &str = "../../../assets/data/registry_packets";
+
+/// The supported versions, in the order of `ProtocolVersion::ALL`.
+const REGISTRY_PAYLOADS: [&str; 10] = [
+    "1.21", "1.21.2", "1.21.4", "1.21.5", "1.21.6", "1.21.8", "1.21.9", "1.21.11", "26.1", "26.2",
+];
+
+/// Where each enchantment sits in each version's registry.
+///
+/// Read from the payload actually sent to the client, so the two cannot drift apart: they are the
+/// same file.
+/// The names in one version's enchantment registry, in the order it numbers them.
+fn order_in_registry(version: &str) -> Vec<String> {
+    let registries: indexmap::IndexMap<String, indexmap::IndexMap<String, serde_json::Value>> =
+        serde_json::from_str(
+            &fs::read_to_string(format!("{REGISTRY_PACKETS}/{version}.json"))
+                .expect("a registry payload for every supported version"),
+        )
+        .expect("a registry payload is valid json");
+    registries
+        .iter()
+        .find(|(name, _)| name.contains("enchantment"))
+        .map(|(_, entries)| {
+            entries
+                .keys()
+                .map(|name| name.strip_prefix("minecraft:").unwrap_or(name).to_string())
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
+fn wire_ids(names: &[String]) -> TokenStream {
+    let rows = REGISTRY_PAYLOADS.iter().map(|payload| {
+        let registries: indexmap::IndexMap<String, indexmap::IndexMap<String, serde_json::Value>> =
+            serde_json::from_str(
+                &fs::read_to_string(format!("{REGISTRY_PACKETS}/{payload}.json"))
+                    .expect("a registry payload for every supported version"),
+            )
+            .expect("a registry payload is valid json");
+        let known = registries
+            .iter()
+            .find(|(name, _)| name.contains("enchantment"))
+            .map(|(_, entries)| entries.keys().cloned().collect::<Vec<_>>())
+            .unwrap_or_default();
+
+        let ids = names.iter().map(|name| {
+            let id = known
+                .iter()
+                .position(|known| known.strip_prefix("minecraft:").unwrap_or(known) == name)
+                .map_or(-1i32, |place| {
+                    i32::try_from(place).expect("a registry is not that large")
+                });
+            quote! { #id }
+        });
+        quote! { [#(#ids),*] }
+    });
+    let versions = REGISTRY_PAYLOADS.len();
+    let count = names.len();
+    quote! {
+        /// Where each enchantment sits in each supported version's registry, or -1 where the
+        /// version does not have it.
+        const ENCHANTMENT_IDS: [[i32; #count]; #versions] = [#(#rows),*];
     }
 }

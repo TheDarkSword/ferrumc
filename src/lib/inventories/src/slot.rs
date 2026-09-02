@@ -1,3 +1,13 @@
+//! One slot's worth of items, on the wire and on disk.
+//!
+//! A slot is a count, a kind, and a patch of components over what that kind already says. An empty
+//! slot is a count of nothing and nothing after it.
+//!
+//! What this replaced read the component **ids** and not their payloads, which meant any stack
+//! carrying a component left its payload in the buffer and everything after it — the rest of a
+//! container, the rest of the packet — was read at the wrong offset.
+
+use crate::components::Components;
 use crate::item::ItemID;
 use bitcode_derive::{Decode, Encode};
 use ferrumc_net_codec::decode::errors::NetDecodeError;
@@ -10,40 +20,65 @@ use std::fmt::Display;
 use std::io::{Read, Write};
 use tokio::io::{AsyncRead, AsyncWrite};
 
-#[derive(Debug, Clone, Hash, Default, PartialEq, Decode, Encode)]
+#[derive(Debug, Clone, Default, PartialEq, Decode, Encode)]
 pub struct InventorySlot {
     pub count: VarInt,
     pub item_id: Option<ItemID>,
-    pub components_to_add_count: Option<VarInt>,
-    pub components_to_remove_count: Option<VarInt>,
-    pub components_to_add: Option<Vec<VarInt>>,
-    pub components_to_remove: Option<Vec<VarInt>>,
-    // https://minecraft.wiki/w/Java_Edition_protocol/Slot_data
+    /// What this stack says that its kind does not.
+    pub components: Components,
 }
 
 impl InventorySlot {
+    /// Nothing at all.
+    #[must_use]
     pub fn empty() -> Self {
         Self {
             count: VarInt(0),
             item_id: None,
-            components_to_add_count: None,
-            components_to_add: None,
-            components_to_remove: None,
-            components_to_remove_count: None,
+            components: Components::none(),
         }
+    }
+
+    /// A plain stack of something, with nothing said about it.
+    #[must_use]
+    pub fn of(item: ItemID, count: i32) -> Self {
+        Self {
+            count: VarInt(count),
+            item_id: Some(item),
+            components: Components::none(),
+        }
+    }
+
+    /// Whether there is anything here.
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.count.0 <= 0 || self.item_id.is_none()
+    }
+
+    /// Whether two stacks are the same thing, and so may be merged.
+    ///
+    /// The same kind is not enough: a named sword and a plain one are two different things however
+    /// alike they look, which is why the whole patch is compared.
+    #[must_use]
+    pub fn same_thing_as(&self, other: &Self) -> bool {
+        self.item_id == other.item_id && self.components == other.components
     }
 }
 
 impl Display for InventorySlot {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "InventorySlot {{ count: {}, item_id: {:?}, components_to_add_count: {:?}, components_to_remove_count: {:?} }}",
-            self.count.0,
-            self.item_id,
-            self.components_to_add_count,
-            self.components_to_remove_count
-        )
+        if self.is_empty() {
+            return write!(f, "nothing");
+        }
+        write!(f, "{} of {:?}", self.count.0, self.item_id)?;
+        if !self.components.is_empty() {
+            write!(
+                f,
+                ", with {} components set",
+                self.components.iter().count()
+            )?;
+        }
+        Ok(())
     }
 }
 
@@ -51,176 +86,165 @@ impl NetDecode for InventorySlot {
     fn decode<R: Read>(reader: &mut R, opts: &NetDecodeOpts) -> Result<Self, NetDecodeError> {
         let count = VarInt::decode(reader, opts)?;
         if count.0 == 0 {
-            Ok(Self {
-                count,
-                ..Default::default()
-            })
-        } else {
-            let item_id = VarInt::decode(reader, opts)?;
-            let components_to_add_count = VarInt::decode(reader, opts)?;
-            let components_to_remove_count = VarInt::decode(reader, opts)?;
-
-            let components_to_add = {
-                let mut components = Vec::with_capacity(components_to_add_count.0 as usize);
-                for _ in 0..components_to_add_count.0 {
-                    components.push(VarInt::decode(reader, opts)?);
-                }
-                Some(components)
-            };
-            let components_to_remove = {
-                let mut components = Vec::with_capacity(components_to_remove_count.0 as usize);
-                for _ in 0..components_to_remove_count.0 {
-                    components.push(VarInt::decode(reader, opts)?);
-                }
-                Some(components)
-            };
-
-            Ok(Self {
-                count,
-                item_id: Some(ItemID(item_id)),
-                components_to_add_count: Some(components_to_add_count),
-                components_to_remove_count: Some(components_to_remove_count),
-                components_to_add,
-                components_to_remove,
-            })
+            return Ok(Self::empty());
         }
+        Ok(Self {
+            count,
+            item_id: Some(ItemID(VarInt::decode(reader, opts)?)),
+            components: Components::decode(reader, opts)?,
+        })
     }
 
     async fn decode_async<R: AsyncRead + Unpin>(
         _reader: &mut R,
         _opts: &NetDecodeOpts,
     ) -> Result<Self, NetDecodeError> {
-        todo!()
+        Err(NetDecodeError::ExternalError(
+            "a slot is read from a buffer rather than a stream".into(),
+        ))
     }
 }
 
 impl NetEncode for InventorySlot {
     fn encode<W: Write>(&self, writer: &mut W, opts: &NetEncodeOpts) -> Result<(), NetEncodeError> {
-        // 1. Always encode the count
         self.count.encode(writer, opts)?;
-
-        // If count is 0, stop immediately
         if self.count.0 == 0 {
             return Ok(());
         }
 
-        let zero_varint = VarInt::new(0);
-
-        // 2. Encode ItemID, as the id the reading client's own version gives it
         match &self.item_id {
-            Some(item_id) => NetworkItemId(item_id.0.0 as u32).encode(writer, opts)?,
-            None => zero_varint.encode(writer, opts)?,
+            // As the number the reading client's own version gives it.
+            Some(item) => NetworkItemId(item.0.0 as u32).encode(writer, opts)?,
+            None => VarInt::new(0).encode(writer, opts)?,
         }
-
-        // 3. Get add_count and remove_count
-        let add_count = self
-            .components_to_add_count
-            .as_ref()
-            .unwrap_or(&zero_varint);
-        let remove_count = self
-            .components_to_remove_count
-            .as_ref()
-            .unwrap_or(&zero_varint);
-
-        // 4. Encode components_to_add_count
-        add_count.encode(writer, opts)?;
-
-        // 5. Encode components_to_remove_count
-        remove_count.encode(writer, opts)?;
-
-        // 6. Encode components_to_add list (if any)
-        if add_count.0 > 0
-            && let Some(components) = &self.components_to_add
-        {
-            for component in components {
-                component.encode(writer, opts)?;
-            }
-        }
-
-        // 7. Encode components_to_remove list (if any)
-        if remove_count.0 > 0
-            && let Some(components) = &self.components_to_remove
-        {
-            for component in components {
-                component.encode(writer, opts)?;
-            }
-        }
-
-        Ok(())
+        self.components.encode(writer, opts)
     }
 
     async fn encode_async<W: AsyncWrite + Unpin>(
         &self,
-        _writer: &mut W,
-        _opts: &NetEncodeOpts,
+        writer: &mut W,
+        opts: &NetEncodeOpts,
     ) -> Result<(), NetEncodeError> {
-        todo!()
+        let mut buffer = Vec::new();
+        self.encode(&mut buffer, opts)?;
+        buffer.encode_async(writer, &opts.nested()).await
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ferrumc_net_codec::encode::NetEncodeOpts;
-    use ferrumc_net_codec::net_types::var_int::VarInt;
+    use crate::components::Value;
+    use ferrumc_data::generated::components::ComponentType;
+    use ferrumc_net_codec::encode::Framing;
+    use ferrumc_net_codec::version::ProtocolVersion;
+    use ferrumc_text::ComponentBuilder;
     use std::io::Cursor;
 
-    // This helper function runs the encode/decode cycle
-    fn run_roundtrip_test(slot_in: &InventorySlot) -> InventorySlot {
-        let mut buffer = Vec::new();
+    fn there_and_back(slot: &InventorySlot) -> InventorySlot {
+        let mut bytes = Vec::new();
+        slot.encode(
+            &mut bytes,
+            &NetEncodeOpts::new(Framing::None, ProtocolVersion::CURRENT),
+        )
+        .expect("a slot writes to a buffer");
 
-        // Create both types of options explicitly.
-        let encode_opts = NetEncodeOpts::default();
-        let decode_opts = NetDecodeOpts::default();
-
-        // 1. Encode
-        slot_in
-            .encode(&mut buffer, &encode_opts)
-            .expect("Encode failed");
-
-        // 2. Decode
-        let mut reader = Cursor::new(&buffer);
-        let slot_out = InventorySlot::decode(&mut reader, &decode_opts).expect("Decode failed");
-
-        // 3. Check that all bytes were read
+        let mut reader = Cursor::new(&bytes);
+        let read =
+            InventorySlot::decode(&mut reader, &NetDecodeOpts::default()).expect("it reads back");
         assert_eq!(
             reader.position() as usize,
-            buffer.len(),
-            "Decoder did not read the entire buffer"
+            bytes.len(),
+            "the whole slot was read"
         );
-
-        slot_out
+        read
     }
 
     #[test]
-    fn test_slot_encode_decode_roundtrip() {
-        // --- Test Case 1: The Empty Slot ---
+    fn nothing_is_one_byte() {
+        let mut bytes = Vec::new();
+        InventorySlot::empty()
+            .encode(
+                &mut bytes,
+                &NetEncodeOpts::new(Framing::None, ProtocolVersion::CURRENT),
+            )
+            .expect("nothing writes");
+        assert_eq!(bytes, vec![0]);
+    }
 
-        let simple_slot = InventorySlot {
-            count: VarInt::new(10),
-            item_id: Some(ItemID::new(1)),
-            components_to_add_count: Some(VarInt::new(0)),
-            components_to_remove_count: Some(VarInt::new(0)),
-            components_to_add: Some(vec![]),
-            components_to_remove: Some(vec![]),
-        };
+    #[test]
+    fn a_plain_stack_survives_a_round_trip() {
+        let stack = InventorySlot::of(ItemID::new(1), 64);
+        assert_eq!(there_and_back(&stack), stack);
+    }
 
-        let decoded_simple = run_roundtrip_test(&simple_slot);
-        assert_eq!(simple_slot, decoded_simple, "Simple slot roundtrip failed");
+    /// What this replaced could not do: a stack carrying a component left its payload behind, and
+    /// everything after it was read at the wrong offset.
+    #[test]
+    fn a_stack_with_components_leaves_nothing_behind_it() {
+        let mut stack = InventorySlot::of(ItemID::new(895), 1);
+        stack
+            .components
+            .set_name(&ComponentBuilder::text("Sting").build());
+        stack
+            .components
+            .set(ComponentType::Damage, Value::Number(12));
+        assert_eq!(there_and_back(&stack), stack);
+    }
 
-        // --- Test Case 2: The Full NBT/Component Slot ---
-        let complex_slot = InventorySlot {
-            count: VarInt::new(1),
-            item_id: Some(ItemID::new(872)),
-            components_to_add_count: Some(VarInt::new(2)),
-            components_to_remove_count: Some(VarInt::new(1)),
-            components_to_add: Some(vec![VarInt::new(10), VarInt::new(11)]),
-            components_to_remove: Some(vec![VarInt::new(20)]),
-        };
-        let decoded_complex = run_roundtrip_test(&complex_slot);
+    /// Which is what makes reading a whole container safe.
+    #[test]
+    fn two_stacks_in_a_row_each_stop_where_they_end() {
+        let mut first = InventorySlot::of(ItemID::new(895), 1);
+        first
+            .components
+            .set(ComponentType::Damage, Value::Number(5));
+        let second = InventorySlot::of(ItemID::new(1), 32);
+
+        let opts = NetEncodeOpts::new(Framing::None, ProtocolVersion::CURRENT);
+        let mut bytes = Vec::new();
+        first.encode(&mut bytes, &opts).expect("the first writes");
+        second.encode(&mut bytes, &opts).expect("the second writes");
+
+        let mut reader = Cursor::new(&bytes);
+        let opts = NetDecodeOpts::default();
         assert_eq!(
-            complex_slot, decoded_complex,
-            "Complex slot roundtrip failed"
+            InventorySlot::decode(&mut reader, &opts).expect("the first reads"),
+            first
         );
+        assert_eq!(
+            InventorySlot::decode(&mut reader, &opts).expect("the second reads"),
+            second
+        );
+    }
+
+    #[test]
+    fn a_named_sword_is_not_the_same_thing_as_a_plain_one() {
+        let plain = InventorySlot::of(ItemID::new(895), 1);
+        let mut named = plain.clone();
+        named
+            .components
+            .set_name(&ComponentBuilder::text("Sting").build());
+
+        assert!(plain.same_thing_as(&plain.clone()));
+        assert!(
+            !plain.same_thing_as(&named),
+            "merging these would lose the name"
+        );
+    }
+
+    #[test]
+    fn a_stack_survives_being_written_out_and_read_back() {
+        let mut stack = InventorySlot::of(ItemID::new(895), 1);
+        stack
+            .components
+            .set(ComponentType::Damage, Value::Number(12));
+        stack
+            .components
+            .set_name(&ComponentBuilder::text("Sting").build());
+
+        let written = bitcode::encode(&stack);
+        let read: InventorySlot = bitcode::decode(&written).expect("what was written reads back");
+        assert_eq!(read, stack);
     }
 }

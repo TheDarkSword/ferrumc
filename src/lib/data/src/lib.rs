@@ -205,3 +205,111 @@ mod consumable_tests {
         assert_eq!(named, &["poison"]);
     }
 }
+
+#[cfg(test)]
+mod component_type_tests {
+    use crate::generated::components::ComponentType;
+    use ferrumc_net_codec::version::ProtocolVersion;
+
+    #[test]
+    fn every_kind_the_registry_has_is_here() {
+        assert_eq!(ComponentType::ALL.len(), 111);
+        assert_eq!(
+            ComponentType::from_name("minecraft:custom_name"),
+            Some(ComponentType::CustomName)
+        );
+        assert_eq!(ComponentType::CustomName.to_name(), "custom_name");
+    }
+
+    /// A component's number is a place in the reader's own registry, and that registry went from
+    /// 57 kinds to 111 across the supported versions.
+    #[test]
+    fn the_same_kind_is_a_different_number_to_a_different_client() {
+        assert_eq!(
+            ComponentType::CustomName.wire_id(ProtocolVersion::V26_2),
+            Some(6)
+        );
+        assert_eq!(
+            ComponentType::CustomName.wire_id(ProtocolVersion::V1_21),
+            Some(5)
+        );
+    }
+
+    /// One a version has never heard of has no number, and saying so is the only safe answer: a
+    /// component carries no length, so a wrong one makes the rest of the stack unreadable.
+    #[test]
+    fn a_kind_a_version_does_not_know_has_no_number() {
+        assert_eq!(ComponentType::Weapon.wire_id(ProtocolVersion::V1_21), None);
+        assert!(ComponentType::Weapon
+            .wire_id(ProtocolVersion::V26_2)
+            .is_some());
+    }
+
+    #[test]
+    fn a_number_reads_back_as_the_kind_that_client_meant() {
+        for version in ProtocolVersion::ALL {
+            for kind in [
+                ComponentType::CustomName,
+                ComponentType::Damage,
+                ComponentType::Enchantments,
+                ComponentType::CustomData,
+            ] {
+                let Some(id) = kind.wire_id(version) else {
+                    continue;
+                };
+                assert_eq!(
+                    ComponentType::from_wire_id(id, version),
+                    Some(kind),
+                    "{kind:?} on {version:?}"
+                );
+            }
+        }
+    }
+}
+
+#[cfg(test)]
+mod enchantment_tests {
+    use crate::generated::enchantments::Enchantment;
+    use ferrumc_net_codec::version::ProtocolVersion;
+
+    #[test]
+    fn the_enchantment_the_newest_version_added_is_here() {
+        assert!(Enchantment::from_name("minecraft:lunge").is_some());
+    }
+
+    /// `lunge` was added in 26.1 in the middle of the alphabet, which moved twenty-one of the
+    /// forty-two after it. A level of sharpness sent as 26.2 numbers it is a different
+    /// enchantment to an older client.
+    #[test]
+    fn an_enchantment_is_a_different_number_to_a_different_client() {
+        let sharpness = Enchantment::from_name("sharpness").expect("it is an enchantment");
+        assert_ne!(
+            sharpness.wire_id(ProtocolVersion::V26_2),
+            sharpness.wire_id(ProtocolVersion::V1_21)
+        );
+    }
+
+    #[test]
+    fn one_a_version_does_not_know_has_no_number() {
+        let lunge = Enchantment::from_name("lunge").expect("it is an enchantment");
+        assert_eq!(lunge.wire_id(ProtocolVersion::V1_21), None);
+        assert!(lunge.wire_id(ProtocolVersion::V26_2).is_some());
+    }
+
+    #[test]
+    fn a_number_reads_back_as_the_enchantment_that_client_meant() {
+        for version in ProtocolVersion::ALL {
+            for name in ["sharpness", "mending", "protection", "unbreaking"] {
+                let known = Enchantment::from_name(name).expect("it is an enchantment");
+                let Some(id) = known.wire_id(version) else {
+                    continue;
+                };
+                assert_eq!(
+                    Enchantment::from_wire_id(id, version).map(|read| read.name),
+                    Some(known.name),
+                    "{name} on {version:?}"
+                );
+            }
+        }
+    }
+}

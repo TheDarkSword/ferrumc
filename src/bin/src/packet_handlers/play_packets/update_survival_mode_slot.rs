@@ -18,16 +18,24 @@ pub fn handle(
         if let Ok(mut inventory) = inventories.get_mut(eid) {
             for slot in event.changed_slots.data {
                 if let Some(new_data) = slot.data.to_option() {
+                    // A client sends its components as hashes rather than as values, so there is
+                    // nothing here to rebuild them from. Whatever the server already had in the
+                    // slot is kept where the kind still matches, so a named sword moved across an
+                    // inventory does not come out plain.
+                    let held = inventory
+                        .get_item(slot.number as usize)
+                        .ok()
+                        .flatten()
+                        .filter(|held| held.item_id == Some(ItemID(new_data.item_id)))
+                        .map(|held| held.components.clone())
+                        .unwrap_or_default();
                     inventory
                         .set_item(
                             slot.number as _,
                             InventorySlot {
                                 count: new_data.item_count,
                                 item_id: Some(ItemID(new_data.item_id)),
-                                components_to_add: None,
-                                components_to_remove: None,
-                                components_to_add_count: None,
-                                components_to_remove_count: None,
+                                components: held,
                             },
                         )
                         .expect("failed to write to inventory");
