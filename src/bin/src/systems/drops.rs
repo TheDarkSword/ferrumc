@@ -23,6 +23,7 @@ use ferrumc_entities::drops::{
 use ferrumc_entities::entity_type::EntityType;
 use ferrumc_entities::markers::HasCollisions;
 use ferrumc_entities::synced_data::SyncedData;
+use ferrumc_inventories::hotbar::Hotbar;
 use ferrumc_inventories::inventory::Inventory;
 use ferrumc_inventories::item::ItemID;
 use ferrumc_inventories::slot::InventorySlot;
@@ -231,7 +232,10 @@ pub fn merge_what_is_lying_about(
             let Ok((_, _, mut growing)) = items.get_mut(*into) else {
                 continue;
             };
-            let room = i32::from(MAX_STACK) - growing.stack.count.0;
+            let ceiling = growing.stack.item_id.map_or(i32::from(MAX_STACK), |kind| {
+                i32::from(Inventory::stacks_to(kind))
+            });
+            let room = ceiling - growing.stack.count.0;
             if room <= 0 {
                 break;
             }
@@ -272,20 +276,25 @@ pub fn pull_orbs_to_players(
 
 /// Puts into a player whatever they have walked over.
 pub fn pick_up_what_is_walked_over(
-    items: Query<(Entity, &Position, &DroppedItem)>,
+    mut items: Query<(Entity, &Position, &mut DroppedItem)>,
     orbs: Query<(Entity, &Position, &ExperienceOrb)>,
-    mut players: Query<(Entity, &Position, &mut Inventory), With<PlayerIdentity>>,
+    mut players: Query<(Entity, &Position, &mut Inventory, &Hotbar), With<PlayerIdentity>>,
     watchers: Query<&StreamWriter>,
     ids: Query<&EntityIdentity>,
     mut commands: Commands,
 ) {
-    for (player, at, mut inventory) in &mut players {
-        for (entity, lying, dropped) in &items {
+    for (player, at, mut inventory, hotbar) in &mut players {
+        for (entity, lying, mut dropped) in &mut items {
             if !dropped.can_be_taken() || lying.coords.distance(at.coords) > PICKUP_REACH {
                 continue;
             }
-            if inventory.add_item(dropped.stack.clone()).is_ok() {
+            // What will not fit stays on the ground rather than being lost, so walking over a
+            // stack with one slot free takes what that slot holds and leaves the rest.
+            let left = inventory.add_item(dropped.stack.clone(), Some(hotbar.selected_slot));
+            if left.is_empty() {
                 forget(entity, &ids, &watchers, &mut commands);
+            } else {
+                dropped.stack = left;
             }
         }
         // Experience goes into a player rather than into their inventory; where it goes from there

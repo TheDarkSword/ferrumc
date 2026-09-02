@@ -2,7 +2,7 @@
 #[doc = r""]
 #[doc = r" Four bytes of hardness and one of light with a flag on top, which is small enough to"]
 #[doc = r" stay in cache while a player mines."]
-static PACKED : & [u8] = include_bytes ! ("/home/michele/Sviluppo/RustRoverProjects/ferrumc/target/debug/build/ferrumc-data/3bcff9d478ca005b/out/block_properties.bin") ;
+static PACKED : & [u8] = include_bytes ! ("/home/michele/Sviluppo/RustRoverProjects/ferrumc/target/debug/build/ferrumc-data/4938799ae8cddb81/out/block_properties.bin") ;
 #[doc = r" How many states there are."]
 pub const STATES: usize = 32366;
 const PER_STATE: usize = 5;

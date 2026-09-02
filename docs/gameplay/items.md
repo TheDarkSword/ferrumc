@@ -139,3 +139,33 @@ rule that names the block wins, so their order is the tool's own answer and not 
 Not a rule here: the block's loot table says so, through a `match_tool` condition. The break event
 carries what was in hand and the loot context passes it on, so stone mined with a fist matches
 nothing and leaves nothing.
+
+# Putting things away
+
+`Inventory::add_item` takes as much of a stack as fits and hands back whatever would not, so a
+player walking over a stack with one slot free takes what that slot holds and leaves the rest on the
+ground rather than losing it.
+
+## The order vanilla looks in
+
+**To top up** an existing stack: what is in hand first, then the off hand, then the hotbar, then the
+main store. That is what makes mining feel right — the stack being held grows.
+
+**To place** a new stack: the same order **less the off hand**. Vanilla will top up what is already
+held there and will never put something new into it, which is why a picked-up block does not land in
+the shield hand.
+
+The armour slots and the crafting grid are in neither list.
+
+## What counts as the same thing
+
+The kind **and** everything the stack says about itself. A named sword does not merge into a plain
+one; two swords with different damage are two stacks. That falls out of comparing the whole
+component patch, which is why it had to exist first.
+
+## How much fits
+
+The item's own `max_stack_size`, not a flat sixty-four: sixteen for pearls, one for a sword.
+
+Anything that is not a player's inventory — a chest, once there is one — is a plain row of slots and
+is walked in order.

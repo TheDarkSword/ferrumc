@@ -21,4 +21,16 @@ pub mod player {
     pub const HOTBAR_SLOT_9: u8 = 44;
 
     pub const OFFHAND_SLOT: u8 = 45;
+
+    /// Where the nine hotbar slots run.
+    pub const HOTBAR: std::ops::Range<usize> = 36..45;
+
+    /// Where the twenty-seven main slots run.
+    pub const MAIN: std::ops::Range<usize> = 9..36;
+
+    /// Where the four armour slots run.
+    pub const ARMOUR: std::ops::Range<usize> = 5..9;
+
+    /// Where the crafting grid runs, output first.
+    pub const CRAFTING: std::ops::Range<usize> = 0..5;
 }

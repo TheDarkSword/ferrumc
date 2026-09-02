@@ -81,10 +81,10 @@ impl DroppedItem {
     }
 }
 
-/// The largest a stack goes before it stops taking more.
+/// The largest a stack goes where the item says nothing else.
 ///
-/// Sixty-four for almost everything; what a particular item allows is one of its components, and
-/// nothing reads those yet.
+/// Sixty-four for almost everything; sixteen for pearls, one for a sword. What a particular item
+/// allows is on the item, and `Inventory::stacks_to` is what asks.
 pub const MAX_STACK: u8 = 64;
 
 /// Experience lying on the ground.
