@@ -4,6 +4,7 @@ use std::io::Write;
 
 mod attributes;
 mod biomes;
+mod block_properties;
 mod blocks;
 mod components;
 mod damage_types;
@@ -38,6 +39,7 @@ pub fn main() {
         (particles::build, "particles.rs"),
         (sounds::build, "sounds.rs"),
         (attributes::build, "attributes.rs"),
+        (block_properties::build, "block_properties.rs"),
         (components::build, "components.rs"),
         (default_attributes::build, "default_attributes.rs"),
         (damage_types::build, "damage_types.rs"),

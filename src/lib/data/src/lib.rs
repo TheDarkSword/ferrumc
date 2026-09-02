@@ -313,3 +313,45 @@ mod enchantment_tests {
         }
     }
 }
+
+#[cfg(test)]
+mod block_property_tests {
+    use crate::generated::block_properties::{hardness, light, needs_the_right_tool, STATES};
+
+    /// Every state the world can hold, read straight off the game.
+    #[test]
+    fn every_state_the_newest_version_has_is_here() {
+        assert_eq!(STATES, 32366);
+    }
+
+    #[test]
+    fn the_numbers_are_the_games_own() {
+        assert_eq!(hardness(1), 1.5, "stone");
+        assert_eq!(hardness(10), 0.5, "dirt");
+        assert_eq!(hardness(3369), 50.0, "obsidian");
+        assert_eq!(hardness(0), 0.0, "air goes at a touch");
+    }
+
+    /// A negative answer means nothing breaks it.
+    #[test]
+    fn bedrock_is_not_breakable() {
+        assert!(hardness(85) < 0.0);
+    }
+
+    /// Which decides both what it drops and how much slower the wrong tool is.
+    #[test]
+    fn stone_needs_a_pickaxe_and_dirt_needs_nothing() {
+        assert!(needs_the_right_tool(1), "stone");
+        assert!(!needs_the_right_tool(10), "dirt");
+        assert!(!needs_the_right_tool(137), "an oak log drops to a fist");
+    }
+
+    /// A state past the end answers with something a player can dig rather than something that
+    /// strands them.
+    #[test]
+    fn a_state_this_server_does_not_know_is_not_unbreakable() {
+        assert_eq!(hardness(u32::MAX), 0.0);
+        assert!(!needs_the_right_tool(u32::MAX));
+        assert_eq!(light(u32::MAX), 0);
+    }
+}

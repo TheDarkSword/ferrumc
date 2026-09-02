@@ -16,6 +16,7 @@ ferrumc-scheduler = { workspace = true }
 
 ferrumc-registry = { workspace = true }
 ferrumc-messages = { workspace = true }
+ferrumc-mining = { workspace = true }
 ferrumc-components = { workspace = true }
 ferrumc-net = { workspace = true }
 ferrumc-performance = { workspace = true }

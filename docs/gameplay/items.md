@@ -86,3 +86,51 @@ The way back is **not the forward table reversed**. A stand-in is several names 
 number, and reversing one of those would be a guess; the reverse table is built from the names, so
 only an exact match comes back. A client can only ever name something its own version has, so
 nothing is lost — and a number that names nothing is refused rather than acted on.
+
+# Mining
+
+`ferrumc-mining` holds the arithmetic; `systems/listeners/digging_system.rs` asks the world.
+
+```
+speed = tool_speed
+      + mining_efficiency          only if the tool beats a bare hand
+      × (1 + haste × 0.2)
+      × [0.3, 0.09, 0.0027, 0.00081][fatigue]
+      × block_break_speed
+      × submerged_speed            if the digger's head is under water
+      ÷ 5                          if there is nothing underfoot
+
+progress a tick = speed ÷ hardness ÷ (30 if the tool is right, else 100)
+```
+
+Two things people do not expect:
+
+- The **wrong tool** does not only stop the drop. The divisor goes from 30 to 100, so the block
+  takes more than three times as long.
+- **Mid-air** is five times slower and **underwater** five times again, and they stack — twenty-five
+  times slower for a block broken while swimming upward.
+
+Efficiency is added only where the tool already beats a bare hand, which is why efficiency on a hoe
+against stone changes nothing.
+
+A block that needs no particular tool is always "right", however it is being hit, so dirt takes the
+same time whatever is held.
+
+## Where the numbers come from
+
+Hardness and the right-tool flag are **per block state**, not per block — a lit furnace and an unlit
+one are two states and need not agree. Neither is in any report; both live on the block's behaviour,
+set in code. `scripts/extract_block_properties.py` asks the game for all 32366 of them.
+
+The table is packed into five bytes a state and `include_bytes!`d rather than emitted as a literal
+array: thirty-two thousand numbers is a token each, and minutes of compile time for something only
+ever read.
+
+Which blocks a tool's rule names is a tag the packs define, so it is asked of them. The **first**
+rule that names the block wins, so their order is the tool's own answer and not something to sort.
+
+## Wrong tool, no drops
+
+Not a rule here: the block's loot table says so, through a `match_tool` condition. The break event
+carries what was in hand and the loot context passes it on, so stone mined with a fist matches
+nothing and leaves nothing.

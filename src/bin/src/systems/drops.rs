@@ -62,6 +62,12 @@ pub fn drop_what_a_block_left(
                     z: f64::from(event.position.pos.z) + 0.5,
                 }),
                 block_state: Some(event.state),
+                // What broke it, which is what the table's own conditions ask about: stone mined
+                // with a fist matches nothing and drops nothing.
+                tool: event.tool.map(|held| ferrumc_predicates::context::ItemRef {
+                    id: held.0 .0,
+                    count: 1,
+                }),
                 ..LootParams::default()
             },
             &mut rng,

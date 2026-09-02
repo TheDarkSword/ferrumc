@@ -1,0 +1,10 @@
+[package]
+name = "ferrumc-mining"
+edition.workspace = true
+version.workspace = true
+
+[dependencies]
+ferrumc-data = { workspace = true }
+
+[lints]
+workspace = true

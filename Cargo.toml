@@ -46,6 +46,7 @@ members = [
     "src/lib/scheduler",
     "src/lib/components",
     "src/lib/messages",
+    "src/lib/mining",
     "src/lib/data",
     "src/lib/attributes",
     "src/lib/damage",
@@ -169,6 +170,7 @@ ferrumc-recipes = { path = "src/lib/recipes" }
 ferrumc-components = { path = "src/lib/components" }
 ferrumc-dashboard = { path = "src/lib/dashboard" }
 ferrumc-messages = { path = "src/lib/messages" }
+ferrumc-mining = { path = "src/lib/mining" }
 ferrumc-entities = { path = "src/lib/entities" }
 ferrumc-physics = { path = "src/lib/physics" }
 ferrumc-spawning = { path = "src/lib/spawning" }

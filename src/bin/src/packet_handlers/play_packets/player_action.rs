@@ -79,6 +79,9 @@ pub fn handle(
                     block_break_events.write(BlockBrokenEvent {
                         position: pos,
                         state: was,
+                        // Broken outright rather than dug, which is a creative player: the loot
+                        // table is not rolled for one, so nothing asks what was in hand.
+                        tool: None,
                     });
 
                     // Broadcast the change
