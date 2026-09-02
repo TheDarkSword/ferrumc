@@ -4,7 +4,7 @@ use quote::{format_ident, quote};
 use serde::Deserialize;
 use std::collections::BTreeMap;
 use std::fs;
-use syn::{LitFloat, LitInt};
+use syn::LitInt;
 
 #[derive(Deserialize, Clone, Debug)]
 #[allow(dead_code)]
@@ -57,22 +57,10 @@ pub(crate) fn build() -> TokenStream {
         let id_lit = LitInt::new(&enchantment.id.to_string(), Span::call_site());
 
         let translate = &enchantment.description.translate;
-        let min_cost_base = LitFloat::new(
-            &format!("{:.1}", enchantment.min_cost.base),
-            Span::call_site(),
-        );
-        let min_cost_per_level = LitFloat::new(
-            &format!("{:.1}", enchantment.min_cost.per_level_above_first),
-            Span::call_site(),
-        );
-        let max_cost_base = LitFloat::new(
-            &format!("{:.1}", enchantment.max_cost.base),
-            Span::call_site(),
-        );
-        let max_cost_per_level = LitFloat::new(
-            &format!("{:.1}", enchantment.max_cost.per_level_above_first),
-            Span::call_site(),
-        );
+        let min_cost_base = crate::number_f32(enchantment.min_cost.base);
+        let min_cost_per_level = crate::number_f32(enchantment.min_cost.per_level_above_first);
+        let max_cost_base = crate::number_f32(enchantment.max_cost.base);
+        let max_cost_per_level = crate::number_f32(enchantment.max_cost.per_level_above_first);
         let anvil_cost = LitInt::new(&enchantment.anvil_cost.to_string(), Span::call_site());
         let weight = LitInt::new(&enchantment.weight.to_string(), Span::call_site());
         let max_level = LitInt::new(&enchantment.max_level.to_string(), Span::call_site());

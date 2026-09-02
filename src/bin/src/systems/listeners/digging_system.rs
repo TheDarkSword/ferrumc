@@ -161,8 +161,14 @@ pub fn handle_finish_digging(
     mut player_query: Query<DiggingPlayerQuery>,
     broadcast_query: Query<(Entity, &StreamWriter)>, // For broadcasting the break
     mut block_break_writer: MessageWriter<ferrumc_messages::BlockBrokenEvent>,
+    mut hunger: Query<&mut ferrumc_components::player::hunger::Hunger>,
 ) {
     for event in events.read() {
+        // Breaking a block costs a little energy, which is most of why mining makes a player
+        // hungry: a thousandth of a shank each, and a mine is a great many blocks.
+        if let Ok(mut hunger) = hunger.get_mut(event.player) {
+            hunger.spend(ferrumc_components::player::hunger::EXHAUSTION_MINE);
+        }
         let Ok((_player_entity, writer, digging_opt)) = player_query.get_mut(event.player) else {
             warn!(
                 "Player {:?} sent FinishDigging but query failed.",

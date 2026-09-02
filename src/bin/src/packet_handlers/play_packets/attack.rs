@@ -8,7 +8,7 @@
 use bevy_ecs::prelude::*;
 use bevy_math::Vec2;
 use ferrumc_attributes::Attributes;
-use ferrumc_components::player::hunger::Hunger;
+use ferrumc_components::player::hunger::{Hunger, EXHAUSTION_ATTACK};
 use ferrumc_core::identity::entity_identity::EntityIdentity;
 use ferrumc_core::identity::player_identity::PlayerIdentity;
 use ferrumc_core::transform::grounded::OnGround;
@@ -17,7 +17,7 @@ use ferrumc_core::transform::rotation::Rotation;
 use ferrumc_core::transform::velocity::Velocity;
 use ferrumc_damage::combat::{
     swing, Swinging, Target, Weapon, SWEEP_KNOCKBACK, SWEEP_RANGE_SQUARED, SWEEP_REACH,
-    SWEEP_REACH_VERTICAL, SWING_EXHAUSTION,
+    SWEEP_REACH_VERTICAL,
 };
 use ferrumc_damage::{Swing, Vitals};
 use ferrumc_data::attributes::Attribute;
@@ -191,7 +191,7 @@ pub fn handle(
             swing.swung();
         }
         if let Ok(mut hunger) = hunger.get_mut(attacker) {
-            hunger.exhaustion += SWING_EXHAUSTION;
+            hunger.spend(EXHAUSTION_ATTACK);
         }
     }
 }

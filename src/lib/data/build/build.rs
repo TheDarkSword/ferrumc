@@ -65,6 +65,39 @@ pub fn main() {
     }
 }
 
+/// A number written so nothing is lost, and so it is still a float literal.
+///
+/// Rounding to a fixed number of places is how gravity's 0.08 became 0.1 and a carrot's 3.6000001
+/// became 3.6; the same one-liner was copied into five generators.
+pub fn number(value: f64) -> syn::LitFloat {
+    syn::LitFloat::new(&written(value), proc_macro2::Span::call_site())
+}
+
+/// The same for a value the game keeps as a single-precision float.
+///
+/// Written at single precision on purpose: the report renders such a value at double precision, so
+/// a saturation of 2.4 arrives as 2.4000000953674316, and writing that into an `f32` field is the
+/// same number said at a length that means nothing.
+pub fn number_f32(value: f32) -> syn::LitFloat {
+    let written = format!("{value:?}");
+    let written = if written.contains(['.', 'e', 'E']) {
+        written
+    } else {
+        format!("{written}.0")
+    };
+    syn::LitFloat::new(&written, proc_macro2::Span::call_site())
+}
+
+/// The same, as text, for a generator that writes source rather than tokens.
+pub fn written(value: f64) -> String {
+    let written = format!("{value:?}");
+    if written.contains(['.', 'e', 'E']) {
+        written
+    } else {
+        format!("{written}.0")
+    }
+}
+
 pub fn array_to_tokenstream(array: &[String]) -> proc_macro2::TokenStream {
     let mut variants = proc_macro2::TokenStream::new();
 

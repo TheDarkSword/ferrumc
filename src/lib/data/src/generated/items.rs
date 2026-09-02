@@ -655,6 +655,7 @@ impl Item {
                 DataComponent::Consumable,
                 &ConsumableImpl {
                     consume_seconds: 1.6,
+                    after: &[],
                 },
             ),
         ],
@@ -897,6 +898,7 @@ impl Item {
                 DataComponent::Consumable,
                 &ConsumableImpl {
                     consume_seconds: 1.6,
+                    after: &[],
                 },
             ),
         ],
@@ -1435,7 +1437,7 @@ impl Item {
                 DataComponent::Food,
                 &FoodImpl {
                     nutrition: 3,
-                    saturation: 1.8,
+                    saturation: 1.8000001,
                     can_always_eat: false,
                 },
             ),
@@ -1443,6 +1445,7 @@ impl Item {
                 DataComponent::Consumable,
                 &ConsumableImpl {
                     consume_seconds: 1.6,
+                    after: &[],
                 },
             ),
         ],
@@ -1495,6 +1498,7 @@ impl Item {
                 DataComponent::Consumable,
                 &ConsumableImpl {
                     consume_seconds: 1.6,
+                    after: &[],
                 },
             ),
         ],
@@ -1539,7 +1543,7 @@ impl Item {
                 DataComponent::Food,
                 &FoodImpl {
                     nutrition: 6,
-                    saturation: 7.2,
+                    saturation: 7.2000003,
                     can_always_eat: false,
                 },
             ),
@@ -1547,6 +1551,7 @@ impl Item {
                 DataComponent::Consumable,
                 &ConsumableImpl {
                     consume_seconds: 1.6,
+                    after: &[],
                 },
             ),
         ],
@@ -3067,6 +3072,7 @@ impl Item {
                 DataComponent::Consumable,
                 &ConsumableImpl {
                     consume_seconds: 1.6,
+                    after: &[],
                 },
             ),
         ],
@@ -3979,7 +3985,7 @@ impl Item {
                 DataComponent::Food,
                 &FoodImpl {
                     nutrition: 3,
-                    saturation: 3.6,
+                    saturation: 3.6000001,
                     can_always_eat: false,
                 },
             ),
@@ -3987,6 +3993,7 @@ impl Item {
                 DataComponent::Consumable,
                 &ConsumableImpl {
                     consume_seconds: 1.6,
+                    after: &[],
                 },
             ),
         ],
@@ -4779,6 +4786,10 @@ impl Item {
                 DataComponent::Consumable,
                 &ConsumableImpl {
                     consume_seconds: 1.6,
+                    after: &[ConsumeEffect {
+                        what: Aftermath::Apply(&[("hunger", 0, 600)]),
+                        probability: 0.3,
+                    }],
                 },
             ),
         ],
@@ -5135,6 +5146,10 @@ impl Item {
                 DataComponent::Consumable,
                 &ConsumableImpl {
                     consume_seconds: 1.6,
+                    after: &[ConsumeEffect {
+                        what: Aftermath::TeleportRandomly,
+                        probability: 1.0,
+                    }],
                 },
             ),
         ],
@@ -5700,6 +5715,7 @@ impl Item {
                 DataComponent::Consumable,
                 &ConsumableImpl {
                     consume_seconds: 1.6,
+                    after: &[],
                 },
             ),
         ],
@@ -5893,6 +5909,7 @@ impl Item {
                 DataComponent::Consumable,
                 &ConsumableImpl {
                     consume_seconds: 1.6,
+                    after: &[],
                 },
             ),
         ],
@@ -5918,7 +5935,7 @@ impl Item {
                 DataComponent::Food,
                 &FoodImpl {
                     nutrition: 6,
-                    saturation: 7.2,
+                    saturation: 7.2000003,
                     can_always_eat: false,
                 },
             ),
@@ -5926,6 +5943,7 @@ impl Item {
                 DataComponent::Consumable,
                 &ConsumableImpl {
                     consume_seconds: 1.6,
+                    after: &[],
                 },
             ),
         ],
@@ -5959,6 +5977,7 @@ impl Item {
                 DataComponent::Consumable,
                 &ConsumableImpl {
                     consume_seconds: 1.6,
+                    after: &[],
                 },
             ),
         ],
@@ -5992,6 +6011,7 @@ impl Item {
                 DataComponent::Consumable,
                 &ConsumableImpl {
                     consume_seconds: 1.6,
+                    after: &[],
                 },
             ),
         ],
@@ -6025,6 +6045,7 @@ impl Item {
                 DataComponent::Consumable,
                 &ConsumableImpl {
                     consume_seconds: 1.6,
+                    after: &[],
                 },
             ),
         ],
@@ -6058,6 +6079,7 @@ impl Item {
                 DataComponent::Consumable,
                 &ConsumableImpl {
                     consume_seconds: 1.6,
+                    after: &[],
                 },
             ),
         ],
@@ -6091,6 +6113,7 @@ impl Item {
                 DataComponent::Consumable,
                 &ConsumableImpl {
                     consume_seconds: 1.6,
+                    after: &[],
                 },
             ),
         ],
@@ -6124,6 +6147,7 @@ impl Item {
                 DataComponent::Consumable,
                 &ConsumableImpl {
                     consume_seconds: 1.6,
+                    after: &[],
                 },
             ),
         ],
@@ -10307,6 +10331,7 @@ impl Item {
                 DataComponent::Consumable,
                 &ConsumableImpl {
                     consume_seconds: 0.8,
+                    after: &[],
                 },
             ),
         ],
@@ -10604,6 +10629,15 @@ impl Item {
                 DataComponent::Consumable,
                 &ConsumableImpl {
                     consume_seconds: 1.6,
+                    after: &[ConsumeEffect {
+                        what: Aftermath::Apply(&[
+                            ("regeneration", 1, 400),
+                            ("resistance", 0, 6000),
+                            ("fire_resistance", 0, 6000),
+                            ("absorption", 3, 2400),
+                        ]),
+                        probability: 1.0,
+                    }],
                 },
             ),
         ],
@@ -12009,6 +12043,7 @@ impl Item {
                 DataComponent::Consumable,
                 &ConsumableImpl {
                     consume_seconds: 1.6,
+                    after: &[],
                 },
             ),
         ],
@@ -12270,6 +12305,13 @@ impl Item {
                 DataComponent::Consumable,
                 &ConsumableImpl {
                     consume_seconds: 1.6,
+                    after: &[ConsumeEffect {
+                        what: Aftermath::Apply(&[
+                            ("regeneration", 1, 100),
+                            ("absorption", 0, 2400),
+                        ]),
+                        probability: 1.0,
+                    }],
                 },
             ),
         ],
@@ -12402,7 +12444,7 @@ impl Item {
                 DataComponent::Food,
                 &FoodImpl {
                     nutrition: 6,
-                    saturation: 14.4,
+                    saturation: 14.400001,
                     can_always_eat: false,
                 },
             ),
@@ -12410,6 +12452,7 @@ impl Item {
                 DataComponent::Consumable,
                 &ConsumableImpl {
                     consume_seconds: 1.6,
+                    after: &[],
                 },
             ),
         ],
@@ -14007,6 +14050,10 @@ impl Item {
                 DataComponent::Consumable,
                 &ConsumableImpl {
                     consume_seconds: 2.0,
+                    after: &[ConsumeEffect {
+                        what: Aftermath::Remove(&["poison"]),
+                        probability: 1.0,
+                    }],
                 },
             ),
         ],
@@ -18159,6 +18206,7 @@ impl Item {
                 DataComponent::Consumable,
                 &ConsumableImpl {
                     consume_seconds: 1.6,
+                    after: &[],
                 },
             ),
         ],
@@ -18184,6 +18232,10 @@ impl Item {
                 DataComponent::Consumable,
                 &ConsumableImpl {
                     consume_seconds: 1.6,
+                    after: &[ConsumeEffect {
+                        what: Aftermath::ClearEverything,
+                        probability: 1.0,
+                    }],
                 },
             ),
         ],
@@ -18646,7 +18698,7 @@ impl Item {
                 DataComponent::Food,
                 &FoodImpl {
                     nutrition: 6,
-                    saturation: 7.2,
+                    saturation: 7.2000003,
                     can_always_eat: false,
                 },
             ),
@@ -18654,6 +18706,7 @@ impl Item {
                 DataComponent::Consumable,
                 &ConsumableImpl {
                     consume_seconds: 1.6,
+                    after: &[],
                 },
             ),
         ],
@@ -19237,6 +19290,7 @@ impl Item {
                 DataComponent::Consumable,
                 &ConsumableImpl {
                     consume_seconds: 1.6,
+                    after: &[],
                 },
             ),
         ],
@@ -20781,6 +20835,10 @@ impl Item {
                 DataComponent::Consumable,
                 &ConsumableImpl {
                     consume_seconds: 1.6,
+                    after: &[ConsumeEffect {
+                        what: Aftermath::PlaySound,
+                        probability: 1.0,
+                    }],
                 },
             ),
         ],
@@ -22759,6 +22817,10 @@ impl Item {
                 DataComponent::Consumable,
                 &ConsumableImpl {
                     consume_seconds: 1.6,
+                    after: &[ConsumeEffect {
+                        what: Aftermath::Apply(&[("poison", 0, 100)]),
+                        probability: 0.6,
+                    }],
                 },
             ),
         ],
@@ -23525,7 +23587,7 @@ impl Item {
                 DataComponent::Food,
                 &FoodImpl {
                     nutrition: 3,
-                    saturation: 1.8,
+                    saturation: 1.8000001,
                     can_always_eat: false,
                 },
             ),
@@ -23533,6 +23595,7 @@ impl Item {
                 DataComponent::Consumable,
                 &ConsumableImpl {
                     consume_seconds: 1.6,
+                    after: &[],
                 },
             ),
         ],
@@ -23566,6 +23629,7 @@ impl Item {
                 DataComponent::Consumable,
                 &ConsumableImpl {
                     consume_seconds: 1.6,
+                    after: &[],
                 },
             ),
         ],
@@ -23610,6 +23674,7 @@ impl Item {
                 DataComponent::Consumable,
                 &ConsumableImpl {
                     consume_seconds: 1.6,
+                    after: &[],
                 },
             ),
         ],
@@ -23871,6 +23936,14 @@ impl Item {
                 DataComponent::Consumable,
                 &ConsumableImpl {
                     consume_seconds: 1.6,
+                    after: &[ConsumeEffect {
+                        what: Aftermath::Apply(&[
+                            ("poison", 1, 1200),
+                            ("hunger", 2, 300),
+                            ("nausea", 0, 300),
+                        ]),
+                        probability: 1.0,
+                    }],
                 },
             ),
         ],
@@ -23969,6 +24042,7 @@ impl Item {
                 DataComponent::Consumable,
                 &ConsumableImpl {
                     consume_seconds: 1.6,
+                    after: &[],
                 },
             ),
         ],
@@ -24518,7 +24592,7 @@ impl Item {
                 DataComponent::Food,
                 &FoodImpl {
                     nutrition: 3,
-                    saturation: 1.8,
+                    saturation: 1.8000001,
                     can_always_eat: false,
                 },
             ),
@@ -24526,6 +24600,7 @@ impl Item {
                 DataComponent::Consumable,
                 &ConsumableImpl {
                     consume_seconds: 1.6,
+                    after: &[],
                 },
             ),
         ],
@@ -24616,6 +24691,7 @@ impl Item {
                 DataComponent::Consumable,
                 &ConsumableImpl {
                     consume_seconds: 1.6,
+                    after: &[],
                 },
             ),
         ],
@@ -25743,6 +25819,10 @@ impl Item {
                 DataComponent::Consumable,
                 &ConsumableImpl {
                     consume_seconds: 1.6,
+                    after: &[ConsumeEffect {
+                        what: Aftermath::Apply(&[("hunger", 0, 600)]),
+                        probability: 0.8,
+                    }],
                 },
             ),
         ],
@@ -25810,6 +25890,7 @@ impl Item {
                 DataComponent::Consumable,
                 &ConsumableImpl {
                     consume_seconds: 1.6,
+                    after: &[],
                 },
             ),
         ],
@@ -27271,6 +27352,10 @@ impl Item {
                 DataComponent::Consumable,
                 &ConsumableImpl {
                     consume_seconds: 1.6,
+                    after: &[ConsumeEffect {
+                        what: Aftermath::Apply(&[("poison", 0, 100)]),
+                        probability: 1.0,
+                    }],
                 },
             ),
         ],
@@ -29156,7 +29241,7 @@ impl Item {
                 DataComponent::Food,
                 &FoodImpl {
                     nutrition: 6,
-                    saturation: 7.2,
+                    saturation: 7.2000003,
                     can_always_eat: true,
                 },
             ),
@@ -29164,6 +29249,7 @@ impl Item {
                 DataComponent::Consumable,
                 &ConsumableImpl {
                     consume_seconds: 1.6,
+                    after: &[],
                 },
             ),
         ],
@@ -29197,6 +29283,7 @@ impl Item {
                 DataComponent::Consumable,
                 &ConsumableImpl {
                     consume_seconds: 1.6,
+                    after: &[],
                 },
             ),
         ],
@@ -29694,6 +29781,7 @@ impl Item {
                 DataComponent::Consumable,
                 &ConsumableImpl {
                     consume_seconds: 1.6,
+                    after: &[],
                 },
             ),
         ],
@@ -36888,8 +36976,29 @@ impl DataComponentImpl for EquippableImpl {
     }
 }
 #[derive(Clone, Debug)]
+#[doc = r" What happens to whoever finished a consumable."]
+pub enum Aftermath {
+    #[doc = r" Applies these, each a name, a level above the first, and a duration in ticks."]
+    Apply(&'static [(&'static str, u8, i32)]),
+    #[doc = r" Takes these away by name."]
+    Remove(&'static [&'static str]),
+    #[doc = r" Takes every effect away, which is what milk does."]
+    ClearEverything,
+    #[doc = r" Moves the drinker somewhere nearby, which is what a chorus fruit does."]
+    TeleportRandomly,
+    #[doc = r" Makes a noise and nothing else."]
+    PlaySound,
+}
+#[doc = r" One thing that happens on finishing a consumable, and how often it happens."]
+pub struct ConsumeEffect {
+    pub what: Aftermath,
+    #[doc = r" Rotten flesh only makes a player hungry four times in five."]
+    pub probability: f32,
+}
 pub struct ConsumableImpl {
     pub consume_seconds: f32,
+    #[doc = r" What happens to whoever finished it."]
+    pub after: &'static [ConsumeEffect],
 }
 impl DataComponentImpl for ConsumableImpl {
     fn as_any(&self) -> &dyn std::any::Any {

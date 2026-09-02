@@ -2,7 +2,7 @@ use proc_macro2::TokenStream;
 use quote::quote;
 use std::collections::BTreeMap;
 use std::fs;
-use syn::{LitFloat, LitInt};
+use syn::LitInt;
 
 /// Which attributes each kind of entity starts with, asked of the game by
 /// `scripts/extract_default_attributes.py`.
@@ -41,7 +41,7 @@ pub(crate) fn build() -> TokenStream {
             let pairs = attributes.iter().filter_map(|(attribute, value)| {
                 let id = number_of("minecraft:attribute", attribute)?;
                 let id = LitInt::new(&id.to_string(), proc_macro2::Span::call_site());
-                let value = number(*value);
+                let value = crate::number(*value);
                 Some(quote! { (#id, #value) })
             });
             Some(quote! {
@@ -70,15 +70,4 @@ pub(crate) fn build() -> TokenStream {
             }
         }
     }
-}
-
-/// A number written so nothing is lost, and so it is still a float literal.
-fn number(value: f64) -> LitFloat {
-    let written = format!("{value:?}");
-    let written = if written.contains(['.', 'e', 'E']) {
-        written
-    } else {
-        format!("{written}.0")
-    };
-    LitFloat::new(&written, proc_macro2::Span::call_site())
 }

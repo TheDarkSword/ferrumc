@@ -13,6 +13,7 @@ use bevy_ecs::prelude::*;
 use bevy_math::IVec3;
 use ferrumc_attributes::Attributes;
 use ferrumc_components::health::Health;
+use ferrumc_components::player::hunger::Hunger;
 use ferrumc_core::identity::entity_identity::EntityIdentity;
 use ferrumc_core::identity::player_identity::PlayerIdentity;
 use ferrumc_core::transform::grounded::OnGround;
@@ -203,6 +204,7 @@ type Victim<'a> = (
     Option<&'a EntityIdentity>,
     Option<&'a StreamWriter>,
     Option<&'a Tracked>,
+    Option<&'a Hunger>,
 );
 
 /// Takes any blow, from the world or from a fight, and works out what actually lands.
@@ -225,6 +227,7 @@ pub fn apply_damage(
             identity,
             writer,
             tracked,
+            hunger,
         )) = victims.get_mut(blow.entity)
         else {
             continue;
@@ -279,7 +282,14 @@ pub fn apply_damage(
         // A player is told their own health outright; everyone else reads it off the metadata row,
         // which `synced_data::mirror_components` keeps in step with the component just changed.
         if let Some(writer) = writer {
-            if let Err(err) = writer.send_packet_ref(&SetHealth::new(health.current, 20, 5.0)) {
+            // The same packet carries the stomach, so what is sent has to be what is actually
+            // there rather than a full one.
+            let (food, saturation) = hunger.map_or((20, 5.0), |hunger| {
+                (i32::from(hunger.level), hunger.saturation)
+            });
+            if let Err(err) =
+                writer.send_packet_ref(&SetHealth::new(health.current, food, saturation))
+            {
                 warn!("could not tell a player they were hurt: {err:?}");
             }
         }

@@ -3,7 +3,7 @@ use proc_macro2::{Span, TokenStream};
 use quote::{format_ident, quote, ToTokens};
 use serde::Deserialize;
 use std::{collections::BTreeMap, fs};
-use syn::{Ident, LitBool, LitFloat, LitInt, LitStr};
+use syn::{Ident, LitBool, LitInt, LitStr};
 
 fn _true() -> bool {
     true
@@ -135,10 +135,7 @@ impl ToTokens for ItemComponents {
                 quote! { #speed }
             };
             let default_mining_speed = {
-                let speed = LitFloat::new(
-                    &format!("{:.1}", tool.default_mining_speed),
-                    Span::call_site(),
-                );
+                let speed = crate::number_f32(tool.default_mining_speed);
                 quote! { #speed }
             };
             let can_destroy_blocks_in_creative =
@@ -153,7 +150,7 @@ impl ToTokens for ItemComponents {
 
         if let Some(food) = &self.food {
             let nutrition = LitInt::new(&food.nutrition.to_string(), Span::call_site());
-            let saturation = LitFloat::new(&format!("{:.1}", food.saturation), Span::call_site());
+            let saturation = crate::number_f32(food.saturation);
             let can_always_eat = {
                 let can = LitBool::new(food.can_always_eat, Span::call_site());
                 quote! { #can }
@@ -166,13 +163,16 @@ impl ToTokens for ItemComponents {
         };
 
         if let Some(consumable) = &self.consumable {
-            let consume_seconds = LitFloat::new(
-                &format!("{:.1}", consumable.consume_seconds.unwrap_or(1.6)),
-                Span::call_site(),
-            );
+            let consume_seconds = crate::number_f32(consumable.consume_seconds.unwrap_or(1.6));
+            let after = consumable
+                .on_consume_effects
+                .iter()
+                .filter_map(ConsumeEffect::to_tokens)
+                .collect::<Vec<_>>();
 
             tokens.extend(quote! { (DataComponent::Consumable, &ConsumableImpl {
                 consume_seconds: #consume_seconds,
+                after: &[#(#after),*],
             }), });
         };
 
@@ -333,6 +333,83 @@ pub struct Modifier {
 #[derive(Deserialize, Clone, Debug)]
 pub struct Consumable {
     consume_seconds: Option<f32>,
+    /// What happens to whoever finished it. Thirteen items have any at all.
+    #[serde(default)]
+    on_consume_effects: Vec<ConsumeEffect>,
+}
+
+/// One thing that happens on finishing a consumable.
+#[derive(Deserialize, Clone, Debug)]
+pub struct ConsumeEffect {
+    #[serde(rename = "type")]
+    kind: String,
+    /// For `apply_effects`, the effects to apply; for `remove_effects`, which to take away, as
+    /// either one name or a list.
+    #[serde(default)]
+    effects: serde_json::Value,
+    /// How often it happens at all. Rotten flesh only makes a player hungry four times in five.
+    probability: Option<f32>,
+}
+
+/// One effect an item applies on being finished.
+#[derive(Deserialize, Clone, Debug)]
+struct AppliedEffect {
+    id: String,
+    #[serde(default)]
+    amplifier: u8,
+    #[serde(default = "one_second")]
+    duration: i32,
+}
+
+const fn one_second() -> i32 {
+    20
+}
+
+impl ConsumeEffect {
+    /// What this comes to, or nothing where the shape is one nothing here reads.
+    fn to_tokens(&self) -> Option<TokenStream> {
+        let probability = crate::number_f32(self.probability.unwrap_or(1.0));
+        let what = match self.kind.strip_prefix("minecraft:")? {
+            "apply_effects" => {
+                let applied: Vec<AppliedEffect> =
+                    serde_json::from_value(self.effects.clone()).ok()?;
+                let each = applied.iter().map(|effect| {
+                    let name = LitStr::new(
+                        effect.id.strip_prefix("minecraft:").unwrap_or(&effect.id),
+                        Span::call_site(),
+                    );
+                    let amplifier = LitInt::new(&effect.amplifier.to_string(), Span::call_site());
+                    let duration = LitInt::new(&effect.duration.to_string(), Span::call_site());
+                    quote! { (#name, #amplifier, #duration) }
+                });
+                quote! { Aftermath::Apply(&[#(#each),*]) }
+            }
+            "remove_effects" => {
+                // Either one name or a list of them; a tag is followed by whoever reads it.
+                let named = match &self.effects {
+                    serde_json::Value::String(one) => vec![one.clone()],
+                    serde_json::Value::Array(many) => many
+                        .iter()
+                        .filter_map(|value| value.as_str().map(str::to_string))
+                        .collect(),
+                    _ => Vec::new(),
+                };
+                let each = named.iter().map(|name| {
+                    let name = LitStr::new(
+                        name.strip_prefix("minecraft:").unwrap_or(name),
+                        Span::call_site(),
+                    );
+                    quote! { #name }
+                });
+                quote! { Aftermath::Remove(&[#(#each),*]) }
+            }
+            "clear_all_effects" => quote! { Aftermath::ClearEverything },
+            "teleport_randomly" => quote! { Aftermath::TeleportRandomly },
+            "play_sound" => quote! { Aftermath::PlaySound },
+            _ => return None,
+        };
+        Some(quote! { ConsumeEffect { what: #what, probability: #probability } })
+    }
 }
 
 #[derive(Deserialize, Clone, Debug)]
@@ -690,8 +767,31 @@ pub(crate) fn build() -> TokenStream {
         }
 
         #[derive(Clone, Debug)]
+        /// What happens to whoever finished a consumable.
+        pub enum Aftermath {
+            /// Applies these, each a name, a level above the first, and a duration in ticks.
+            Apply(&'static [(&'static str, u8, i32)]),
+            /// Takes these away by name.
+            Remove(&'static [&'static str]),
+            /// Takes every effect away, which is what milk does.
+            ClearEverything,
+            /// Moves the drinker somewhere nearby, which is what a chorus fruit does.
+            TeleportRandomly,
+            /// Makes a noise and nothing else.
+            PlaySound,
+        }
+
+        /// One thing that happens on finishing a consumable, and how often it happens.
+        pub struct ConsumeEffect {
+            pub what: Aftermath,
+            /// Rotten flesh only makes a player hungry four times in five.
+            pub probability: f32,
+        }
+
         pub struct ConsumableImpl {
             pub consume_seconds: f32,
+            /// What happens to whoever finished it.
+            pub after: &'static [ConsumeEffect],
         }
 
         impl DataComponentImpl for ConsumableImpl {

@@ -118,9 +118,16 @@ pub fn build() -> Result<(), Box<dyn std::error::Error>> {
     shapes_content.push_str("use super::types::Shape;\n\n");
     shapes_content.push_str("pub const SHAPES: &[Shape] = &[\n");
     for shape in &data.shapes {
+        // Written out in full. At one decimal place a fence post's 0.375 became 0.4 and a
+        // cake's 0.0625 became 0.1, which is a different block.
         shapes_content.push_str(&format!(
-            "    Shape {{ min_x: {:.1}, min_y: {:.1}, min_z: {:.1}, max_x: {:.1}, max_y: {:.1}, max_z: {:.1} }},\n",
-            shape.min[0], shape.min[1], shape.min[2], shape.max[0], shape.max[1], shape.max[2]
+            "    Shape {{ min_x: {}, min_y: {}, min_z: {}, max_x: {}, max_y: {}, max_z: {} }},\n",
+            crate::written(shape.min[0]),
+            crate::written(shape.min[1]),
+            crate::written(shape.min[2]),
+            crate::written(shape.max[0]),
+            crate::written(shape.max[1]),
+            crate::written(shape.max[2]),
         ));
     }
     shapes_content.push_str("];\n");

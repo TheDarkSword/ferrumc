@@ -29,7 +29,7 @@ impl Biome {
     pub const BAMBOO_JUNGLE: Biome = Biome {
         name: "bamboo_jungle",
         has_precipitation: true,
-        temperature: 0.9,
+        temperature: 0.95,
         downfall: 0.9,
         sky_color: 7842047,
         fog_color: 12638463,
@@ -380,7 +380,7 @@ impl Biome {
     pub const JUNGLE: Biome = Biome {
         name: "jungle",
         has_precipitation: true,
-        temperature: 0.9,
+        temperature: 0.95,
         downfall: 0.9,
         sky_color: 7842047,
         fog_color: 12638463,
@@ -510,7 +510,7 @@ impl Biome {
     pub const OLD_GROWTH_SPRUCE_TAIGA: Biome = Biome {
         name: "old_growth_spruce_taiga",
         has_precipitation: true,
-        temperature: 0.2,
+        temperature: 0.25,
         downfall: 0.8,
         sky_color: 8233983,
         fog_color: 12638463,
@@ -601,7 +601,7 @@ impl Biome {
     pub const SNOWY_BEACH: Biome = Biome {
         name: "snowy_beach",
         has_precipitation: true,
-        temperature: 0.1,
+        temperature: 0.05,
         downfall: 0.3,
         sky_color: 8364543,
         fog_color: 12638463,
@@ -666,7 +666,7 @@ impl Biome {
     pub const SPARSE_JUNGLE: Biome = Biome {
         name: "sparse_jungle",
         has_precipitation: true,
-        temperature: 0.9,
+        temperature: 0.95,
         downfall: 0.8,
         sky_color: 7842047,
         fog_color: 12638463,
@@ -731,7 +731,7 @@ impl Biome {
     pub const TAIGA: Biome = Biome {
         name: "taiga",
         has_precipitation: true,
-        temperature: 0.2,
+        temperature: 0.25,
         downfall: 0.8,
         sky_color: 8233983,
         fog_color: 12638463,

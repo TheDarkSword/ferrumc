@@ -151,3 +151,57 @@ mod attribute_tests {
         assert_eq!(armour.clamp(12.0), 12.0);
     }
 }
+
+#[cfg(test)]
+mod consumable_tests {
+    use crate::generated::items::{Aftermath, DataComponent, Item};
+
+    fn aftermath(name: &str) -> &'static [crate::generated::items::ConsumeEffect] {
+        let item = Item::from_registry_key(name).expect("it is an item");
+        item.components
+            .iter()
+            .find_map(|(id, data)| {
+                (id == &DataComponent::Consumable).then(|| {
+                    data.as_any()
+                        .downcast_ref::<crate::generated::items::ConsumableImpl>()
+                        .map(|held| held.after)
+                })
+            })
+            .flatten()
+            .expect("it is a consumable")
+    }
+
+    /// A golden apple is worth reading: the effects it gives are what makes it what it is, and
+    /// they are on the item rather than on any list here.
+    #[test]
+    fn a_golden_apple_gives_regeneration_and_absorption() {
+        let after = aftermath("minecraft:golden_apple");
+        let Aftermath::Apply(effects) = after[0].what else {
+            panic!("a golden apple applies effects");
+        };
+        assert_eq!(
+            effects,
+            &[("regeneration", 1, 100), ("absorption", 0, 2400),]
+        );
+    }
+
+    /// Rotten flesh only makes a player hungry four times in five.
+    #[test]
+    fn some_of_it_only_happens_sometimes() {
+        let after = aftermath("minecraft:rotten_flesh");
+        assert!((after[0].probability - 0.8).abs() < 1e-6);
+    }
+
+    /// Milk takes everything away; honey takes away only poison.
+    #[test]
+    fn milk_clears_everything_and_honey_clears_one_thing() {
+        assert!(matches!(
+            aftermath("minecraft:milk_bucket")[0].what,
+            Aftermath::ClearEverything
+        ));
+        let Aftermath::Remove(named) = aftermath("minecraft:honey_bottle")[0].what else {
+            panic!("honey takes something away");
+        };
+        assert_eq!(named, &["poison"]);
+    }
+}

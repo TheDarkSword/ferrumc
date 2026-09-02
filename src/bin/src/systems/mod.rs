@@ -15,6 +15,7 @@ pub mod drops;
 pub mod effects;
 pub mod emit_player_joined;
 pub mod fluids;
+pub mod hunger;
 pub mod keep_alive_system;
 pub mod lan_pinger;
 pub mod listeners;
@@ -99,6 +100,16 @@ pub fn register_game_systems(schedule: &mut bevy_ecs::schedule::Schedule) {
             attributes::apply_what_is_worn,
             attributes::follow_max_health,
             attributes::send_changed_attributes,
+        )
+            .chain(),
+    );
+
+    // What being hungry costs, before the damage it may cause is settled.
+    schedule.add_systems(
+        (
+            hunger::remember_where_players_are,
+            hunger::feed_whoever_ate,
+            hunger::tick_hunger,
         )
             .chain(),
     );

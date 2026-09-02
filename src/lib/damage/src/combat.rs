@@ -48,9 +48,6 @@ pub const SWEEP_RANGE_SQUARED: f64 = 9.0;
 /// How much sprinting has to be beaten for a sweep to be on, as a multiple of walking speed.
 const SWEEP_SPEED_LIMIT: f64 = 2.5;
 
-/// How much hunger a swing costs.
-pub const SWING_EXHAUSTION: f32 = 0.1;
-
 /// How far an attack has recharged, and how long since the last one.
 #[derive(Component, Debug, Clone, Copy, Default, PartialEq)]
 pub struct Swing {

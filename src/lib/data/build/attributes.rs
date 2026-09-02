@@ -4,7 +4,6 @@ use quote::{format_ident, quote};
 use serde::Deserialize;
 use std::collections::BTreeMap;
 use std::fs;
-use syn::LitFloat;
 
 #[derive(Deserialize, Clone, Debug)]
 pub struct Attribute {
@@ -15,17 +14,6 @@ pub struct Attribute {
     pub highest: f64,
     /// Whether a client is told about it.
     pub syncable: bool,
-}
-
-/// A number written so nothing is lost, and so it is still a float literal.
-fn number(value: f64) -> LitFloat {
-    let written = format!("{value:?}");
-    let written = if written.contains(['.', 'e', 'E']) {
-        written
-    } else {
-        format!("{written}.0")
-    };
-    LitFloat::new(&written, Span::call_site())
 }
 
 pub(crate) fn build() -> TokenStream {
@@ -47,9 +35,9 @@ pub(crate) fn build() -> TokenStream {
         let id_lit = syn::LitInt::new(&attribute.id.to_string(), Span::call_site());
         // Written out in full. Rounding to one place turned gravity's 0.08 into 0.1 and jump
         // strength's 0.42 into 0.4, which nothing noticed because nothing reads them yet.
-        let default_value_lit = number(attribute.default_value);
-        let lowest_lit = number(attribute.lowest);
-        let highest_lit = number(attribute.highest);
+        let default_value_lit = crate::number(attribute.default_value);
+        let lowest_lit = crate::number(attribute.lowest);
+        let highest_lit = crate::number(attribute.highest);
         let syncable = attribute.syncable;
 
         constants.extend(quote! {

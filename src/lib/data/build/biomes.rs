@@ -98,8 +98,8 @@ pub(crate) fn build() -> TokenStream {
         let const_ident = format_ident!("{}", name.to_shouty_snake_case());
 
         let has_precipitation = LitBool::new(biome.has_precipitation, Span::call_site());
-        let temperature = LitFloat::new(&format!("{:.1}", biome.temperature), Span::call_site());
-        let downfall = LitFloat::new(&format!("{:.1}", biome.downfall), Span::call_site());
+        let temperature = crate::number(biome.temperature);
+        let downfall = crate::number(biome.downfall);
 
         let sky_color = LitInt::new(&biome.effects.sky_color.to_string(), Span::call_site());
         let fog_color = LitInt::new(&biome.effects.fog_color.to_string(), Span::call_site());

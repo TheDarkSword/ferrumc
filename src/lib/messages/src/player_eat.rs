@@ -1,16 +1,16 @@
 use bevy_ecs::prelude::{Entity, Message};
 use ferrumc_inventories::item::ItemID;
 
-/// Fired when a player successfully eats an item.
+/// Something finished eating or drinking.
 ///
-/// Fired by: `use_item` packet handler.
-/// Listened for by: A `hunger_system` to update the `Hunger` component.
+/// * Fired by: whatever finishes using an item.
+/// * Listened for by: the hunger system, which feeds the eater and applies whatever the item does
+///   to them afterwards.
+///
+/// Only what was eaten travels here. What it is worth in food, in saturation and in effects is the
+/// item's own answer, and reading it in one place is what keeps the three from drifting apart.
 #[derive(Message)]
-#[allow(unused)]
 pub struct PlayerEating {
     pub player: Entity,
-    pub item_id: ItemID, // The food item they ate
-    // we can pre-calculate these from the registry
-    pub food_value: u8,
-    pub saturation_value: f32,
+    pub item: ItemID,
 }

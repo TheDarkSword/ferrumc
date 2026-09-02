@@ -169,3 +169,43 @@ otherwise not move.
 See `internal_docs/deferred.md` under Phase 5.2. The short version: shields do nothing (item-use
 state), enchantments change nothing (5.10), the client draws a fist's cooldown bar for a sword
 (attribute sync, 5.3), nothing is worth any experience, and only a player can swing.
+
+# Hunger
+
+Three numbers rather than the one a player sees, on the `Hunger` component and ticked by
+`src/bin/src/systems/hunger.rs`.
+
+| | visible | what it does |
+|---|---|---|
+| **exhaustion** | no | what actions cost; every 4 points spend 1 saturation |
+| **saturation** | no | spent before the bar moves; also what drives fast healing |
+| **food level** | yes | the shanks; only drops once saturation is gone |
+
+That chain is why a full player can sprint a long way before a single shank moves.
+
+## What costs anything
+
+Sprinting 0.1 a block, swimming 0.01 a block, a jump 0.05, a sprinting jump 0.2, breaking a block
+0.005, a swing 0.1, a slow heal 6.
+
+**Walking and crouching cost nothing at all** — that is vanilla, not a gap.
+
+## Healing runs off the same numbers, at two speeds
+
+- Full (20) **and** with saturation left: heals `spent / 6` every 10 ticks, and pays `spent`
+  exhaustion for it.
+- Merely well fed (18+): heals 1 every 80 ticks, and pays 6.
+
+## Starving stops where the difficulty says
+
+An empty bar takes a point every 80 ticks, but only down to a floor: hard kills, normal leaves a
+player on one heart, easy and peaceful on five.
+
+## Eating
+
+`PlayerEating` carries **only what was eaten**. What it is worth in food, in saturation and in
+effects is the item's own answer, read in one place so the three cannot drift apart.
+
+Thirteen items do something beyond feeding: a golden apple gives regeneration II and absorption,
+milk clears everything, honey clears poison, rotten flesh makes a player hungry four times in five.
+All of it comes off the item's `consumable` component.
