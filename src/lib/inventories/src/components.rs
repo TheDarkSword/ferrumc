@@ -520,6 +520,66 @@ mod tests {
         );
     }
 
+    /// The whole point of translating only when writing: what an older client cannot be shown is
+    /// left out of *its* bytes and nowhere else. `lunge` arrived in 26.1.
+    #[test]
+    fn an_enchantment_an_older_client_cannot_see_is_still_on_the_sword() {
+        let lunge = Enchantment::from_name("lunge").expect("it is an enchantment");
+        let sharpness = Enchantment::from_name("sharpness").expect("it is an enchantment");
+
+        let mut sword = Components::none();
+        sword.set(
+            ComponentType::Enchantments,
+            Value::Enchantments(vec![(sharpness.id, 5), (lunge.id, 2)]),
+        );
+
+        // An older client is shown only what it has.
+        let mut old = Vec::new();
+        sword
+            .encode(
+                &mut old,
+                &NetEncodeOpts::new(Framing::None, ProtocolVersion::V1_21),
+            )
+            .expect("it writes");
+        let mut newer = Vec::new();
+        sword
+            .encode(
+                &mut newer,
+                &NetEncodeOpts::new(Framing::None, ProtocolVersion::V26_2),
+            )
+            .expect("it writes");
+        assert!(old.len() < newer.len(), "one enchantment fewer went out");
+
+        // And the sword still has both, because sending never touched it.
+        assert_eq!(
+            sword.get(ComponentType::Enchantments),
+            Some(&Value::Enchantments(vec![(sharpness.id, 5), (lunge.id, 2)])),
+            "nothing was lost by showing it to someone who cannot see it"
+        );
+    }
+
+    /// The same for a whole component: `weapon` arrived in 26.1.
+    #[test]
+    fn a_component_an_older_client_cannot_see_is_still_on_the_stack() {
+        let mut stack = Components::none();
+        stack.set(ComponentType::Weapon, Value::Nothing);
+        stack.set(ComponentType::Damage, Value::Number(3));
+
+        let mut old = Vec::new();
+        stack
+            .encode(
+                &mut old,
+                &NetEncodeOpts::new(Framing::None, ProtocolVersion::V1_21),
+            )
+            .expect("it writes");
+
+        assert_eq!(old[0], 1, "one component reached the older client");
+        assert!(
+            stack.get(ComponentType::Weapon).is_some(),
+            "and the stack still has the other"
+        );
+    }
+
     #[test]
     fn a_component_a_client_has_never_heard_of_is_left_out_and_not_counted() {
         // `weapon` arrived in 26.1, so nothing older has it.

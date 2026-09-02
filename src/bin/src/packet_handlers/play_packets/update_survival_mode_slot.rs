@@ -1,5 +1,18 @@
+//! What a client says it did to a container.
+//!
+//! Two things a client sends here cannot be taken at face value. The first is the item's number,
+//! which is its own version's and not this server's. The second is the components, which a client
+//! sends as **hashes** rather than values — there is nothing in the packet to rebuild a name or an
+//! enchantment from.
+//!
+//! So the components are not read off the packet at all: they are carried across from wherever they
+//! were before the click. A click moves stacks around inside one inventory, so what left one of the
+//! named slots is what arrives in another, and matching them by kind puts each back on its stack.
+//! Without that, moving an enchanted sword one slot to the left would leave a plain one behind.
+
 use crate::packet_handlers::player::update_crafting::update_player_crafting_grid;
 use bevy_ecs::prelude::{Query, Res};
+use ferrumc_inventories::components::Components;
 use ferrumc_inventories::defined_slots;
 use ferrumc_inventories::inventory::Inventory;
 use ferrumc_inventories::item::ItemID;
@@ -10,10 +23,40 @@ use ferrumc_net_codec::registry_remap::item_from;
 use ferrumc_net_codec::version::ProtocolVersion;
 use tracing::{error, warn};
 
+/// What was on the stacks a click is moving about, waiting to be put back on them.
+///
+/// Kept as a list rather than a map because two stacks of the same kind may carry different things
+/// — two named swords are two names — and each is handed out once.
+#[derive(Default)]
+pub struct InFlight(Vec<(ItemID, Components)>);
+
+impl InFlight {
+    /// Everything worth carrying that is currently in the slots a click names.
+    #[must_use]
+    pub fn leaving(inventory: &Inventory, slots: impl Iterator<Item = usize>) -> Self {
+        Self(
+            slots
+                .filter_map(|slot| inventory.get_item(slot).ok().flatten())
+                .filter(|held| !held.components.is_empty())
+                .filter_map(|held| Some((held.item_id?, held.components.clone())))
+                .collect(),
+        )
+    }
+
+    /// Takes back what belonged to a stack of this kind, if anything did.
+    ///
+    /// Each is handed out once, so two swords of the same kind do not both end up with the first
+    /// one's name.
+    pub fn claim(&mut self, kind: ItemID) -> Option<Components> {
+        let at = self.0.iter().position(|(held, _)| *held == kind)?;
+        Some(self.0.remove(at).1)
+    }
+}
+
 pub fn handle(
     receiver: Res<ferrumc_net::ClickContainerReceiver>,
     mut inventories: Query<&mut Inventory>,
-    connections: Query<&ferrumc_net::connection::StreamWriter>,
+    connections: Query<&StreamWriter>,
     datapacks: Res<crate::systems::datapacks::Datapacks>,
 ) {
     for (event, eid) in receiver.0.try_iter() {
@@ -26,56 +69,125 @@ pub fn handle(
         // TODO: actually verify that the inventory is synced, this code assumes that the ClickContainer packet is 100% truthful
         // TODO: when actually implementing this correctly, make sure that if the client sends an out of bounds slot id the entire server doesnt crash
 
-        if let Ok(mut inventory) = inventories.get_mut(eid) {
-            for slot in event.changed_slots.data {
-                if let Some(new_data) = slot.data.to_option() {
-                    let Some(named) = u32::try_from(new_data.item_id.0)
-                        .ok()
-                        .and_then(|id| item_from(id, speaks))
-                        .and_then(|id| i32::try_from(id).ok())
-                    else {
-                        warn!(
-                            "a {speaks:?} client named the item {}, which is nothing this server has",
-                            new_data.item_id.0
-                        );
-                        continue;
-                    };
-                    let named = ItemID(VarInt::new(named));
-                    // A client sends its components as hashes rather than as values, so there is
-                    // nothing here to rebuild them from. Whatever the server already had in the
-                    // slot is kept where the kind still matches, so a named sword moved across an
-                    // inventory does not come out plain.
-                    let held = inventory
-                        .get_item(slot.number as usize)
-                        .ok()
-                        .flatten()
-                        .filter(|held| held.item_id == Some(named))
-                        .map(|held| held.components.clone())
-                        .unwrap_or_default();
-                    inventory
-                        .set_item(
-                            slot.number as _,
-                            InventorySlot {
-                                count: new_data.item_count,
-                                item_id: Some(named),
-                                components: held,
-                            },
-                        )
-                        .expect("failed to write to inventory");
-                } else {
-                    inventory
-                        .clear_slot_with_update(slot.number as _, eid)
-                        .expect("failed to clear item in inventory");
-                }
+        let Ok(mut inventory) = inventories.get_mut(eid) else {
+            error!("Player {eid:?} sent a container click but has no inventory");
+            continue;
+        };
 
-                if (defined_slots::player::CRAFT_SLOT_1..=defined_slots::player::CRAFT_SLOT_4)
-                    .contains(&(slot.number as u8))
-                {
-                    update_player_crafting_grid(&mut inventory, eid, &datapacks.recipes);
-                }
+        // Read before anything is written: once a slot has been overwritten, what was on it is
+        // gone, and a click writes the destination before the source.
+        let mut in_flight = InFlight::leaving(
+            &inventory,
+            event
+                .changed_slots
+                .data
+                .iter()
+                .map(|slot| slot.number as usize),
+        );
+
+        for slot in event.changed_slots.data {
+            if let Some(new_data) = slot.data.to_option() {
+                let Some(named) = u32::try_from(new_data.item_id.0)
+                    .ok()
+                    .and_then(|id| item_from(id, speaks))
+                    .and_then(|id| i32::try_from(id).ok())
+                else {
+                    warn!(
+                        "a {speaks:?} client named the item {}, which is nothing this server has",
+                        new_data.item_id.0
+                    );
+                    continue;
+                };
+                let named = ItemID(VarInt::new(named));
+
+                inventory
+                    .set_item(
+                        slot.number as _,
+                        InventorySlot {
+                            count: new_data.item_count,
+                            item_id: Some(named),
+                            components: in_flight.claim(named).unwrap_or_default(),
+                        },
+                    )
+                    .expect("failed to write to inventory");
+            } else if let Err(e) = inventory.clear_slot_with_update(slot.number as _, eid) {
+                error!(
+                    "Failed to clear item in slot {} for player {eid:?}: {e:?}",
+                    slot.number
+                );
             }
-        } else {
-            error!("Failed to get inventory for entity {eid}");
+
+            if (defined_slots::player::CRAFT_SLOT_1..=defined_slots::player::CRAFT_SLOT_4)
+                .contains(&(slot.number as u8))
+            {
+                update_player_crafting_grid(&mut inventory, eid, &datapacks.recipes);
+            }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use ferrumc_data::generated::components::ComponentType;
+    use ferrumc_inventories::components::Value;
+    use ferrumc_text::ComponentBuilder;
+
+    const SWORD: ItemID = ItemID(VarInt::new(895));
+    const STONE: ItemID = ItemID(VarInt::new(1));
+
+    fn an_inventory_holding_a_named_sword(at: usize) -> Inventory {
+        let mut inventory = Inventory::new(Inventory::DEFAULT_PLAYER_SIZE);
+        let mut sword = InventorySlot::of(SWORD, 1);
+        sword
+            .components
+            .set_name(&ComponentBuilder::text("Sting").build());
+        sword
+            .components
+            .set(ComponentType::Damage, Value::Number(12));
+        inventory.set_item(at, sword).expect("the slot exists");
+        inventory
+    }
+
+    /// The thing this is here for: a click moves a stack, and its name has to move with it.
+    #[test]
+    fn a_named_sword_moved_across_the_inventory_keeps_its_name() {
+        let inventory = an_inventory_holding_a_named_sword(36);
+        let mut in_flight = InFlight::leaving(&inventory, [36, 5].into_iter());
+
+        let landed = in_flight.claim(SWORD).expect("the sword's own components");
+        assert_eq!(
+            landed.get(ComponentType::Damage),
+            Some(&Value::Number(12)),
+            "and how damaged it was"
+        );
+        assert!(landed.get(ComponentType::CustomName).is_some());
+    }
+
+    /// Handed out once, so a second sword does not inherit the first one's name.
+    #[test]
+    fn two_swords_do_not_both_get_the_first_ones_name() {
+        let inventory = an_inventory_holding_a_named_sword(36);
+        let mut in_flight = InFlight::leaving(&inventory, [36].into_iter());
+
+        assert!(in_flight.claim(SWORD).is_some());
+        assert!(in_flight.claim(SWORD).is_none());
+    }
+
+    #[test]
+    fn a_stack_of_another_kind_claims_nothing() {
+        let inventory = an_inventory_holding_a_named_sword(36);
+        let mut in_flight = InFlight::leaving(&inventory, [36].into_iter());
+        assert!(in_flight.claim(STONE).is_none());
+    }
+
+    #[test]
+    fn a_plain_stack_carries_nothing_and_is_not_in_flight() {
+        let mut inventory = Inventory::new(Inventory::DEFAULT_PLAYER_SIZE);
+        inventory
+            .set_item(36, InventorySlot::of(STONE, 64))
+            .expect("the slot exists");
+        let mut in_flight = InFlight::leaving(&inventory, [36].into_iter());
+        assert!(in_flight.claim(STONE).is_none());
     }
 }

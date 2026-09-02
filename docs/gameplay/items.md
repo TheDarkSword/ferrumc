@@ -72,6 +72,16 @@ translates only at the moment of writing to one particular connection, so:
   translate it back before storing it. Taking one at face value stores a different item — which is
   what happened before this was written.
 
+Nothing is ever dropped from the server's own copy. An enchantment or a component a client cannot
+see is left out of **that client's bytes** and nowhere else, so a `lunge`-enchanted sword shown to a
+1.21 client is still a `lunge`-enchanted sword, and a 26.2 client looking at the same slot sees it.
+
+The click path is where that could have been undone. A client's click packet carries components as
+hashes, not values, so there is nothing in it to rebuild a name from — and rebuilding a slot from
+the packet alone would quietly strip every stack a client ever moves. Instead, what was on the slots
+the click names is read **before anything is written** and carried across to whatever arrives,
+matched by kind and handed out once each.
+
 The way back is **not the forward table reversed**. A stand-in is several names pointing at one
 number, and reversing one of those would be a guess; the reverse table is built from the names, so
 only an exact match comes back. A client can only ever name something its own version has, so
