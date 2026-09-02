@@ -20,58 +20,88 @@ use crate::version::ProtocolVersion;
 /// Written into a table where the target version has nothing meaning the same thing.
 const NO_EQUIVALENT: u16 = u16::MAX;
 
+/// The same tables read the other way: indexed by the id a version uses, giving this server's own.
+macro_rules! back_tables {
+    ($registry:literal) => {
+        tables!($registry, ".back")
+    };
+}
+
 macro_rules! tables {
     ($registry:literal) => {
+        tables!($registry, "")
+    };
+    ($registry:literal, $direction:literal) => {
         [
             include_bytes!(concat!(
                 "../../../../../../assets/data/registry_remap/",
                 $registry,
-                "/1.21.bin"
+                "/1.21",
+                $direction,
+                ".bin"
             )),
             include_bytes!(concat!(
                 "../../../../../../assets/data/registry_remap/",
                 $registry,
-                "/1.21.2.bin"
+                "/1.21.2",
+                $direction,
+                ".bin"
             )),
             include_bytes!(concat!(
                 "../../../../../../assets/data/registry_remap/",
                 $registry,
-                "/1.21.4.bin"
+                "/1.21.4",
+                $direction,
+                ".bin"
             )),
             include_bytes!(concat!(
                 "../../../../../../assets/data/registry_remap/",
                 $registry,
-                "/1.21.5.bin"
+                "/1.21.5",
+                $direction,
+                ".bin"
             )),
             include_bytes!(concat!(
                 "../../../../../../assets/data/registry_remap/",
                 $registry,
-                "/1.21.6.bin"
+                "/1.21.6",
+                $direction,
+                ".bin"
             )),
             include_bytes!(concat!(
                 "../../../../../../assets/data/registry_remap/",
                 $registry,
-                "/1.21.8.bin"
+                "/1.21.8",
+                $direction,
+                ".bin"
             )),
             include_bytes!(concat!(
                 "../../../../../../assets/data/registry_remap/",
                 $registry,
-                "/1.21.9.bin"
+                "/1.21.9",
+                $direction,
+                ".bin"
             )),
             include_bytes!(concat!(
                 "../../../../../../assets/data/registry_remap/",
                 $registry,
-                "/1.21.11.bin"
+                "/1.21.11",
+                $direction,
+                ".bin"
             )),
             include_bytes!(concat!(
                 "../../../../../../assets/data/registry_remap/",
                 $registry,
-                "/26.1.bin"
+                "/26.1",
+                $direction,
+                ".bin"
             )),
             include_bytes!(concat!(
                 "../../../../../../assets/data/registry_remap/",
                 $registry,
-                "/26.2.bin"
+                "/26.2",
+                $direction,
+                ".bin"
             )),
         ]
     };
@@ -84,6 +114,24 @@ static SOUND: [&[u8]; 10] = tables!("sound_event");
 static PARTICLE: [&[u8]; 10] = tables!("particle_type");
 static MOB_EFFECT: [&[u8]; 10] = tables!("mob_effect");
 static ATTRIBUTE: [&[u8]; 10] = tables!("attribute");
+
+/// The way back for the one registry a client names things in: what a client sends is its own
+/// number, and taking it at face value stores a different item.
+static ITEM_BACK: [&[u8]; 10] = back_tables!("item");
+
+/// The same as [`lookup`], but a number past the end of the table means nothing rather than itself.
+///
+/// Going the other way there is no "leave it alone": a number this server does not recognise is
+/// one it must not act on.
+fn lookup_exact(tables: &[&[u8]; 10], id: u32, version: ProtocolVersion) -> Option<u32> {
+    let table = tables[version.index()];
+    let offset = id as usize * 2;
+    let [low, high] = table.get(offset..offset + 2)? else {
+        return None;
+    };
+    let entry = u16::from_le_bytes([*low, *high]);
+    (entry != NO_EQUIVALENT).then_some(u32::from(entry))
+}
 
 fn lookup(tables: &[&[u8]; 10], id: u32, version: ProtocolVersion) -> Option<u32> {
     let table = tables[version.index()];
@@ -101,6 +149,19 @@ fn lookup(tables: &[&[u8]; 10], id: u32, version: ProtocolVersion) -> Option<u32
 #[must_use]
 pub fn item_for(item: u32, version: ProtocolVersion) -> Option<u32> {
     lookup(&ITEM, item, version)
+}
+
+/// Which item this server means by a number a client speaking `version` sent.
+///
+/// The way back from [`item_for`], and not the same table read backwards: a stand-in is several
+/// names pointing at one number, and reversing one of those would be a guess. A client can only
+/// ever name something its own version has, so nothing is lost.
+///
+/// `None` means the number named nothing — a client that has been tampered with, or one whose
+/// registry this server does not know.
+#[must_use]
+pub fn item_from(their_item: u32, version: ProtocolVersion) -> Option<u32> {
+    lookup_exact(&ITEM_BACK, their_item, version)
 }
 
 /// The id `entity_type` has in `version`. `None` means the version has no such entity, and the
@@ -296,5 +357,68 @@ mod tests {
             .filter(|&id| entity_type_for(id, ProtocolVersion::OLDEST).is_none())
             .count();
         assert!(missing > 0, "1.21 should be missing entity types");
+    }
+}
+
+#[cfg(test)]
+mod going_back {
+    use super::*;
+
+    /// What is sent out and what comes back have to agree, or a click turns one item into another.
+    #[test]
+    fn what_a_client_was_sent_is_what_it_names_back() {
+        for version in ProtocolVersion::ALL {
+            for item in [1u32, 100, 500, 895, 1000] {
+                let Some(theirs) = item_for(item, version) else {
+                    continue;
+                };
+                // A stand-in is not itself, so only an exact match is expected back.
+                if item_from(theirs, version) != Some(item) {
+                    // Then the id was substituted, and the client is holding something else — it
+                    // must not name this item back.
+                    assert_ne!(
+                        item_from(theirs, version),
+                        Some(item),
+                        "{item} on {version:?}"
+                    );
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn the_native_table_maps_every_id_to_itself_both_ways() {
+        for item in [0u32, 1, 895, 1536] {
+            assert_eq!(item_for(item, ProtocolVersion::CURRENT), Some(item));
+            assert_eq!(item_from(item, ProtocolVersion::CURRENT), Some(item));
+        }
+    }
+
+    /// A number an older client cannot have sent names nothing, rather than naming whatever sits
+    /// at that place in this server's own registry.
+    #[test]
+    fn a_number_past_the_end_of_a_clients_registry_names_nothing() {
+        assert_eq!(item_from(5000, ProtocolVersion::V1_21), None);
+        assert_eq!(item_from(5000, ProtocolVersion::CURRENT), None);
+    }
+
+    /// The point of the whole thing: an item only 26.2 has reaches an older client as a stand-in,
+    /// and the server goes on knowing what it really is.
+    #[test]
+    fn something_only_the_newest_version_has_is_still_itself_on_the_server() {
+        // A copper sword, which arrived in 26.2.
+        let copper_sword = 890u32;
+        let stand_in = item_for(copper_sword, ProtocolVersion::V1_21);
+        assert!(stand_in.is_some(), "an older client is shown something");
+        assert_ne!(
+            stand_in,
+            Some(copper_sword),
+            "and it is not the item itself, since that version has no such item"
+        );
+        assert_eq!(
+            item_for(copper_sword, ProtocolVersion::CURRENT),
+            Some(copper_sword),
+            "while a client that has it is shown the real thing"
+        );
     }
 }

@@ -148,10 +148,21 @@ def build(version: str) -> None:
                 table[native_id] = target[stand_in]
                 substituted += 1
 
+        # And the way back, indexed by the id that version uses. Built from the names rather than
+        # by turning the table above around: a stand-in is many names pointing at one id, and the
+        # way back from one of those would be a guess. A client can only ever name something it
+        # has, so nothing is lost by leaving the stand-ins out.
+        back = [NO_EQUIVALENT] * (max(target.values(), default=0) + 1)
+        for name, native_id in native.items():
+            their_id = target.get(name)
+            if their_id is not None:
+                back[their_id] = native_id
+
         out_dir = OUT_ROOT / options["dir"]
         out_dir.mkdir(parents=True, exist_ok=True)
         out = out_dir / f"{version}.bin"
         out.write_bytes(struct.pack(f"<{len(table)}H", *table))
+        (out_dir / f"{version}.back.bin").write_bytes(struct.pack(f"<{len(back)}H", *back))
         renames = f"{followed} renamed, " if followed else ""
         print(
             f"{version} {registry}: {len(table)} ids, {renames}"

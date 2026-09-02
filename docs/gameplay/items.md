@@ -56,3 +56,23 @@ is NBT and useless for components, which sit one after another.
 
 It refuses a tag that does not exist, a negative length, and anything nested past 512 deep — a
 stream is not to be trusted.
+
+## Both directions, and why they are not the same table
+
+An item travels as a place in the **reader's own** registry. This server keeps its own number and
+translates only at the moment of writing to one particular connection, so:
+
+- **Out**: a 26.2-only item reaches a 1.21 client as a stand-in from the same family, found by the
+  longest shared trailing words — or as air where there is nothing close. The server's own number is
+  untouched, so a 26.2 client looking at the same chest sees the real thing.
+- **Placing**: the block placed comes from the server's own inventory, not from the number the
+  client sent. A 1.21 client placing a 26.2-only block places the real block, and everyone with a
+  client that has it sees it correctly.
+- **In**: a client names an item by *its own* number. `container_click` and `set_creative_mode_slot`
+  translate it back before storing it. Taking one at face value stores a different item — which is
+  what happened before this was written.
+
+The way back is **not the forward table reversed**. A stand-in is several names pointing at one
+number, and reversing one of those would be a guess; the reverse table is built from the names, so
+only an exact match comes back. A client can only ever name something its own version has, so
+nothing is lost — and a number that names nothing is refused rather than acted on.
