@@ -113,8 +113,13 @@ Two things people do not expect:
 Efficiency is added only where the tool already beats a bare hand, which is why efficiency on a hoe
 against stone changes nothing.
 
-A block that needs no particular tool is always "right", however it is being hit, so dirt takes the
-same time whatever is held.
+A block that needs no particular tool is always "right", however it is being hit — so dirt takes no
+*penalty* for a fist. That is not the same as saying nothing is faster: a shovel is worth eight
+against dirt and a fist is worth one, so the shovel is still seven and a half times quicker. Dirt is
+fifteen ticks by hand and two with a diamond shovel, and it comes up either way.
+
+Which blocks come up bare-handed is the **block's** answer, not the tool's: dirt, grass, sand and
+gravel say no tool is needed; stone and ore say one is.
 
 ## Where the numbers come from
 

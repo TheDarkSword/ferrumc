@@ -355,3 +355,38 @@ mod block_property_tests {
         assert_eq!(light(u32::MAX), 0);
     }
 }
+
+#[cfg(test)]
+mod what_drops_by_hand {
+    use crate::generated::block_properties::needs_the_right_tool;
+
+    /// The distinction the whole thing rests on, checked against the states the game gave.
+    ///
+    /// A shovel is *faster* on dirt and grass, and a fist still drops them. What decides the drop
+    /// is the block's own flag and not what is held.
+    #[test]
+    fn the_soft_blocks_drop_to_a_bare_hand() {
+        // dirt, grass block, sand, gravel: their default states.
+        for (name, state) in [
+            ("dirt", 10),
+            ("grass block", 9),
+            ("sand", 118),
+            ("gravel", 124),
+        ] {
+            assert!(
+                !needs_the_right_tool(state),
+                "{name} should come up with a fist"
+            );
+        }
+    }
+
+    #[test]
+    fn stone_and_ore_do_not() {
+        for (name, state) in [("stone", 1), ("iron ore", 131)] {
+            assert!(
+                needs_the_right_tool(state),
+                "{name} should need a pickaxe to leave anything"
+            );
+        }
+    }
+}

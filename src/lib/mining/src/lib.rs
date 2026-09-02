@@ -228,11 +228,12 @@ mod tests {
         assert!(wrong as f32 / right as f32 > 3.0, "{wrong} against {right}");
     }
 
-    /// And for a block that needs no tool, there is no such thing as the wrong one.
+    /// For a block that needs no tool there is no such thing as the *wrong* one: the divisor stays
+    /// at thirty however it is being hit, so nothing is slowed for using a fist.
     #[test]
-    fn dirt_is_the_same_speed_whatever_is_held() {
+    fn dirt_takes_no_penalty_for_the_tool_being_wrong() {
         let fist = ticks_to_break(DIRT, false, &Digger::default());
-        let with_a_shovel = ticks_to_break(
+        let holding_something_useless = ticks_to_break(
             DIRT,
             false,
             &Digger {
@@ -240,7 +241,63 @@ mod tests {
                 ..Digger::default()
             },
         );
-        assert_eq!(fist, with_a_shovel);
+        assert_eq!(fist, holding_something_useless);
+
+        // Which is not the same as saying nothing is faster. A shovel is a shovel.
+        let shovel = ticks_to_break(DIRT, false, &with_a_pickaxe(8.0)).expect("it breaks");
+        assert!(
+            shovel < fist.expect("it breaks"),
+            "a shovel should still be quicker than a fist"
+        );
+    }
+
+    /// The numbers a player would recognise, and the pair the whole distinction rests on: dirt is
+    /// quicker with a shovel and comes up all the same without one.
+    #[test]
+    fn dirt_takes_what_vanilla_says_with_a_shovel_and_without() {
+        assert_eq!(
+            ticks_to_break(DIRT, false, &Digger::default()),
+            Some(15),
+            "three quarters of a second with a fist"
+        );
+        assert_eq!(
+            ticks_to_break(DIRT, false, &with_a_pickaxe(8.0)),
+            Some(2),
+            "a tenth of one with a diamond shovel"
+        );
+    }
+
+    /// A real shovel, read off the game rather than made up: it is worth eight against anything a
+    /// shovel is for, and it is the right tool for it.
+    #[test]
+    fn a_diamond_shovel_knows_what_it_is_worth_against_dirt() {
+        let shovel = Item::from_registry_key("minecraft:diamond_shovel");
+        let (speed, right) = tool_against(shovel, |blocks| blocks.contains("shovel"));
+        assert_eq!(speed, 8.0);
+        assert!(right);
+    }
+
+    /// And the flag that says whether a fist is enough is the block's, not the tool's. Dirt says
+    /// no tool is needed; stone says one is.
+    #[test]
+    fn what_needs_a_tool_is_the_blocks_own_answer() {
+        let fist = Digger::default();
+
+        // Dirt: no penalty, so a fist is a fist.
+        let dirt_by_hand = ticks_to_break(DIRT, false, &fist).expect("it breaks");
+        // Stone: a fist is not the right tool, so it takes the hundred divisor.
+        let stone_by_hand = ticks_to_break(STONE, true, &fist).expect("it breaks");
+        let stone_with_a_pick = ticks_to_break(STONE, true, &with_a_pickaxe(1.0)).expect("breaks");
+
+        assert!(
+            stone_by_hand > stone_with_a_pick,
+            "stone punishes the wrong tool"
+        );
+        assert_eq!(
+            dirt_by_hand,
+            ticks_to_break(DIRT, false, &with_a_pickaxe(1.0)).expect("it breaks"),
+            "and dirt does not, at the same tool speed"
+        );
     }
 
     /// Compared as progress rather than as ticks: ticks are rounded up, so five times slower is
