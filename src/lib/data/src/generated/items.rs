@@ -1,5 +1,21 @@
 use crate::attributes::Attribute;
 use std::hash::{Hash, Hasher};
+#[doc = r" What using one of these in a recipe leaves behind."]
+#[doc = r""]
+#[doc = r" A bucket of milk in a cake leaves the bucket. Five items have one; everything else is"]
+#[doc = r" used up. This is a field on the item rather than a component, and it is not the same as"]
+#[doc = r" what drinking something leaves — the two lists overlap and are not the same."]
+#[must_use]
+pub const fn crafting_remainder(item: u16) -> Option<u16> {
+    match item {
+        1320 => Some(1149),
+        1412 => Some(1149),
+        1042 => Some(1040),
+        1046 => Some(1040),
+        1041 => Some(1040),
+        _ => None,
+    }
+}
 #[derive(Clone)]
 pub struct Item {
     pub id: u16,

@@ -390,3 +390,37 @@ mod what_drops_by_hand {
         }
     }
 }
+
+#[cfg(test)]
+mod crafting_remainder_tests {
+    use crate::generated::items::{crafting_remainder, Item};
+
+    fn id(name: &str) -> u16 {
+        Item::from_registry_key(name).expect("it is an item").id
+    }
+
+    /// A bucket of milk in a cake leaves the bucket.
+    #[test]
+    fn a_bucket_comes_back() {
+        assert_eq!(
+            crafting_remainder(id("minecraft:milk_bucket")),
+            Some(id("minecraft:bucket"))
+        );
+        assert_eq!(
+            crafting_remainder(id("minecraft:water_bucket")),
+            Some(id("minecraft:bucket"))
+        );
+        assert_eq!(
+            crafting_remainder(id("minecraft:honey_bottle")),
+            Some(id("minecraft:glass_bottle"))
+        );
+    }
+
+    /// Everything else is used up.
+    #[test]
+    fn most_things_leave_nothing() {
+        for name in ["minecraft:dirt", "minecraft:diamond", "minecraft:wheat"] {
+            assert_eq!(crafting_remainder(id(name)), None, "{name}");
+        }
+    }
+}

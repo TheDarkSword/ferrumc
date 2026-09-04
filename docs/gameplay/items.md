@@ -169,3 +169,30 @@ The item's own `max_stack_size`, not a flat sixty-four: sixteen for pearls, one 
 
 Anything that is not a player's inventory — a chest, once there is one — is a plain row of slots and
 is walked in order.
+
+# Crafting
+
+## Taking the result is the one click the server carries out itself
+
+A click packet says the grid emptied and the result appeared. Believing both halves is how one plank
+becomes a crafting table **and** a plank again — the client is describing a trade, and a server that
+writes down what it is told has performed only one side of it.
+
+So when a click names the output slot and the output is actually set, the server spends the grid
+itself: one of each ingredient, and then re-runs the match so holding the button keeps producing.
+What the client says about the grid and the output for that click is ignored, because it is a report
+of the same trade and would spend it twice.
+
+## Remainders
+
+A bucket of milk in a cake leaves the bucket. It goes back in the slot it came from where that slot
+is now empty, and is handed back to the caller otherwise — a slot that still holds more milk has
+nowhere to put it.
+
+Five items leave something behind: the three buckets, dragon's breath and a honey bottle. That is a
+field on the item rather than a component, and **not** the same as what drinking something leaves —
+the two lists overlap and are not the same list. `scripts/extract_crafting_remainders.py` asks the
+game.
+
+The dump this replaced was five entries of an older version's ids, which decoded through the current
+registry as "a diamond hoe leaves a diamond axe".

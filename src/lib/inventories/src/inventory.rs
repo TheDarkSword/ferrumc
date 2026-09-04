@@ -65,6 +65,18 @@ impl Inventory {
         })
     }
 
+    /// Whether the crafting grid is currently making anything.
+    ///
+    /// Asked before a click is believed to have taken a result: a client that says it took one
+    /// from an empty output is asking for something out of nothing.
+    #[must_use]
+    pub fn crafting_output_is_set(&self) -> bool {
+        self.get_item(usize::from(player::CRAFT_SLOT_OUTPUT))
+            .ok()
+            .flatten()
+            .is_some_and(|held| !held.is_empty())
+    }
+
     /// The most of one kind of item that fits in a slot.
     ///
     /// Sixty-four for most things, sixteen for pearls and snowballs, one for a sword. It is a

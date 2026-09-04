@@ -10,7 +10,9 @@
 //! named slots is what arrives in another, and matching them by kind puts each back on its stack.
 //! Without that, moving an enchanted sword one slot to the left would leave a plain one behind.
 
-use crate::packet_handlers::player::update_crafting::update_player_crafting_grid;
+use crate::packet_handlers::player::update_crafting::{
+    take_one_round, update_player_crafting_grid,
+};
 use bevy_ecs::prelude::{Query, Res};
 use ferrumc_inventories::components::Components;
 use ferrumc_inventories::defined_slots;
@@ -85,7 +87,26 @@ pub fn handle(
                 .map(|slot| slot.number as usize),
         );
 
+        // Taking the result is the one click the server carries out itself rather than believing.
+        // A client that says the grid emptied and the result appeared is describing a trade, and
+        // believing both halves is how one plank becomes a crafting table and a plank again.
+        let took_the_result = event
+            .changed_slots
+            .data
+            .iter()
+            .any(|slot| slot.number == i16::from(defined_slots::player::CRAFT_SLOT_OUTPUT));
+        let spilled = if took_the_result && inventory.crafting_output_is_set() {
+            take_one_round(&mut inventory, eid)
+        } else {
+            Vec::new()
+        };
+
         for slot in event.changed_slots.data {
+            // The grid was just spent by the server; what the client says about it is a report of
+            // the same trade and would spend it twice.
+            if took_the_result && GRID_AND_OUTPUT.contains(&(slot.number as u8)) {
+                continue;
+            }
             if let Some(new_data) = slot.data.to_option() {
                 let Some(named) = u32::try_from(new_data.item_id.0)
                     .ok()
@@ -123,8 +144,30 @@ pub fn handle(
                 update_player_crafting_grid(&mut inventory, eid, &datapacks.recipes);
             }
         }
+
+        if took_the_result {
+            // What the grid now makes, if anything: holding shift on a stack of planks should keep
+            // producing.
+            update_player_crafting_grid(&mut inventory, eid, &datapacks.recipes);
+            // And anything a spent ingredient left behind with nowhere to go.
+            for left in spilled {
+                let over = inventory.add_item(left, None);
+                if !over.is_empty() {
+                    warn!("a crafting remainder had nowhere to go and was lost");
+                }
+            }
+        }
     }
 }
+
+/// The grid and the slot its result sits in.
+const GRID_AND_OUTPUT: [u8; 5] = [
+    defined_slots::player::CRAFT_SLOT_OUTPUT,
+    defined_slots::player::CRAFT_SLOT_1,
+    defined_slots::player::CRAFT_SLOT_2,
+    defined_slots::player::CRAFT_SLOT_3,
+    defined_slots::player::CRAFT_SLOT_4,
+];
 
 #[cfg(test)]
 mod tests {

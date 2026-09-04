@@ -475,6 +475,10 @@ impl quote::ToTokens for AttributeModifierSlot {
     }
 }
 
+/// What each item leaves behind when it is crafted with, asked of the game by
+/// `scripts/extract_crafting_remainders.py`.
+const REMAINDERS: &str = "../../../assets/extracted/crafting_remainders.json";
+
 /// Where the game publishes what every item is made of, one file per item.
 const COMPONENTS: &str = "../../../assets/extracted/26.2/reports/minecraft/components/item";
 
@@ -490,6 +494,7 @@ struct ItemFile {
 pub(crate) fn build() -> TokenStream {
     println!("cargo:rerun-if-changed={COMPONENTS}");
     println!("cargo:rerun-if-changed={REGISTRIES}");
+    println!("cargo:rerun-if-changed={REMAINDERS}");
 
     // Read from the report the game writes rather than from a dump beside it. The dump this
     // replaced was 121 items short and had 1389 of its 1416 numbers wrong, and nothing noticed
@@ -521,6 +526,22 @@ pub(crate) fn build() -> TokenStream {
             )
         })
         .collect();
+
+    // What a bucket of milk leaves behind when it is crafted with. Five items have one, and it is
+    // a field on the item rather than a component, so it is asked of the game.
+    let remainders: BTreeMap<String, String> =
+        serde_json::from_str(&fs::read_to_string(REMAINDERS).expect("the crafting remainders"))
+            .expect("the remainders are valid json");
+    let leaves_behind = remainders
+        .iter()
+        .filter_map(|(name, left)| {
+            let of = numbers.get(&format!("minecraft:{name}"))?["protocol_id"].as_u64()?;
+            let left = numbers.get(&format!("minecraft:{left}"))?["protocol_id"].as_u64()?;
+            let of = LitInt::new(&of.to_string(), Span::call_site());
+            let left = LitInt::new(&left.to_string(), Span::call_site());
+            Some(quote! { #of => Some(#left), })
+        })
+        .collect::<TokenStream>();
 
     let mut type_from_raw_id_arms = TokenStream::new();
     let mut type_from_name = TokenStream::new();
@@ -557,6 +578,19 @@ pub(crate) fn build() -> TokenStream {
     quote! {
         use std::hash::{Hash, Hasher};
         use crate::attributes::Attribute;
+
+        /// What using one of these in a recipe leaves behind.
+        ///
+        /// A bucket of milk in a cake leaves the bucket. Five items have one; everything else is
+        /// used up. This is a field on the item rather than a component, and it is not the same as
+        /// what drinking something leaves — the two lists overlap and are not the same.
+        #[must_use]
+        pub const fn crafting_remainder(item: u16) -> Option<u16> {
+            match item {
+                #leaves_behind
+                _ => None,
+            }
+        }
 
         #[derive(Clone)]
         pub struct Item {
