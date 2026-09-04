@@ -387,6 +387,11 @@ impl DamageType {
     pub const fn goes_through_resistance(self) -> bool {
         matches!(self, Self::GenericKill | Self::OutOfWorld)
     }
+    #[doc = " Whether this kind is in the packs' `bypasses_enchantments` group."]
+    #[must_use]
+    pub const fn goes_through_enchantments(self) -> bool {
+        matches!(self, Self::SonicBoom)
+    }
     #[doc = " Whether this kind is in the packs' `bypasses_invulnerability` group."]
     #[must_use]
     pub const fn goes_through_invulnerability(self) -> bool {

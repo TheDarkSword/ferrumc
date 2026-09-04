@@ -28,10 +28,12 @@ use ferrumc_damage::{
 use ferrumc_data::attributes::Attribute;
 use ferrumc_data::generated::damage_types::DamageType;
 use ferrumc_data::generated::effects::Effect;
+use ferrumc_data::generated::enchantments::{Hook, Requires};
 use ferrumc_effects::ActiveEffects;
 use ferrumc_entities::components::Tracked;
 use ferrumc_entities::entity_type::EntityType;
 use ferrumc_entities::synced_data::{fields, EntityFlag, SyncedData};
+use ferrumc_inventories::inventory::Inventory;
 use ferrumc_macros::match_block;
 use ferrumc_messages::{EntityDamaged, EntityDied};
 use ferrumc_net::connection::StreamWriter;
@@ -201,6 +203,7 @@ type Victim<'a> = (
     &'a EntityType,
     Option<&'a Attributes>,
     Option<&'a ActiveEffects>,
+    Option<&'a Inventory>,
     Option<&'a EntityIdentity>,
     Option<&'a StreamWriter>,
     Option<&'a Tracked>,
@@ -224,6 +227,7 @@ pub fn apply_damage(
             kind,
             attributes,
             effects,
+            worn,
             identity,
             writer,
             tracked,
@@ -264,6 +268,9 @@ pub fn apply_damage(
         defence.resistance = effects
             .and_then(|held| held.level(Effect::Resistance))
             .unwrap_or(0);
+        // What the worn pieces guard against *this* blow. Worked out per blow rather than kept,
+        // because feather falling guards against falling and nothing else.
+        defence.protection = worn.map_or(0.0, |worn| protection_against(worn, blow.kind));
 
         let landed = resolve(
             Hit {
@@ -320,6 +327,41 @@ pub fn apply_damage(
                 cause: blow.cause,
             });
         }
+    }
+}
+
+/// What everything worn guards against one kind of blow.
+///
+/// An effect behind a requirement is only counted where the requirement holds, and a requirement
+/// this server cannot read counts for nothing — protecting against everything would be worse than
+/// protecting against nothing.
+fn protection_against(worn: &Inventory, kind: DamageType) -> f32 {
+    let holds = |requires: Requires| match requires {
+        Requires::Always => true,
+        Requires::DamageTags(tags) => tags
+            .iter()
+            .all(|(tag, expected)| in_group(kind, tag) == *expected),
+        Requires::SomethingUnread => false,
+    };
+
+    Inventory::ARMOUR_SLOTS
+        .iter()
+        .filter_map(|at| worn.get_item(*at).ok().flatten())
+        .map(|piece| piece.components.adds_up_at(Hook::Protection, holds))
+        .sum()
+}
+
+/// Whether a kind of damage is in one of the packs' groups, by the group's name.
+fn in_group(kind: DamageType, tag: &str) -> bool {
+    match tag {
+        "bypasses_invulnerability" => kind.goes_through_invulnerability(),
+        "is_fall" => kind.is_fall(),
+        "is_fire" => kind.is_fire(),
+        "is_explosion" => kind.is_explosion(),
+        "is_projectile" => false,
+        // A group nothing here reads. Saying no leaves the effect out, which is the cautious way
+        // round: an enchantment that guards against nothing beats one that guards against all.
+        _ => false,
     }
 }
 

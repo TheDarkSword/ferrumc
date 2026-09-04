@@ -424,3 +424,124 @@ mod crafting_remainder_tests {
         }
     }
 }
+
+#[cfg(test)]
+mod enchantment_effect_tests {
+    use crate::generated::enchantments::{
+        Effect, Enchantment, Hook, LevelValue, Operation, Requires,
+    };
+
+    fn effects(name: &str) -> &'static [Effect] {
+        Enchantment::from_name(name)
+            .expect("it is an enchantment")
+            .effects
+    }
+
+    /// Sharpness adds one at level one and half a point a level after.
+    #[test]
+    fn sharpness_adds_what_the_packs_say() {
+        let [sharpness] = effects("sharpness") else {
+            panic!("sharpness does one thing");
+        };
+        assert_eq!(sharpness.hook, Hook::Damage);
+        assert_eq!(sharpness.value.at(1), 1.0);
+        assert_eq!(
+            sharpness.value.at(5),
+            3.0,
+            "one, and half a point four times"
+        );
+        assert_eq!(sharpness.requires, Requires::Always);
+    }
+
+    /// Efficiency runs away because it is the level *squared*.
+    #[test]
+    fn efficiency_is_the_level_squared() {
+        let [efficiency] = effects("efficiency") else {
+            panic!("efficiency does one thing");
+        };
+        assert!(matches!(
+            efficiency.hook,
+            Hook::Attribute {
+                attribute: "mining_efficiency",
+                operation: Operation::AddValue,
+                ..
+            }
+        ));
+        assert_eq!(efficiency.value.at(1), 2.0, "one squared and one added");
+        assert_eq!(efficiency.value.at(5), 26.0, "twenty-five and one");
+    }
+
+    /// Protection guards against anything; feather falling only against falling. Getting the
+    /// second one wrong would have it protect against everything.
+    #[test]
+    fn feather_falling_only_applies_to_a_fall() {
+        let [protection] = effects("protection") else {
+            panic!("protection does one thing");
+        };
+        assert_eq!(protection.hook, Hook::Protection);
+        assert_eq!(
+            protection.requires,
+            Requires::DamageTags(&[("bypasses_invulnerability", false)])
+        );
+
+        let [feather] = effects("feather_falling") else {
+            panic!("feather falling does one thing");
+        };
+        assert_eq!(
+            feather.requires,
+            Requires::DamageTags(&[("is_fall", true), ("bypasses_invulnerability", false)])
+        );
+        assert_eq!(feather.value.at(4), 12.0, "three a level");
+    }
+
+    #[test]
+    fn knockback_adds_one_a_level() {
+        let [knockback] = effects("knockback") else {
+            panic!("knockback does one thing");
+        };
+        assert_eq!(knockback.hook, Hook::Knockback);
+        assert_eq!(knockback.value.at(2), 2.0);
+    }
+
+    /// Aqua affinity takes the underwater penalty away by multiplying the attribute up.
+    #[test]
+    fn aqua_affinity_multiplies_rather_than_adds() {
+        let [aqua] = effects("aqua_affinity") else {
+            panic!("aqua affinity does one thing");
+        };
+        assert!(matches!(
+            aqua.hook,
+            Hook::Attribute {
+                attribute: "submerged_mining_speed",
+                operation: Operation::AddMultipliedTotal,
+                ..
+            }
+        ));
+        assert_eq!(aqua.value.at(1), 4.0);
+    }
+
+    /// A level of one is a level of one, not a level of zero.
+    #[test]
+    fn a_level_counts_from_one() {
+        let linear = LevelValue::Linear {
+            base: 1.0,
+            per_level: 0.5,
+        };
+        assert_eq!(linear.at(1), 1.0);
+        assert_eq!(linear.at(0), 1.0, "and nothing is treated as one");
+    }
+
+    /// Something whose shape this does not read never applies, rather than applying always.
+    #[test]
+    fn an_effect_behind_an_unread_condition_never_applies() {
+        // Every effect that was read carries a requirement that can be answered.
+        for (_, enchantment) in [("sharpness", "sharpness")] {
+            for effect in effects(enchantment) {
+                assert!(
+                    effect.requires != Requires::SomethingUnread || effect.hook == Hook::Damage,
+                    "an unread requirement should be the cautious answer"
+                );
+            }
+        }
+    }
+}

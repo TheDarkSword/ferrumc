@@ -22,6 +22,7 @@ const ASKED_ABOUT: &[(&str, &str)] = &[
     ("bypasses_armor", "goes_through_armour"),
     ("bypasses_effects", "goes_through_effects"),
     ("bypasses_resistance", "goes_through_resistance"),
+    ("bypasses_enchantments", "goes_through_enchantments"),
     ("bypasses_invulnerability", "goes_through_invulnerability"),
     ("bypasses_cooldown", "goes_through_the_cooldown"),
     ("is_fire", "is_fire"),

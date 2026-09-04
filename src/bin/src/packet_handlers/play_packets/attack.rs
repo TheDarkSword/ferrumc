@@ -22,6 +22,7 @@ use ferrumc_damage::combat::{
 use ferrumc_damage::{Swing, Vitals};
 use ferrumc_data::attributes::Attribute;
 use ferrumc_data::generated::damage_types::DamageType;
+use ferrumc_data::generated::enchantments::{Hook, Requires};
 use ferrumc_data::generated::items::Item;
 use ferrumc_entities::entity_type::EntityType;
 use ferrumc_entities::synced_data::{EntityFlag, SyncedData};
@@ -143,13 +144,33 @@ pub fn handle(
             Target { living },
         );
 
+        // What the weapon is enchanted with. Sharpness is added after the charge has scaled the
+        // blow, which is why a half-charged sharpness sword is not half as sharp.
+        let held_stack = hotbar.get_selected_item(inventory).ok().flatten();
+        let sharpened = held_stack.map_or(0.0, |stack| {
+            stack
+                .components
+                .adds_up_at(Hook::Damage, |requires| requires == Requires::Always)
+        });
+        let extra_push = held_stack.map_or(0.0, |stack| {
+            stack
+                .components
+                .adds_up_at(Hook::Knockback, |requires| requires == Requires::Always)
+        });
+
         hurt.write(EntityDamaged {
             entity: target,
             kind: DamageType::PlayerAttack,
-            amount: blow.damage,
+            amount: blow.damage + sharpened * charge,
             cause: Some(attacker),
         });
-        push(&mut pushed, &watchers, target, facing.yaw, blow.knockback);
+        push(
+            &mut pushed,
+            &watchers,
+            target,
+            facing.yaw,
+            blow.knockback + extra_push,
+        );
 
         // A sweep catches everything standing around what was hit, for a share of the blow. The
         // thing that was hit is not caught twice, and neither is whoever swung.

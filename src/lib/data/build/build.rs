@@ -10,6 +10,7 @@ mod components;
 mod damage_types;
 mod default_attributes;
 mod effects;
+mod enchantment_effects;
 mod enchantments;
 mod fluids;
 mod items;

@@ -78,6 +78,7 @@ pub(crate) fn build() -> TokenStream {
         let const_ident = format_ident!("{}", name.to_shouty_snake_case());
         let id_lit = LitInt::new(&enchantment.id.to_string(), Span::call_site());
 
+        let effects = crate::enchantment_effects::effects_of(&enchantment.effects);
         let translate = &enchantment.description.translate;
         let min_cost_base = crate::number_f32(enchantment.min_cost.base);
         let min_cost_per_level = crate::number_f32(enchantment.min_cost.per_level_above_first);
@@ -124,6 +125,7 @@ pub(crate) fn build() -> TokenStream {
                 weight: #weight,
                 max_level: #max_level,
                 exclusive_set: #exclusive_set,
+                effects: #effects,
             };
         });
 
@@ -139,8 +141,11 @@ pub(crate) fn build() -> TokenStream {
     // An enchantment's number is a place in the reader's own registry, and `lunge` was added in
     // 26.1 in the middle of the alphabet — which moved twenty-one of the forty-two after it.
     let wire_ids = wire_ids(&order);
+    let types = crate::enchantment_effects::types();
 
     quote! {
+        #types
+
         #[derive(Debug, Clone, Copy, PartialEq)]
         pub struct Enchantment {
             pub id: u16,
@@ -153,6 +158,8 @@ pub(crate) fn build() -> TokenStream {
             pub supported_items: &'static str,
             pub weight: u8,
             pub max_level: u8,
+            /// What it actually does, as far as this server reads.
+            pub effects: &'static [Effect],
             pub exclusive_set: Option<&'static str>,
         }
 

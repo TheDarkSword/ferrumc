@@ -1,3 +1,96 @@
+#[doc = r" A number that depends on how strong the enchantment is."]
+#[doc = r""]
+#[doc = r" Level one is one, not zero — the packs count from one and so does this, which is why"]
+#[doc = r" `per_level_above_first` is added `level - 1` times."]
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum LevelValue {
+    #[doc = r" The same at every level."]
+    Flat(f32),
+    #[doc = r" A base, plus a step for each level past the first."]
+    Linear { base: f32, per_level: f32 },
+    #[doc = r" The level squared, times something. Efficiency, which is why it runs away."]
+    LevelsSquared { added: f32 },
+    #[doc = r" One over another, both of which depend on the level."]
+    Fraction {
+        over: &'static LevelValue,
+        under: &'static LevelValue,
+    },
+    #[doc = r" Another, held between two ends."]
+    Clamped {
+        inner: &'static LevelValue,
+        lowest: f32,
+        highest: f32,
+    },
+}
+impl LevelValue {
+    #[doc = r" What it comes to at a level, where one means level one."]
+    #[must_use]
+    pub fn at(&self, level: u16) -> f32 {
+        let level = f32::from(level.max(1));
+        match self {
+            Self::Flat(flat) => *flat,
+            Self::Linear { base, per_level } => base + per_level * (level - 1.0),
+            Self::LevelsSquared { added } => level * level + added,
+            Self::Fraction { over, under } => {
+                let under = under.at(level as u16);
+                if under == 0.0 {
+                    0.0
+                } else {
+                    over.at(level as u16) / under
+                }
+            }
+            Self::Clamped {
+                inner,
+                lowest,
+                highest,
+            } => inner.at(level as u16).clamp(*lowest, *highest),
+        }
+    }
+}
+#[doc = r" What an effect changes."]
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum Hook {
+    #[doc = r" Adds to what a blow is worth. Sharpness and its kin."]
+    Damage,
+    #[doc = r" Takes off what a blow comes to. Protection and its kin."]
+    Protection,
+    #[doc = r" Adds to how hard a blow pushes."]
+    Knockback,
+    #[doc = r" Moves one of the wearer's own numbers."]
+    Attribute {
+        attribute: &'static str,
+        #[doc = r" What the modifier is called, which is how it is taken off again."]
+        name: &'static str,
+        operation: Operation,
+    },
+}
+#[doc = r" How a modifier changes an attribute. The same three the attribute system has."]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Operation {
+    AddValue,
+    AddMultipliedBase,
+    AddMultipliedTotal,
+}
+#[doc = r" When an effect applies."]
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum Requires {
+    #[doc = r" Every time."]
+    Always,
+    #[doc = r" Only for a blow whose kind is, or is not, in each of these groups."]
+    #[doc = r""]
+    #[doc = r" Feather falling is protection that asks whether the blow was a fall."]
+    DamageTags(&'static [(&'static str, bool)]),
+    #[doc = r" Something this server does not read, so the effect never applies. Being cautious"]
+    #[doc = r" the other way would have an enchantment protect against everything."]
+    SomethingUnread,
+}
+#[doc = r" One thing an enchantment does."]
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Effect {
+    pub hook: Hook,
+    pub value: &'static LevelValue,
+    pub requires: Requires,
+}
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Enchantment {
     pub id: u16,
@@ -10,6 +103,8 @@ pub struct Enchantment {
     pub supported_items: &'static str,
     pub weight: u8,
     pub max_level: u8,
+    #[doc = r" What it actually does, as far as this server reads."]
+    pub effects: &'static [Effect],
     pub exclusive_set: Option<&'static str>,
 }
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -48,6 +143,18 @@ impl Enchantment {
         weight: 2,
         max_level: 1,
         exclusive_set: None,
+        effects: &[Effect {
+            hook: Hook::Attribute {
+                attribute: "submerged_mining_speed",
+                name: "minecraft:enchantment.aqua_affinity",
+                operation: Operation::AddMultipliedTotal,
+            },
+            value: &LevelValue::Linear {
+                base: 4.0,
+                per_level: 4.0,
+            },
+            requires: Requires::Always,
+        }],
     };
     pub const BANE_OF_ARTHROPODS: Enchantment = Enchantment {
         id: 1,
@@ -67,6 +174,14 @@ impl Enchantment {
         weight: 5,
         max_level: 5,
         exclusive_set: Some("#minecraft:exclusive_set/damage"),
+        effects: &[Effect {
+            hook: Hook::Damage,
+            value: &LevelValue::Linear {
+                base: 2.5,
+                per_level: 2.5,
+            },
+            requires: Requires::SomethingUnread,
+        }],
     };
     pub const BINDING_CURSE: Enchantment = Enchantment {
         id: 2,
@@ -86,6 +201,7 @@ impl Enchantment {
         weight: 1,
         max_level: 1,
         exclusive_set: None,
+        effects: &[],
     };
     pub const BLAST_PROTECTION: Enchantment = Enchantment {
         id: 3,
@@ -105,6 +221,31 @@ impl Enchantment {
         weight: 2,
         max_level: 4,
         exclusive_set: Some("#minecraft:exclusive_set/armor"),
+        effects: &[
+            Effect {
+                hook: Hook::Attribute {
+                    attribute: "explosion_knockback_resistance",
+                    name: "minecraft:enchantment.blast_protection",
+                    operation: Operation::AddValue,
+                },
+                value: &LevelValue::Linear {
+                    base: 0.15,
+                    per_level: 0.15,
+                },
+                requires: Requires::Always,
+            },
+            Effect {
+                hook: Hook::Protection,
+                value: &LevelValue::Linear {
+                    base: 2.0,
+                    per_level: 2.0,
+                },
+                requires: Requires::DamageTags(&[
+                    ("is_explosion", true),
+                    ("bypasses_invulnerability", false),
+                ]),
+            },
+        ],
     };
     pub const BREACH: Enchantment = Enchantment {
         id: 4,
@@ -124,6 +265,7 @@ impl Enchantment {
         weight: 2,
         max_level: 4,
         exclusive_set: Some("#minecraft:exclusive_set/damage"),
+        effects: &[],
     };
     pub const CHANNELING: Enchantment = Enchantment {
         id: 5,
@@ -143,6 +285,7 @@ impl Enchantment {
         weight: 1,
         max_level: 1,
         exclusive_set: None,
+        effects: &[],
     };
     pub const DENSITY: Enchantment = Enchantment {
         id: 6,
@@ -162,6 +305,7 @@ impl Enchantment {
         weight: 5,
         max_level: 5,
         exclusive_set: Some("#minecraft:exclusive_set/damage"),
+        effects: &[],
     };
     pub const DEPTH_STRIDER: Enchantment = Enchantment {
         id: 7,
@@ -181,6 +325,18 @@ impl Enchantment {
         weight: 2,
         max_level: 3,
         exclusive_set: Some("#minecraft:exclusive_set/boots"),
+        effects: &[Effect {
+            hook: Hook::Attribute {
+                attribute: "water_movement_efficiency",
+                name: "minecraft:enchantment.depth_strider",
+                operation: Operation::AddValue,
+            },
+            value: &LevelValue::Linear {
+                base: 0.33333334,
+                per_level: 0.33333334,
+            },
+            requires: Requires::Always,
+        }],
     };
     pub const EFFICIENCY: Enchantment = Enchantment {
         id: 8,
@@ -200,6 +356,15 @@ impl Enchantment {
         weight: 10,
         max_level: 5,
         exclusive_set: None,
+        effects: &[Effect {
+            hook: Hook::Attribute {
+                attribute: "mining_efficiency",
+                name: "minecraft:enchantment.efficiency",
+                operation: Operation::AddValue,
+            },
+            value: &LevelValue::LevelsSquared { added: 1.0 },
+            requires: Requires::Always,
+        }],
     };
     pub const FEATHER_FALLING: Enchantment = Enchantment {
         id: 9,
@@ -219,6 +384,17 @@ impl Enchantment {
         weight: 5,
         max_level: 4,
         exclusive_set: None,
+        effects: &[Effect {
+            hook: Hook::Protection,
+            value: &LevelValue::Linear {
+                base: 3.0,
+                per_level: 3.0,
+            },
+            requires: Requires::DamageTags(&[
+                ("is_fall", true),
+                ("bypasses_invulnerability", false),
+            ]),
+        }],
     };
     pub const FIRE_ASPECT: Enchantment = Enchantment {
         id: 10,
@@ -238,6 +414,7 @@ impl Enchantment {
         weight: 2,
         max_level: 2,
         exclusive_set: None,
+        effects: &[],
     };
     pub const FIRE_PROTECTION: Enchantment = Enchantment {
         id: 11,
@@ -257,6 +434,28 @@ impl Enchantment {
         weight: 5,
         max_level: 4,
         exclusive_set: Some("#minecraft:exclusive_set/armor"),
+        effects: &[
+            Effect {
+                hook: Hook::Attribute {
+                    attribute: "burning_time",
+                    name: "minecraft:enchantment.fire_protection",
+                    operation: Operation::AddMultipliedBase,
+                },
+                value: &LevelValue::Linear {
+                    base: -0.15,
+                    per_level: -0.15,
+                },
+                requires: Requires::Always,
+            },
+            Effect {
+                hook: Hook::Protection,
+                value: &LevelValue::Linear {
+                    base: 2.0,
+                    per_level: 2.0,
+                },
+                requires: Requires::SomethingUnread,
+            },
+        ],
     };
     pub const FLAME: Enchantment = Enchantment {
         id: 12,
@@ -276,6 +475,7 @@ impl Enchantment {
         weight: 2,
         max_level: 1,
         exclusive_set: None,
+        effects: &[],
     };
     pub const FORTUNE: Enchantment = Enchantment {
         id: 13,
@@ -295,6 +495,7 @@ impl Enchantment {
         weight: 2,
         max_level: 3,
         exclusive_set: Some("#minecraft:exclusive_set/mining"),
+        effects: &[],
     };
     pub const FROST_WALKER: Enchantment = Enchantment {
         id: 14,
@@ -314,6 +515,7 @@ impl Enchantment {
         weight: 2,
         max_level: 2,
         exclusive_set: Some("#minecraft:exclusive_set/boots"),
+        effects: &[],
     };
     pub const IMPALING: Enchantment = Enchantment {
         id: 15,
@@ -333,6 +535,14 @@ impl Enchantment {
         weight: 2,
         max_level: 5,
         exclusive_set: Some("#minecraft:exclusive_set/damage"),
+        effects: &[Effect {
+            hook: Hook::Damage,
+            value: &LevelValue::Linear {
+                base: 2.5,
+                per_level: 2.5,
+            },
+            requires: Requires::SomethingUnread,
+        }],
     };
     pub const INFINITY: Enchantment = Enchantment {
         id: 16,
@@ -352,6 +562,7 @@ impl Enchantment {
         weight: 1,
         max_level: 1,
         exclusive_set: Some("#minecraft:exclusive_set/bow"),
+        effects: &[],
     };
     pub const KNOCKBACK: Enchantment = Enchantment {
         id: 17,
@@ -371,6 +582,14 @@ impl Enchantment {
         weight: 5,
         max_level: 2,
         exclusive_set: None,
+        effects: &[Effect {
+            hook: Hook::Knockback,
+            value: &LevelValue::Linear {
+                base: 1.0,
+                per_level: 1.0,
+            },
+            requires: Requires::Always,
+        }],
     };
     pub const LOOTING: Enchantment = Enchantment {
         id: 18,
@@ -390,6 +609,7 @@ impl Enchantment {
         weight: 2,
         max_level: 3,
         exclusive_set: None,
+        effects: &[],
     };
     pub const LOYALTY: Enchantment = Enchantment {
         id: 19,
@@ -409,6 +629,7 @@ impl Enchantment {
         weight: 5,
         max_level: 3,
         exclusive_set: None,
+        effects: &[],
     };
     pub const LUCK_OF_THE_SEA: Enchantment = Enchantment {
         id: 20,
@@ -428,6 +649,7 @@ impl Enchantment {
         weight: 2,
         max_level: 3,
         exclusive_set: None,
+        effects: &[],
     };
     pub const LUNGE: Enchantment = Enchantment {
         id: 21,
@@ -447,6 +669,7 @@ impl Enchantment {
         weight: 5,
         max_level: 3,
         exclusive_set: None,
+        effects: &[],
     };
     pub const LURE: Enchantment = Enchantment {
         id: 22,
@@ -466,6 +689,7 @@ impl Enchantment {
         weight: 2,
         max_level: 3,
         exclusive_set: None,
+        effects: &[],
     };
     pub const MENDING: Enchantment = Enchantment {
         id: 23,
@@ -485,6 +709,7 @@ impl Enchantment {
         weight: 2,
         max_level: 1,
         exclusive_set: None,
+        effects: &[],
     };
     pub const MULTISHOT: Enchantment = Enchantment {
         id: 24,
@@ -504,6 +729,7 @@ impl Enchantment {
         weight: 2,
         max_level: 1,
         exclusive_set: Some("#minecraft:exclusive_set/crossbow"),
+        effects: &[],
     };
     pub const PIERCING: Enchantment = Enchantment {
         id: 25,
@@ -523,6 +749,7 @@ impl Enchantment {
         weight: 10,
         max_level: 4,
         exclusive_set: Some("#minecraft:exclusive_set/crossbow"),
+        effects: &[],
     };
     pub const POWER: Enchantment = Enchantment {
         id: 26,
@@ -542,6 +769,14 @@ impl Enchantment {
         weight: 10,
         max_level: 5,
         exclusive_set: None,
+        effects: &[Effect {
+            hook: Hook::Damage,
+            value: &LevelValue::Linear {
+                base: 1.0,
+                per_level: 0.5,
+            },
+            requires: Requires::SomethingUnread,
+        }],
     };
     pub const PROJECTILE_PROTECTION: Enchantment = Enchantment {
         id: 27,
@@ -561,6 +796,17 @@ impl Enchantment {
         weight: 5,
         max_level: 4,
         exclusive_set: Some("#minecraft:exclusive_set/armor"),
+        effects: &[Effect {
+            hook: Hook::Protection,
+            value: &LevelValue::Linear {
+                base: 2.0,
+                per_level: 2.0,
+            },
+            requires: Requires::DamageTags(&[
+                ("is_projectile", true),
+                ("bypasses_invulnerability", false),
+            ]),
+        }],
     };
     pub const PROTECTION: Enchantment = Enchantment {
         id: 28,
@@ -580,6 +826,14 @@ impl Enchantment {
         weight: 10,
         max_level: 4,
         exclusive_set: Some("#minecraft:exclusive_set/armor"),
+        effects: &[Effect {
+            hook: Hook::Protection,
+            value: &LevelValue::Linear {
+                base: 1.0,
+                per_level: 1.0,
+            },
+            requires: Requires::DamageTags(&[("bypasses_invulnerability", false)]),
+        }],
     };
     pub const PUNCH: Enchantment = Enchantment {
         id: 29,
@@ -599,6 +853,14 @@ impl Enchantment {
         weight: 2,
         max_level: 2,
         exclusive_set: None,
+        effects: &[Effect {
+            hook: Hook::Knockback,
+            value: &LevelValue::Linear {
+                base: 1.0,
+                per_level: 1.0,
+            },
+            requires: Requires::SomethingUnread,
+        }],
     };
     pub const QUICK_CHARGE: Enchantment = Enchantment {
         id: 30,
@@ -618,6 +880,7 @@ impl Enchantment {
         weight: 5,
         max_level: 3,
         exclusive_set: None,
+        effects: &[],
     };
     pub const RESPIRATION: Enchantment = Enchantment {
         id: 31,
@@ -637,6 +900,18 @@ impl Enchantment {
         weight: 2,
         max_level: 3,
         exclusive_set: None,
+        effects: &[Effect {
+            hook: Hook::Attribute {
+                attribute: "oxygen_bonus",
+                name: "minecraft:enchantment.respiration",
+                operation: Operation::AddValue,
+            },
+            value: &LevelValue::Linear {
+                base: 1.0,
+                per_level: 1.0,
+            },
+            requires: Requires::Always,
+        }],
     };
     pub const RIPTIDE: Enchantment = Enchantment {
         id: 32,
@@ -656,6 +931,7 @@ impl Enchantment {
         weight: 2,
         max_level: 3,
         exclusive_set: Some("#minecraft:exclusive_set/riptide"),
+        effects: &[],
     };
     pub const SHARPNESS: Enchantment = Enchantment {
         id: 33,
@@ -675,6 +951,14 @@ impl Enchantment {
         weight: 10,
         max_level: 5,
         exclusive_set: Some("#minecraft:exclusive_set/damage"),
+        effects: &[Effect {
+            hook: Hook::Damage,
+            value: &LevelValue::Linear {
+                base: 1.0,
+                per_level: 0.5,
+            },
+            requires: Requires::Always,
+        }],
     };
     pub const SILK_TOUCH: Enchantment = Enchantment {
         id: 34,
@@ -694,6 +978,7 @@ impl Enchantment {
         weight: 1,
         max_level: 1,
         exclusive_set: Some("#minecraft:exclusive_set/mining"),
+        effects: &[],
     };
     pub const SMITE: Enchantment = Enchantment {
         id: 35,
@@ -713,6 +998,14 @@ impl Enchantment {
         weight: 5,
         max_level: 5,
         exclusive_set: Some("#minecraft:exclusive_set/damage"),
+        effects: &[Effect {
+            hook: Hook::Damage,
+            value: &LevelValue::Linear {
+                base: 2.5,
+                per_level: 2.5,
+            },
+            requires: Requires::SomethingUnread,
+        }],
     };
     pub const SOUL_SPEED: Enchantment = Enchantment {
         id: 36,
@@ -732,6 +1025,7 @@ impl Enchantment {
         weight: 1,
         max_level: 3,
         exclusive_set: None,
+        effects: &[],
     };
     pub const SWEEPING_EDGE: Enchantment = Enchantment {
         id: 37,
@@ -751,6 +1045,24 @@ impl Enchantment {
         weight: 2,
         max_level: 3,
         exclusive_set: None,
+        effects: &[Effect {
+            hook: Hook::Attribute {
+                attribute: "sweeping_damage_ratio",
+                name: "minecraft:enchantment.sweeping_edge",
+                operation: Operation::AddValue,
+            },
+            value: &LevelValue::Fraction {
+                over: &LevelValue::Linear {
+                    base: 1.0,
+                    per_level: 1.0,
+                },
+                under: &LevelValue::Linear {
+                    base: 2.0,
+                    per_level: 1.0,
+                },
+            },
+            requires: Requires::Always,
+        }],
     };
     pub const SWIFT_SNEAK: Enchantment = Enchantment {
         id: 38,
@@ -770,6 +1082,18 @@ impl Enchantment {
         weight: 1,
         max_level: 3,
         exclusive_set: None,
+        effects: &[Effect {
+            hook: Hook::Attribute {
+                attribute: "sneaking_speed",
+                name: "minecraft:enchantment.swift_sneak",
+                operation: Operation::AddValue,
+            },
+            value: &LevelValue::Linear {
+                base: 0.15,
+                per_level: 0.15,
+            },
+            requires: Requires::Always,
+        }],
     };
     pub const THORNS: Enchantment = Enchantment {
         id: 39,
@@ -789,6 +1113,7 @@ impl Enchantment {
         weight: 1,
         max_level: 3,
         exclusive_set: None,
+        effects: &[],
     };
     pub const UNBREAKING: Enchantment = Enchantment {
         id: 40,
@@ -808,6 +1133,7 @@ impl Enchantment {
         weight: 5,
         max_level: 3,
         exclusive_set: None,
+        effects: &[],
     };
     pub const VANISHING_CURSE: Enchantment = Enchantment {
         id: 41,
@@ -827,6 +1153,7 @@ impl Enchantment {
         weight: 1,
         max_level: 1,
         exclusive_set: None,
+        effects: &[],
     };
     pub const WIND_BURST: Enchantment = Enchantment {
         id: 42,
@@ -846,6 +1173,7 @@ impl Enchantment {
         weight: 2,
         max_level: 3,
         exclusive_set: None,
+        effects: &[],
     };
     #[doc = r" Try to parse an `Enchantment` from a resource location string."]
     pub fn from_name(name: &str) -> Option<&'static Self> {

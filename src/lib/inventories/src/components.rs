@@ -12,7 +12,7 @@
 
 use bitcode_derive::{Decode, Encode};
 use ferrumc_data::generated::components::ComponentType;
-use ferrumc_data::generated::enchantments::Enchantment;
+use ferrumc_data::generated::enchantments::{Enchantment, Hook, Requires};
 use ferrumc_net_codec::decode::errors::NetDecodeError;
 use ferrumc_net_codec::decode::{NetDecode, NetDecodeOpts};
 use ferrumc_net_codec::encode::errors::NetEncodeError;
@@ -205,6 +205,34 @@ impl Components {
             Some(Value::Number(damage)) => *damage,
             _ => 0,
         }
+    }
+
+    /// Everything it is enchanted with, and how strongly.
+    pub fn enchantments(&self) -> impl Iterator<Item = (&'static Enchantment, u16)> + '_ {
+        let held = match self.get(ComponentType::Enchantments) {
+            Some(Value::Enchantments(held)) => held.as_slice(),
+            _ => &[],
+        };
+        held.iter()
+            .filter_map(|(id, level)| Some((Enchantment::from_id(*id)?, *level)))
+    }
+
+    /// What everything on it adds up to at one hook.
+    ///
+    /// An effect behind a requirement is only counted where `applies` says so — feather falling
+    /// only guards against a fall, and counting it against everything would make it armour.
+    #[must_use]
+    pub fn adds_up_at(&self, hook: Hook, applies: impl Fn(Requires) -> bool) -> f32 {
+        self.enchantments()
+            .flat_map(|(enchantment, level)| {
+                enchantment
+                    .effects
+                    .iter()
+                    .map(move |effect| (effect, level))
+            })
+            .filter(|(effect, _)| effect.hook == hook && applies(effect.requires))
+            .map(|(effect, level)| effect.value.at(level))
+            .sum()
     }
 
     /// What level of an enchantment it carries.

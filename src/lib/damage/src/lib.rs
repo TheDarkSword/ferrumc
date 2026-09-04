@@ -56,6 +56,11 @@ pub struct Defence {
     pub resistance: u8,
     /// Extra health that is spent before real health is.
     pub absorption: f32,
+    /// What the wearer's enchantments guard against this particular blow.
+    ///
+    /// Not armour: it is applied after resistance and by a different formula, and it is worked out
+    /// per blow because feather falling guards against falling and nothing else.
+    pub protection: f32,
 }
 
 /// How long the victim is still hard to hit, and how hard the last blow was.
@@ -111,6 +116,21 @@ pub fn after_armour(damage: f32, armour: f32, toughness: f32) -> f32 {
     let counts =
         (armour - damage / toughness).clamp(armour * ARMOUR_FLOOR, MOST_ARMOUR_THAT_COUNTS);
     damage * (1.0 - counts / ARMOUR_DIVIDER)
+}
+
+/// The most protection that counts, however much is worn.
+const MOST_PROTECTION: f32 = 20.0;
+
+/// What is left of a blow after what the wearer is enchanted with.
+///
+/// A flatter curve than armour's and with no cutting through: twenty points of protection stop four
+/// fifths of anything, and twenty is the ceiling however many pieces are enchanted.
+#[must_use]
+pub fn after_protection(damage: f32, protection: f32) -> f32 {
+    if protection <= 0.0 {
+        return damage;
+    }
+    damage * (1.0 - protection.clamp(0.0, MOST_PROTECTION) / ARMOUR_DIVIDER)
 }
 
 /// What is left of a blow after resistance.
@@ -189,6 +209,10 @@ pub fn resolve(hit: Hit, defence: &mut Defence, reeling: &mut Reeling) -> Landed
     }
     if !hit.kind.goes_through_effects() && !hit.kind.goes_through_resistance() {
         amount = after_resistance(amount, defence.resistance);
+    }
+    // What the wearer is enchanted with, which some kinds go around entirely.
+    if !hit.kind.goes_through_effects() && !hit.kind.goes_through_enchantments() {
+        amount = after_protection(amount, defence.protection);
     }
 
     // Absorption is spent before health is, and is spent whether or not it covers the whole blow.
@@ -348,6 +372,31 @@ mod tests {
         ] {
             assert!(!kind.goes_through_the_cooldown(), "{kind:?}");
         }
+    }
+
+    #[test]
+    fn protection_stops_a_flat_share_and_does_not_cut_through() {
+        // Unlike armour: a heavy blow gets through no more of it than a light one.
+        let light = after_protection(1.0, 20.0) / 1.0;
+        let heavy = after_protection(100.0, 20.0) / 100.0;
+        assert!((light - heavy).abs() < 1e-6, "{light} against {heavy}");
+        assert!((light - 0.2).abs() < 1e-6, "four fifths stopped");
+    }
+
+    #[test]
+    fn protection_stops_at_twenty_however_much_is_worn() {
+        assert_eq!(after_protection(10.0, 20.0), after_protection(10.0, 100.0));
+    }
+
+    #[test]
+    fn what_the_wearer_is_enchanted_with_softens_a_blow() {
+        let mut defence = Defence {
+            protection: 10.0,
+            ..Defence::default()
+        };
+        let mut reeling = Reeling::default();
+        let landed = resolve(a_sword(10.0), &mut defence, &mut reeling);
+        assert!((landed.health - 6.0).abs() < 1e-5, "{landed:?}");
     }
 
     #[test]

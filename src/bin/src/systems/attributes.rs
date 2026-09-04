@@ -14,6 +14,7 @@ use ferrumc_components::health::Health;
 use ferrumc_core::identity::entity_identity::EntityIdentity;
 use ferrumc_core::identity::player_identity::PlayerIdentity;
 use ferrumc_data::attributes::Attribute;
+use ferrumc_data::generated::enchantments::{Hook as EnchantHook, Operation as EnchantOperation};
 use ferrumc_data::generated::items::{
     AttributeModifierSlot, Item, Modifier as ItemModifier, Operation as ItemOperation,
 };
@@ -44,6 +45,68 @@ type Wearing<'a> = (&'a mut Attributes, &'a Inventory, &'a Hotbar);
 /// it changed, every client would be sent every entity's numbers twenty times a second.
 type SomethingChangedHands = Or<(Changed<Inventory>, Changed<Hotbar>, Added<Attributes>)>;
 
+/// Everything one slot changes about the wearer's numbers: what the item is worth, and what it is
+/// enchanted with.
+///
+/// An enchantment is not a special case — efficiency, respiration and aqua affinity are attribute
+/// modifiers like any other, and the packs say which attribute and by how much.
+fn from_one_slot(
+    attributes: &mut Attributes,
+    slot: &str,
+    held: Option<&'static Item>,
+    stack: Option<&ferrumc_inventories::components::Components>,
+) {
+    let Some(item) = held else {
+        return;
+    };
+
+    for modifier in item.attribute_modifiers() {
+        if !fits(modifier, slot) {
+            continue;
+        }
+        let Some(attribute) = Attribute::from_name(modifier.r#type.name) else {
+            continue;
+        };
+        attributes.add(
+            attribute,
+            Modifier {
+                name: named_for(slot, modifier).into(),
+                amount: modifier.amount,
+                operation: operation_of(&modifier.operation),
+            },
+        );
+    }
+
+    let Some(stack) = stack else { return };
+    for (enchantment, level) in stack.enchantments() {
+        for effect in enchantment.effects {
+            let EnchantHook::Attribute {
+                attribute,
+                name,
+                operation,
+            } = effect.hook
+            else {
+                continue;
+            };
+            let Some(attribute) = Attribute::from_name(attribute) else {
+                continue;
+            };
+            attributes.add(
+                attribute,
+                Modifier {
+                    name: format!("{slot}/{name}").into(),
+                    amount: f64::from(effect.value.at(level)),
+                    operation: match operation {
+                        EnchantOperation::AddValue => Operation::AddValue,
+                        EnchantOperation::AddMultipliedBase => Operation::AddMultipliedBase,
+                        EnchantOperation::AddMultipliedTotal => Operation::AddMultipliedTotal,
+                    },
+                },
+            );
+        }
+    }
+}
+
 /// Puts what is worn and held onto the numbers, and takes off what is no longer there.
 pub fn apply_what_is_worn(mut wearers: Query<Wearing, SomethingChangedHands>) {
     for (mut attributes, inventory, hotbar) in &mut wearers {
@@ -53,48 +116,29 @@ pub fn apply_what_is_worn(mut wearers: Query<Wearing, SomethingChangedHands>) {
 
         // Every slot that can change a number, and what is in it. A slot is visited whether or not
         // it holds anything, so emptying one takes its modifiers away.
-        let mut worn: Vec<(&'static str, Option<&'static Item>)> =
+        let mut worn: Vec<(&'static str, usize)> =
             Vec::with_capacity(Inventory::ARMOUR_SLOTS.len() + 2);
         for (slot, name) in Inventory::ARMOUR_SLOTS
             .iter()
             .zip(Inventory::ARMOUR_SLOT_NAMES)
         {
-            worn.push((name, item_in(inventory, *slot)));
+            worn.push((name, *slot));
         }
-        worn.push((
-            "mainhand",
-            item_in(inventory, hotbar.get_selected_inventory_index()),
-        ));
-        worn.push(("offhand", item_in(inventory, Inventory::OFFHAND_SLOT)));
+        worn.push(("mainhand", hotbar.get_selected_inventory_index()));
+        worn.push(("offhand", Inventory::OFFHAND_SLOT));
 
-        for (slot, held) in worn {
-            let wanted: Vec<&ItemModifier> = held
-                .map(|item| {
-                    item.attribute_modifiers()
-                        .iter()
-                        .filter(|modifier| fits(modifier, slot))
-                        .collect()
-                })
-                .unwrap_or_default();
-
+        for (slot, at) in worn {
             // Whatever this slot used to say is dropped first, so a swapped piece does not leave
             // half of the old one behind.
-            let prefix = format!("{slot}/");
-            attributes.remove_by_prefix(&prefix);
+            attributes.remove_by_prefix(&format!("{slot}/"));
 
-            for modifier in wanted {
-                let Some(attribute) = Attribute::from_name(modifier.r#type.name) else {
-                    continue;
-                };
-                attributes.add(
-                    attribute,
-                    Modifier {
-                        name: named_for(slot, modifier).into(),
-                        amount: modifier.amount,
-                        operation: operation_of(&modifier.operation),
-                    },
-                );
-            }
+            let stack = inventory.get_item(at).ok().flatten();
+            from_one_slot(
+                &mut attributes,
+                slot,
+                item_in(inventory, at),
+                stack.map(|held| &held.components),
+            );
         }
     }
 }
@@ -213,7 +257,9 @@ pub fn follow_max_health(mut living: Query<(&Attributes, &mut Health), Changed<A
 mod tests {
     use super::*;
     use bevy_ecs::schedule::Schedule;
+    use ferrumc_data::generated::components::ComponentType;
     use ferrumc_entities::entity_type::EntityType;
+    use ferrumc_inventories::components::Value;
     use ferrumc_inventories::item::ItemID;
     use ferrumc_inventories::slot::InventorySlot;
     use ferrumc_net_codec::net_types::var_int::VarInt;
@@ -315,6 +361,102 @@ mod tests {
         );
         schedule.run(&mut world);
         assert_eq!(armour(&world, player), 0.0);
+    }
+
+    /// Efficiency is an attribute modifier like any other, and the packs say so — level five is
+    /// the level squared plus one, which is why it runs away.
+    #[test]
+    fn an_enchantment_moves_a_number_the_same_way_an_item_does() {
+        let (mut world, player, mut schedule) = a_player();
+        let hand = world
+            .get::<Hotbar>(player)
+            .expect("a player has a hotbar")
+            .get_selected_inventory_index();
+
+        let id = Item::from_registry_key("minecraft:diamond_pickaxe")
+            .expect("it is an item")
+            .id;
+        let efficiency =
+            ferrumc_data::generated::enchantments::Enchantment::from_name("efficiency")
+                .expect("it is an enchantment");
+        let mut pickaxe = InventorySlot {
+            item_id: Some(ItemID(VarInt::new(i32::from(id)))),
+            count: VarInt::new(1),
+            ..Default::default()
+        };
+        pickaxe.components.set(
+            ComponentType::Enchantments,
+            Value::Enchantments(vec![(efficiency.id, 5)]),
+        );
+        world
+            .get_mut::<Inventory>(player)
+            .expect("a player has an inventory")
+            .set_item(hand, pickaxe)
+            .expect("the slot exists");
+
+        schedule.run(&mut world);
+        let numbers = world
+            .get::<Attributes>(player)
+            .expect("a player has numbers");
+        assert_eq!(
+            numbers.value(&Attribute::MINING_EFFICIENCY),
+            26.0,
+            "five squared and one"
+        );
+    }
+
+    /// And taking it off puts the number back exactly.
+    #[test]
+    fn taking_the_enchanted_tool_off_puts_the_number_back() {
+        let (mut world, player, mut schedule) = a_player();
+        let hand = world
+            .get::<Hotbar>(player)
+            .expect("a player has a hotbar")
+            .get_selected_inventory_index();
+
+        let id = Item::from_registry_key("minecraft:diamond_pickaxe")
+            .expect("it is an item")
+            .id;
+        let efficiency =
+            ferrumc_data::generated::enchantments::Enchantment::from_name("efficiency")
+                .expect("it is an enchantment");
+        let mut pickaxe = InventorySlot {
+            item_id: Some(ItemID(VarInt::new(i32::from(id)))),
+            count: VarInt::new(1),
+            ..Default::default()
+        };
+        pickaxe.components.set(
+            ComponentType::Enchantments,
+            Value::Enchantments(vec![(efficiency.id, 3)]),
+        );
+        world
+            .get_mut::<Inventory>(player)
+            .expect("a player has an inventory")
+            .set_item(hand, pickaxe)
+            .expect("the slot exists");
+        schedule.run(&mut world);
+        assert!(
+            world
+                .get::<Attributes>(player)
+                .expect("numbers")
+                .value(&Attribute::MINING_EFFICIENCY)
+                > 0.0
+        );
+
+        world
+            .get_mut::<Inventory>(player)
+            .expect("a player has an inventory")
+            .set_item(hand, InventorySlot::empty())
+            .expect("the slot exists");
+        schedule.run(&mut world);
+        assert_eq!(
+            world
+                .get::<Attributes>(player)
+                .expect("numbers")
+                .value(&Attribute::MINING_EFFICIENCY),
+            0.0,
+            "exactly back"
+        );
     }
 
     /// A weapon changes what the holder hits for, which is the same machinery.
