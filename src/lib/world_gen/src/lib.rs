@@ -23,6 +23,7 @@
 //! (`Heightmap` / `ColumnClimate`) during a single `generate_chunk` call rather than being stored on
 //! the chunk, since nothing outside generation needs them.
 
+pub mod biome_source;
 mod biomes;
 mod carving;
 mod caves;

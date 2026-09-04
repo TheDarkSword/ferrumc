@@ -104,3 +104,36 @@ Seven kinds read as nothing rather than being guessed at: the four blending func
 world being extended from an older one, and the rest to dimensions that do not exist yet.
 
 See `internal_docs/deferred.md` under Phase 6.2.
+
+## Which biome goes where
+
+Not a map and not a set of rules: a **nearest-neighbour lookup in six dimensions** — temperature,
+humidity, continentalness, erosion, depth, weirdness. Each biome claims one or more boxes in that
+space, and a place gets whichever box is nearest to where its climate falls.
+
+Nothing owns a region of the world. A biome owns a region of *climate*, and the terrain decides
+which climates turn up where. That is why biomes border plausibly without anyone saying they
+should: two biomes that neighbour on the map are two boxes that neighbour in climate, and the smooth
+noise that produces the climate cannot jump between distant ones.
+
+The overworld has **7594 claims across 55 biomes**; the nether has five biomes.
+
+The distance to a box is **nothing when the point is inside it**, so the middle of a biome matches
+outright and only the edges are contested. `offset` is a flat penalty added to every distance — it
+is not an axis, nothing is ever measured along it, and it is how a biome is made to lose a tie it
+would otherwise win.
+
+### The search has to skip most of the list
+
+Seven and a half thousand claims, asked around a thousand times a chunk, is not something to walk.
+The claims are held in a tree of boxes: each branch knows the smallest distance anything under it
+could be, and a branch that cannot beat what has already been found is skipped whole. The nearer
+half is walked first, so the further one is likelier to be skipped.
+
+It looks at **under a twentieth** of the claims on average.
+
+That is asserted as a count rather than a duration: a clock in a test suite that runs in parallel
+measures the machine. And a separate test checks the tree gives the same answer as looking at all
+7594 for three thousand random climates — a faster way to be wrong is not an improvement.
+
+A tie is broken by the order the report lists claims in, whichever branch was walked first.
