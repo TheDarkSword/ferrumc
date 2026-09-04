@@ -6,7 +6,7 @@
 //! linear-interpolation spline instead of pulling in the `splines` crate. This keeps the
 //! generator self-contained with no new external dependencies.
 
-use noise::{Fbm, MultiFractal, NoiseFn, Perlin};
+use ::noise::{Fbm, MultiFractal, NoiseFn, Perlin};
 
 /// A piecewise-linear curve used to reshape a raw noise value in `[0, 1]` into a desired
 /// response. Replaces the upstream `splines::Spline` with a dependency-free equivalent; linear

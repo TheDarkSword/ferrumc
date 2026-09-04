@@ -29,15 +29,18 @@ mod caves;
 mod climate;
 pub mod errors;
 mod interp;
+pub mod noise;
+pub mod noise_parameters;
+pub mod random;
 mod terrain_noise;
 
 use crate::climate::{Climate, ClimateSample, SEA_LEVEL};
 use crate::errors::WorldGenError;
 use crate::terrain_noise::NoiseGenerator;
+use ::noise::{MultiFractal, NoiseFn, RidgedMulti};
 use ferrumc_world::block_state_id::BlockStateId;
 use ferrumc_world::chunk::Chunk;
 use ferrumc_world::pos::{ChunkBlockPos, ChunkPos};
-use noise::{MultiFractal, NoiseFn, RidgedMulti};
 
 /// The highest Y the generator fills before carving. The whole column is stone up to here, then
 /// the carving pass clears it back down to the real surface. Sized to comfortably exceed the
@@ -111,7 +114,7 @@ pub struct WorldGenerator {
     pub(crate) erosion_noise: NoiseGenerator,
     /// Higher-frequency local detail layered on top of the continental base height.
     pub(crate) detail_noise: NoiseGenerator,
-    caves_layer: RidgedMulti<noise::OpenSimplex>,
+    caves_layer: RidgedMulti<::noise::OpenSimplex>,
     // Pre-built biome decorators. Some decorators back several registry biomes that differ only in
     // ID (one `ocean` decorator serves every ocean variant; `beach`/`snowy_beach` share a shape);
     // the recorded ID is resolved in `classify`.
@@ -134,7 +137,7 @@ impl WorldGenerator {
             climate: Climate::new(seed),
             erosion_noise: carving::erosion::erosion_noise(seed.wrapping_add(3)),
             detail_noise: carving::initial_height::detail_noise(seed.wrapping_add(2)),
-            caves_layer: RidgedMulti::<noise::OpenSimplex>::new((seed.wrapping_add(100)) as u32)
+            caves_layer: RidgedMulti::<::noise::OpenSimplex>::new((seed.wrapping_add(100)) as u32)
                 .set_frequency(0.01)
                 .set_lacunarity(2.5)
                 .set_octaves(5)
