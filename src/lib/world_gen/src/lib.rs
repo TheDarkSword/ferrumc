@@ -27,6 +27,7 @@ mod biomes;
 mod carving;
 mod caves;
 mod climate;
+pub mod density;
 pub mod errors;
 mod interp;
 pub mod noise;

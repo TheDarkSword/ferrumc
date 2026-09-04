@@ -61,3 +61,46 @@ changes it here too, without a rebuild.
 See `internal_docs/deferred.md` under Phase 6.1. Chiefly: the old OpenSimplex pipeline still
 generates the world. This is the foundation under the replacement, and what consumes it is the
 density function tree in 6.2.
+
+## Density functions
+
+Terrain shape is not a formula, it is a **tree**: noise, constants, arithmetic, clamps, splines and
+interpolation, composed in the packs and evaluated at a position. Changing where mountains go is
+changing the data, not the code.
+
+Thirty-five functions across five dimensions, read from
+`data/minecraft/worldgen/density_function/`. A function that names another is built after it,
+however the two are ordered on disk, and a pack that names itself in a circle costs that one
+function rather than the stack.
+
+### The spline is the part that has to be exact
+
+It is where continentalness and erosion become landforms. Between two points the curve is a cubic
+fitted to the value **and the slope** at each end:
+
+```
+a = d₁·(x₂-x₁) - (y₂-y₁)
+b = -d₂·(x₂-x₁) + (y₂-y₁)
+lerp(t, y₁, y₂) + t·(1-t)·lerp(t, a, b)
+```
+
+Past either end it carries on as a straight line at the slope it was leaving with. A straight line
+through the same points gives terrain that reads as *wrong* rather than as different, which is why
+this one piece is written out exactly even though seed-for-seed exactness is not the aim.
+
+A point's value is itself a spline, which is how erosion bends what continentalness said.
+
+### Two details that decide how a coast looks
+
+- `half_negative` and `quarter_negative` touch only what is **below** nothing, which flattens
+  valleys while leaving hills alone.
+- A range choice takes its bottom bound and not its top, so a value exactly on the edge falls
+  inside.
+
+### What is transparent, and what is nothing
+
+The caching wrappers evaluate their inner function in full. The answer is right; the cost is not.
+Seven kinds read as nothing rather than being guessed at: the four blending functions belong to a
+world being extended from an older one, and the rest to dimensions that do not exist yet.
+
+See `internal_docs/deferred.md` under Phase 6.2.
