@@ -196,3 +196,32 @@ game.
 
 The dump this replaced was five entries of an older version's ids, which decoded through the current
 registry as "a diamond hoe leaves a diamond axe".
+
+# Holding an item down
+
+Eating, drinking and drawing a bow are the same shape: a right-click starts it, it counts down while
+held, and something happens at the end. What a particular item does is on the item — a consumable
+takes as long as its `consume_seconds` says, and anything without that component cannot be held down
+at all.
+
+Only eating and drinking are wired up. A bow and a trident are held the same way and each needs a
+projectile at the end of it.
+
+## What the client draws
+
+Two flags in the entity's data: one says something is being used, the other says which hand. Both go
+out when the use starts and come off when it stops — a client that is never told it stopped goes on
+animating an item that was finished with.
+
+## What stops a use
+
+Putting the item down. Without that check, swapping to a sword mid-meal would still finish the meal,
+because the countdown does not care what is in the hand.
+
+## What is left in the hand
+
+Drinking a potion leaves the bottle. It takes the slot where the slot is now empty, and goes
+elsewhere in the inventory where more of the drink is still there.
+
+That is the `use_remainder` component — **not** the crafting remainder. The two lists overlap and
+are not the same: seven items leave something behind on being used, five on being crafted with.

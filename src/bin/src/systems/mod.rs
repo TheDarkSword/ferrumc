@@ -31,6 +31,7 @@ pub mod tick_counter;
 pub mod tps_broadcast;
 pub mod tracking;
 pub(crate) mod update_player_ping;
+pub mod using_items;
 pub mod world_sync;
 
 pub fn register_game_systems(schedule: &mut bevy_ecs::schedule::Schedule) {
@@ -103,6 +104,10 @@ pub fn register_game_systems(schedule: &mut bevy_ecs::schedule::Schedule) {
         )
             .chain(),
     );
+
+    // Right-clicking and holding: what is started, what it comes to, and what is fed by it. The
+    // feeding is read in the hunger chain below, so this runs before it.
+    schedule.add_systems((using_items::start_using, using_items::tick_using).chain());
 
     // What being hungry costs, before the damage it may cause is settled.
     schedule.add_systems(

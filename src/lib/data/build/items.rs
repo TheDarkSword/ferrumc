@@ -41,6 +41,10 @@ pub struct ItemComponents {
     pub blocks_attacks: Option<BlocksAttacks>,
     #[serde(rename = "minecraft:death_protection")]
     pub death_protection: Option<DeathProtection>,
+    /// What is left in the hand after using one, which is not the same as what crafting with one
+    /// leaves: drinking a potion leaves the bottle.
+    #[serde(rename = "minecraft:use_remainder")]
+    pub use_remainder: Option<UseRemainder>,
 }
 
 #[derive(Deserialize, Clone)]
@@ -182,6 +186,17 @@ impl ToTokens for ItemComponents {
 
         if self.death_protection.is_some() {
             tokens.extend(quote! { (DataComponent::DeathProtection, &DeathProtectionImpl), });
+        };
+
+        if let Some(left) = &self.use_remainder {
+            // Written as the number rather than the name: the one place this is read has a number
+            // in hand and nothing to look a name up with.
+            if let Some(id) = crate::items::number_of(&left.id) {
+                let id = LitInt::new(&id.to_string(), Span::call_site());
+                tokens.extend(quote! { (DataComponent::UseRemainder, &UseRemainderImpl {
+                    item: #id,
+                }), });
+            }
         };
 
         if let Some(equippable) = &self.equippable {
@@ -412,6 +427,12 @@ impl ConsumeEffect {
     }
 }
 
+/// What using one of these leaves in the hand.
+#[derive(Deserialize, Clone, Debug)]
+pub struct UseRemainder {
+    id: String,
+}
+
 #[derive(Deserialize, Clone, Debug)]
 pub struct DeathProtection {
     // TODO
@@ -489,6 +510,33 @@ const REGISTRIES: &str = "../../../assets/data/registries.json";
 #[derive(Deserialize, Clone)]
 struct ItemFile {
     components: ItemComponents,
+}
+
+/// The number an item travels as, by name.
+///
+/// Read once and kept: a component that names another item needs the number, and the place that
+/// reads it has no registry to hand.
+pub(crate) fn number_of(name: &str) -> Option<u16> {
+    static NUMBERS: std::sync::OnceLock<std::collections::HashMap<String, u16>> =
+        std::sync::OnceLock::new();
+    let numbers = NUMBERS.get_or_init(|| {
+        let registries: serde_json::Value =
+            serde_json::from_str(&fs::read_to_string(REGISTRIES).expect("the item registry"))
+                .expect("the registry is valid json");
+        registries["minecraft:item"]["entries"]
+            .as_object()
+            .expect("the registry names every item")
+            .iter()
+            .filter_map(|(name, entry)| {
+                let id = u16::try_from(entry["protocol_id"].as_u64()?).ok()?;
+                Some((name.clone(), id))
+            })
+            .collect()
+    });
+    numbers
+        .get(name)
+        .or_else(|| numbers.get(&format!("minecraft:{name}")))
+        .copied()
 }
 
 pub(crate) fn build() -> TokenStream {
@@ -680,6 +728,7 @@ pub(crate) fn build() -> TokenStream {
             Consumable,
             BlocksAttacks,
             DeathProtection,
+            UseRemainder,
         }
 
         pub trait DataComponentImpl {
@@ -820,6 +869,18 @@ pub(crate) fn build() -> TokenStream {
             pub what: Aftermath,
             /// Rotten flesh only makes a player hungry four times in five.
             pub probability: f32,
+        }
+
+        /// What using one of these leaves in the hand.
+        #[derive(Clone, Debug)]
+        pub struct UseRemainderImpl {
+            pub item: u16,
+        }
+
+        impl DataComponentImpl for UseRemainderImpl {
+            fn as_any(&self) -> &dyn std::any::Any {
+                self
+            }
         }
 
         pub struct ConsumableImpl {

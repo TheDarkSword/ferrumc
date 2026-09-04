@@ -11,7 +11,7 @@ use ferrumc_net::{
     ChangeDifficultyReceiver, ChatCommandSignedReceiver, ClientTickEndPacketReceiver,
     InteractEntityReceiver, MovePlayerStatusOnlyReceiver, MoveVehicleReceiver,
     PickItemFromEntityReceiver, PlaceRecipeReceiver, RecipeBookSeenRecipeReceiver,
-    RenameItemReceiver, UseItemReceiver,
+    RenameItemReceiver,
 };
 
 /// Empties every channel with no reader. `try_iter` takes what is queued and returns.
@@ -27,7 +27,6 @@ pub fn handle(
     place_recipe: Res<PlaceRecipeReceiver>,
     recipe_book_seen_recipe: Res<RecipeBookSeenRecipeReceiver>,
     rename_item: Res<RenameItemReceiver>,
-    use_item: Res<UseItemReceiver>,
 ) {
     change_difficulty.0.try_iter().for_each(drop);
     chat_command_signed.0.try_iter().for_each(drop);
@@ -39,5 +38,4 @@ pub fn handle(
     place_recipe.0.try_iter().for_each(drop);
     recipe_book_seen_recipe.0.try_iter().for_each(drop);
     rename_item.0.try_iter().for_each(drop);
-    use_item.0.try_iter().for_each(drop);
 }

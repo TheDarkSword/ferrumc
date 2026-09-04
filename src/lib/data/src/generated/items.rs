@@ -1570,6 +1570,7 @@ impl Item {
                     after: &[],
                 },
             ),
+            (DataComponent::UseRemainder, &UseRemainderImpl { item: 920 }),
         ],
     };
     pub const BELL: Item = Item {
@@ -14072,6 +14073,10 @@ impl Item {
                     }],
                 },
             ),
+            (
+                DataComponent::UseRemainder,
+                &UseRemainderImpl { item: 1149 },
+            ),
         ],
     };
     pub const HONEYCOMB: Item = Item {
@@ -18254,6 +18259,10 @@ impl Item {
                     }],
                 },
             ),
+            (
+                DataComponent::UseRemainder,
+                &UseRemainderImpl { item: 1040 },
+            ),
         ],
     };
     pub const MINECART: Item = Item {
@@ -18725,6 +18734,7 @@ impl Item {
                     after: &[],
                 },
             ),
+            (DataComponent::UseRemainder, &UseRemainderImpl { item: 920 }),
         ],
     };
     pub const MUSIC_DISC_11: Item = Item {
@@ -23693,6 +23703,10 @@ impl Item {
                     after: &[],
                 },
             ),
+            (
+                DataComponent::UseRemainder,
+                &UseRemainderImpl { item: 1149 },
+            ),
         ],
     };
     pub const POWDER_SNOW_BUCKET: Item = Item {
@@ -24710,6 +24724,7 @@ impl Item {
                     after: &[],
                 },
             ),
+            (DataComponent::UseRemainder, &UseRemainderImpl { item: 920 }),
         ],
     };
     pub const RAIL: Item = Item {
@@ -29268,6 +29283,7 @@ impl Item {
                     after: &[],
                 },
             ),
+            (DataComponent::UseRemainder, &UseRemainderImpl { item: 920 }),
         ],
     };
     pub const SWEET_BERRIES: Item = Item {
@@ -36892,6 +36908,7 @@ pub enum DataComponent {
     Consumable,
     BlocksAttacks,
     DeathProtection,
+    UseRemainder,
 }
 pub trait DataComponentImpl {
     fn as_any(&self) -> &dyn std::any::Any;
@@ -37010,6 +37027,16 @@ pub struct ConsumeEffect {
     pub what: Aftermath,
     #[doc = r" Rotten flesh only makes a player hungry four times in five."]
     pub probability: f32,
+}
+#[doc = r" What using one of these leaves in the hand."]
+#[derive(Clone, Debug)]
+pub struct UseRemainderImpl {
+    pub item: u16,
+}
+impl DataComponentImpl for UseRemainderImpl {
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
 }
 pub struct ConsumableImpl {
     pub consume_seconds: f32,
